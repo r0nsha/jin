@@ -52,6 +52,7 @@ pub fn mangle_ty_name(db: &Db, ty: Ty) -> String {
         | TyKind::Uint(_)
         | TyKind::Float(_)
         | TyKind::Str
+        | TyKind::Char
         | TyKind::Bool
         | TyKind::Never => ty.to_string(db),
         _ => unreachable!("unexpected ty {ty:?}"),

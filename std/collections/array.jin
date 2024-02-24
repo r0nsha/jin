@@ -1,7 +1,7 @@
 use std.builtin
 use std.option.Option
 
-pub type Array[T](buf: [T])
+pub type Array[T](pub(module) buf: [T])
 
 pub fn Array.new[T]() -> Array[T] = Array([])
 
@@ -54,11 +54,6 @@ pub fn push[T](self: &mut Array[T], value: T) = {
 	self.push_unchecked(value)
 }
 
-pub fn push_unchecked[T](self: &mut Array[T], value: T) = {
-	unsafe self.buf.len += 1
-	self.buf.[self.buf.len - 1] = value
-}
-
 pub fn pop[T](self: &mut Array[T]) -> Option[T] = {
 	if self.buf.len == 0 {
 		return Option.none
@@ -76,6 +71,15 @@ pub fn reserve[T](self: &mut Array[T], additional: uint) = {
 	if self.needs_to_grow(additional) {
 		self.grow()
 	}
+}
+
+fn push_unchecked[T](self: &mut Array[T], value: T) = {
+	unsafe self.buf.len += 1
+	self.buf.[self.buf.len - 1] = value
+}
+
+fn set_len[T](self: &mut Array[T], len: uint) = {
+	unsafe self.buf.len = len
 }
 
 fn needs_to_grow[T](self: &Array[T], additional: uint) -> bool =

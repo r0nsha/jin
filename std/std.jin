@@ -1,5 +1,6 @@
-pub use .collections
 pub use .builtin
+pub use .char
+pub use .collections
 pub use .int
 pub use .io
 pub use .option

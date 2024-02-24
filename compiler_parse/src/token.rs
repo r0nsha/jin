@@ -17,7 +17,15 @@ impl Token {
     pub fn str_value(&self) -> Ustr {
         match self.kind {
             TokenKind::Ident(v) | TokenKind::Int(v) | TokenKind::Float(v) | TokenKind::Str(v) => v,
-            kind => panic!("expected Ident or Str, found {kind:?}"),
+            kind => panic!("unexpected token {kind:?}"),
+        }
+    }
+
+    #[track_caller]
+    pub fn int_value(&self) -> i128 {
+        match self.kind {
+            TokenKind::Int(v) => v.parse().unwrap(),
+            kind => panic!("unexpected token {kind:?}"),
         }
     }
 
@@ -93,6 +101,8 @@ pub enum TokenKind {
     Int(Ustr),
     Float(Ustr),
     Str(Ustr),
+    Char(char),
+    ByteChar(char),
 }
 
 impl TokenKind {
@@ -114,6 +124,8 @@ impl TokenKind {
             | TokenKind::Int(_)
             | TokenKind::Float(_)
             | TokenKind::Str(_)
+            | TokenKind::Char(_)
+            | TokenKind::ByteChar(_)
             | TokenKind::Ident(_)
             | TokenKind::Underscore
             | TokenKind::QuestionMark
@@ -208,6 +220,8 @@ impl TokenKind {
             | TokenKind::Int(_)
             | TokenKind::Float(_)
             | TokenKind::Str(_)
+            | TokenKind::Char(_)
+            | TokenKind::ByteChar(_)
             | TokenKind::Ident(_)
             | TokenKind::Underscore
             | TokenKind::Semi(_)
@@ -320,7 +334,8 @@ impl fmt::Display for TokenKind {
             Self::Kw(kw) => write!(f, "{kw}"),
             Self::Int(lit) => write!(f, "integer literal `{lit}`"),
             Self::Float(lit) => write!(f, "float literal `{lit}`"),
-            Self::Str(lit) => write!(f, "\"{lit}\""),
+            Self::Str(lit) => write!(f, "string literal \"{lit}\""),
+            Self::Char(ch) | Self::ByteChar(ch) => write!(f, "character literal \'{ch}\'"),
         }
     }
 }

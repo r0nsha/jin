@@ -237,6 +237,11 @@ pub enum Expr {
         value: Ustr,
         span: Span,
     },
+    CharLit {
+        value: char,
+        kind: CharKind,
+        span: Span,
+    },
     UnitLit {
         span: Span,
     },
@@ -272,6 +277,7 @@ impl Spanned for Expr {
             | Self::IntLit { span, .. }
             | Self::FloatLit { span, .. }
             | Self::StrLit { span, .. }
+            | Self::CharLit { span, .. }
             | Self::UnitLit { span, .. } => *span,
         }
     }
@@ -543,4 +549,10 @@ impl fmt::Display for AttrId {
             AttrId::Builtin => "builtin",
         })
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CharKind {
+    Char,
+    Byte,
 }

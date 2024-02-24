@@ -499,6 +499,13 @@ pub(crate) fn check_expr(
             cx.db.types.str.create_ref(Mutability::Imm),
             *span,
         )),
+        ast::Expr::CharLit { value, kind, span } => {
+            let ty = match kind {
+                ast::CharKind::Char => cx.db.types.char,
+                ast::CharKind::Byte => cx.db.types.u8,
+            };
+            Ok(cx.expr(hir::ExprKind::CharLit(*value), ty, *span))
+        }
         ast::Expr::UnitLit { span } => {
             Ok(cx.expr(hir::ExprKind::Block(hir::Block { exprs: vec![] }), cx.db.types.unit, *span))
         }
@@ -1047,6 +1054,7 @@ fn check_assign_lhs_aux(expr: &hir::Expr) -> bool {
         | hir::ExprKind::BoolLit(_)
         | hir::ExprKind::IntLit(_)
         | hir::ExprKind::FloatLit(_)
-        | hir::ExprKind::StrLit(_) => false,
+        | hir::ExprKind::StrLit(_)
+        | hir::ExprKind::CharLit(_) => false,
     }
 }

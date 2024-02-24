@@ -85,6 +85,7 @@ impl<'db> TyPrinter<'db> {
                 FloatTy::F64 => sym::ty::F64,
             }),
             TyKind::Str => f.write_str(sym::ty::STR),
+            TyKind::Char => f.write_str(sym::ty::CHAR),
             TyKind::Bool => f.write_str(sym::ty::BOOL),
             TyKind::Unit => f.write_str("()"),
             TyKind::Never => f.write_str(sym::ty::NEVER),

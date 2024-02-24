@@ -35,6 +35,7 @@ impl BuiltinTys {
                 (sym::ty::F32, db.types.f32),
                 (sym::ty::F64, db.types.f64),
                 (sym::ty::STR, db.types.str),
+                (sym::ty::CHAR, db.types.char),
                 (sym::ty::BOOL, db.types.bool),
                 (sym::ty::NEVER, db.types.never),
             ],

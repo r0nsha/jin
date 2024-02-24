@@ -1,3 +1,5 @@
+pub mod escape;
+
 use camino::Utf8PathBuf;
 
 pub fn current_exe_dir() -> Utf8PathBuf {

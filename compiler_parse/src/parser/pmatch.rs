@@ -87,12 +87,10 @@ impl<'a> Parser<'a> {
         } else if self.is(TokenKind::Minus) {
             let start_span = self.last_span();
             let tok = self.eat(TokenKind::Int(ustr("")))?;
-            let value: i128 = Self::int_lit(&tok.str_value());
-            Ok(MatchPat::Int(-value, start_span.merge(tok.span)))
+            Ok(MatchPat::Int(-tok.int_value(), start_span.merge(tok.span)))
         } else if self.is(TokenKind::Int(ustr(""))) {
             let tok = self.last_token();
-            let value = Self::int_lit(&tok.str_value());
-            Ok(MatchPat::Int(value, tok.span))
+            Ok(MatchPat::Int(tok.int_value(), tok.span))
         } else if self.is(TokenKind::empty_str()) {
             let tok = self.last_token();
             Ok(MatchPat::Str(tok.str_value(), tok.span))

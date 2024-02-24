@@ -15,6 +15,18 @@ fn main() = {
 
 	b.clear()
 	print_str(&b)
+
+	b.push('👍')
+	b.push(' ')
+	b.push('👍')
+	print_str(&b)
+
+	let s = b.as_ref()
+	let mut i = 0
+	for if i < s.len {
+		unsafe printf("%x ".data, s.[i])
+		i += 1
+	}
 }
 
 fn print_str(b: &StrBuilder) =

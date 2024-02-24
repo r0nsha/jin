@@ -1,3 +1,4 @@
+use compiler_helpers::escape;
 use ustr::ustr;
 
 use compiler_core::{
@@ -78,8 +79,14 @@ impl<'s> Lexer<'s> {
         match self.bump() {
             Some(ch) => {
                 let kind = match ch {
-                    ch if ch.is_ascii_alphabetic() || ch == '_' => self.ident(start),
-                    ch if ch.is_ascii_digit() => self.numeric(start),
+                    ch if ch.is_ascii_alphabetic() || ch == '_' => {
+                        if ch == 'b' && self.eat('\'') {
+                            self.eat_char(CharKind::Byte, start + 2)?
+                        } else {
+                            self.eat_ident(start)
+                        }
+                    }
+                    ch if ch.is_ascii_digit() => self.eat_number(start),
                     ch if ch.is_ascii_whitespace() => {
                         if ch == '\n' {
                             self.encountered_nl = true;
@@ -87,6 +94,7 @@ impl<'s> Lexer<'s> {
                         return self.eat_token();
                     }
                     '"' => self.eat_str(start + 1)?,
+                    '\'' => self.eat_char(CharKind::Char, start + 1)?,
                     '#' => {
                         self.eat_comment();
                         return self.eat_token();
@@ -230,12 +238,12 @@ impl<'s> Lexer<'s> {
         }
     }
 
-    fn ident(&mut self, start: u32) -> TokenKind {
+    fn eat_ident(&mut self, start: u32) -> TokenKind {
         while let Some(ch) = self.peek() {
             if ch.is_ascii_alphanumeric() || ch == '_' {
                 self.next();
             } else {
-                let s = self.range_from(start);
+                let s = self.range(start);
 
                 return if s == "_" {
                     TokenKind::Underscore
@@ -250,48 +258,152 @@ impl<'s> Lexer<'s> {
         unreachable!()
     }
 
-    fn numeric(&mut self, start: u32) -> TokenKind {
-        self.eat_int_aux();
+    fn eat_number(&mut self, start: u32) -> TokenKind {
+        if self.peek_offset(-1) == Some('0') {
+            match self.peek() {
+                Some('x' | 'X') => return self.eat_number_hex(),
+                Some('o' | 'O') => return self.eat_number_octal(),
+                Some('b' | 'B') => return self.eat_number_binary(),
+                _ => (),
+            }
+        }
+
+        self.eat_number_decimal();
 
         if self.peek() == Some('.') && self.peek_offset(1).map_or(false, |c| c.is_ascii_digit()) {
             self.next();
-            self.eat_int_aux();
-            TokenKind::Float(ustr(self.range_from(start)))
-        } else {
-            TokenKind::Int(ustr(self.range_from(start)))
+            self.eat_number_decimal();
+            return TokenKind::Float(ustr(&self.number_range(start)));
         }
+
+        TokenKind::Int(ustr(&self.number_range(start)))
     }
 
-    fn eat_int_aux(&mut self) {
+    fn eat_number_decimal(&mut self) {
         while let Some(ch) = self.peek() {
             if ch.is_ascii_digit() || ch == '_' {
                 self.next();
             } else {
-                return;
+                break;
+            }
+        }
+    }
+
+    fn eat_number_hex(&mut self) -> TokenKind {
+        self.next();
+        let start = self.pos;
+
+        while let Some(ch) = self.peek() {
+            match ch {
+                '0'..='9' | 'a'..='f' | 'A'..='F' | '_' => self.next(),
+                _ => break,
             }
         }
 
-        unreachable!()
+        self.int_range_radix(start, 16)
+    }
+
+    fn eat_number_octal(&mut self) -> TokenKind {
+        self.next();
+        let start = self.pos;
+
+        while let Some(ch) = self.peek() {
+            match ch {
+                '0'..='7' | '_' => self.next(),
+                _ => break,
+            }
+        }
+
+        self.int_range_radix(start, 8)
+    }
+
+    fn eat_number_binary(&mut self) -> TokenKind {
+        self.next();
+        let start = self.pos;
+
+        while let Some(ch) = self.peek() {
+            match ch {
+                '0' | '1' | '_' => self.next(),
+                _ => break,
+            }
+        }
+
+        self.int_range_radix(start, 2)
+    }
+
+    fn int_range_radix(&self, start: u32, radix: u32) -> TokenKind {
+        let value = i128::from_str_radix(&self.number_range(start), radix).unwrap();
+        TokenKind::Int(ustr(&value.to_string()))
     }
 
     fn eat_str(&mut self, start: u32) -> DiagnosticResult<TokenKind> {
+        let s = self.eat_terminated_lit(start, '"', "string")?;
+        Ok(TokenKind::Str(ustr(s)))
+    }
+
+    fn eat_char(&mut self, kind: CharKind, start: u32) -> DiagnosticResult<TokenKind> {
+        let s = self.eat_terminated_lit(start, '\'', "char")?;
+
+        let unescaped = escape::unescape(s).map_err(|e| match e {
+            escape::UnescapeError::InvalidEscape(r) => Diagnostic::error("invalid escape sequence")
+                .with_label(Label::primary(
+                    self.create_span_range(start + r.start, start + r.end),
+                    "invalid sequence",
+                )),
+        })?;
+
+        let char_count = unescaped.chars().count();
+        if char_count != 1 {
+            return Err(Diagnostic::error("character literal can only contain one codepoint")
+                .with_label(Label::primary(
+                    self.create_span_range(start, self.pos - 1),
+                    format!("contains {char_count} codepoints"),
+                )));
+        }
+
+        let ch = unescaped.chars().nth(0).unwrap();
+
+        match kind {
+            CharKind::Char => Ok(TokenKind::Char(ch)),
+            CharKind::Byte => {
+                if !ch.is_ascii() {
+                    return Err(Diagnostic::error(format!(
+                        "non-ascii character `{ch}` in byte char"
+                    ))
+                    .with_label(Label::primary(self.create_span(self.pos), "non-ascii char")));
+                }
+
+                Ok(TokenKind::ByteChar(ch))
+            }
+        }
+    }
+
+    fn eat_terminated_lit<'a>(
+        &'a mut self,
+        start: u32,
+        term: char,
+        kind: &str,
+    ) -> DiagnosticResult<&'a str> {
+        let mut last: Option<char> = None;
+
         loop {
             match self.bump() {
-                Some('"') => break,
-                Some(_) => (),
+                Some(ch) if last != Some('\\') && ch == term => break,
+                Some(ch) => last = Some(ch),
                 None => {
-                    return Err(Diagnostic::error("missing trailing `\"` to end the string")
-                        .with_label(Label::primary(
-                            self.create_span(self.pos),
-                            "unterminated string",
-                        )));
+                    return Err(Diagnostic::error(format!(
+                        "missing trailing `{term}` to end the {kind}"
+                    ))
+                    .with_label(Label::primary(
+                        self.create_span(self.pos),
+                        format!("unterminated {kind}"),
+                    )));
                 }
             }
         }
 
-        let str = self.range_from(start);
-        let str = &str[..str.len() - 1];
-        Ok(TokenKind::Str(ustr(str)))
+        let s = self.range(start);
+        Ok(&s[..s.len() - 1])
     }
 
     fn eat_comment(&mut self) {
@@ -310,7 +422,11 @@ impl<'s> Lexer<'s> {
         self.pos += 1;
     }
 
-    fn range_from(&self, start: u32) -> &str {
+    fn number_range(&self, start: u32) -> String {
+        self.range(start).replace('_', "")
+    }
+
+    fn range(&self, start: u32) -> &str {
         let start = start as usize;
         let end = start + (self.pos as usize - start);
         &self.source_contents[start..end]
@@ -329,8 +445,8 @@ impl<'s> Lexer<'s> {
         }
     }
 
-    fn peek_offset(&self, offset: usize) -> Option<char> {
-        self.source_bytes.get(self.pos as usize + offset).map(|c| *c as char)
+    fn peek_offset(&self, offset: i32) -> Option<char> {
+        self.source_bytes.get(self.pos.saturating_add_signed(offset) as usize).map(|c| *c as char)
     }
 
     fn bump(&mut self) -> Option<char> {
@@ -339,7 +455,19 @@ impl<'s> Lexer<'s> {
         ch
     }
 
+    #[inline]
     fn create_span(&self, start: u32) -> Span {
-        Span::new(self.source_id, start, self.pos)
+        self.create_span_range(start, self.pos)
     }
+
+    #[inline]
+    fn create_span_range(&self, start: u32, end: u32) -> Span {
+        Span::new(self.source_id, start, end)
+    }
+}
+
+#[derive(Debug)]
+enum CharKind {
+    Char,
+    Byte,
 }

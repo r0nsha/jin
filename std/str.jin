@@ -1,3 +1,4 @@
+use std.char.(encode_utf8_raw, ?)
 use std.collections.Array
 
 pub fn str.from_utf8_unchecked(bytes: [u8]) -> str =
@@ -42,20 +43,28 @@ pub fn push(self: &mut StrBuilder, s: &str) = {
 	let bytes = s.as_bytes()
 	let len = bytes.len
 
-	# Reserve at least `bytes.len` + one more for the NUL byte
 	self.array.reserve(len + 1)
-
-	# Set the first byte to where the previous NUL byte was
 	self.array.set(self.array.len() - 1, bytes.[0])
 
-	let mut i = 1 # We start at one since we already used the first byte
+	let mut i = 1
 	for if i < len {
 		self.array.push_unchecked(bytes.[i])
 		i += 1
 	}
 
-	# Set the NUL byte to the last position
-	self.array.push(0) # TODO: NUL byte
+	self.array.push(b'\0')
+}
+
+pub fn push(self: &mut StrBuilder, ch: char) = {
+	let len = self.array.len()
+	let ch_len = ch.len_utf8()
+	let new_len = len + ch_len 
+
+	self.array.reserve(ch_len + 1)
+	self.array.set_len(new_len - 1)
+
+	ch.encode_utf8(&mut self.array.as_mut().[len - 1..new_len - 1])
+	self.array.push(b'\0')
 }
 
 pub fn clear(self: &mut StrBuilder) = {
@@ -64,6 +73,6 @@ pub fn clear(self: &mut StrBuilder) = {
 
 fn array_with_nul_byte(cap: uint) -> Array[u8] = {
 	let mut a = Array.with_cap(cap)
-	a.push(0) # TODO: NUL byte
+	a.push(b'\0')
 	a
 }

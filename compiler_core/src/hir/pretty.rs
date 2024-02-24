@@ -271,15 +271,17 @@ impl PrettyCx<'_> {
                 self.builder.end_child();
             }
             ExprKind::StrLit(v) => {
-                self.builder.add_empty_child(v.to_string());
+                self.builder.add_empty_child(format!("\"{v}\""));
+            }
+            ExprKind::CharLit(v) => {
+                self.builder
+                    .add_empty_child(format!("char: {v} (type: {})", expr.ty.display(self.db)));
             }
             ExprKind::IntLit(v) => {
-                self.builder
-                    .add_empty_child(format!("{} (type: {})", v, expr.ty.display(self.db),));
+                self.builder.add_empty_child(format!("{} (type: {})", v, expr.ty.display(self.db)));
             }
             ExprKind::FloatLit(v) => {
-                self.builder
-                    .add_empty_child(format!("{} (type: {})", v, expr.ty.display(self.db),));
+                self.builder.add_empty_child(format!("{} (type: {})", v, expr.ty.display(self.db)));
             }
             ExprKind::BoolLit(v) => {
                 self.builder.add_empty_child(v.to_string());

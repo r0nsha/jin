@@ -27,6 +27,7 @@ pub trait TyFolder {
             | TyKind::Uint(_)
             | TyKind::Float(_)
             | TyKind::Str
+            | TyKind::Char
             | TyKind::Bool
             | TyKind::Unit
             | TyKind::Never

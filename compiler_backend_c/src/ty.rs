@@ -47,6 +47,7 @@ impl<'db> CTy<'db> for TyKind {
             Self::Uint(uty) => uty.cty(cx),
             Self::Float(fty) => fty.cty(cx),
             Self::Str => D::text("str"),
+            Self::Char => D::text("u32"),
             Self::Bool => D::text("bool"),
             Self::Never => D::text("never"),
             Self::Unit => D::text("unit"),

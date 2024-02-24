@@ -52,8 +52,8 @@ pub(crate) fn check(
             let inner_ty = check(cx, env, inner, allow_hole)?;
 
             match inner_ty.kind() {
-                TyKind::Adt(..) => Ok(inner_ty.create_ref(*mutability)),
-                TyKind::Param(_)
+                TyKind::Adt(..)
+                | TyKind::Param(_)
                 | TyKind::Fn(_)
                 | TyKind::Slice(_)
                 | TyKind::RawPtr(_)
@@ -61,6 +61,7 @@ pub(crate) fn check(
                 | TyKind::Uint(_)
                 | TyKind::Float(_)
                 | TyKind::Str
+                | TyKind::Char
                 | TyKind::Bool
                 | TyKind::Unit => Ok(inner_ty.create_ref(*mutability)),
                 TyKind::Ref(..)
