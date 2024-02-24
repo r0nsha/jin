@@ -1,4 +1,5 @@
 pub use std
+pub use std.char.(?)
 pub use std.collections.(*)
 pub use std.option.(Option, ?)
 pub use std.result.(Result, ?)

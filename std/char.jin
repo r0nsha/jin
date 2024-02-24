@@ -1,0 +1,23 @@
+# UTF-8 ranges and tags for encoding characters. Taken from rust's `core::char` module
+let tag_cont: u8 = 0b1000_0000;
+let tag_two_b: u8 = 0b1100_0000;
+let tag_three_b: u8 = 0b1110_0000;
+let tag_four_b: u8 = 0b1111_0000;
+let max_one_b: u32 = 0x80;
+let max_two_b: u32 = 0x800;
+let max_three_b: u32 = 0x10000;
+
+fn len_utf8(code: u32) -> uint =
+	if code < max_one_b {
+		1
+	} else if code < max_two_b {
+		2
+	} else if code < max_three_b {
+		3
+	} else {
+		4
+	}
+
+fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] = {
+	&mut []
+}

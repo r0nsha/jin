@@ -17,7 +17,15 @@ impl Token {
     pub fn str_value(&self) -> Ustr {
         match self.kind {
             TokenKind::Ident(v) | TokenKind::Int(v) | TokenKind::Float(v) | TokenKind::Str(v) => v,
-            kind => panic!("expected Ident or Str, found {kind:?}"),
+            kind => panic!("unexpected token {kind:?}"),
+        }
+    }
+
+    #[track_caller]
+    pub fn int_value(&self) -> i128 {
+        match self.kind {
+            TokenKind::Int(v) => v.parse().unwrap(),
+            kind => panic!("unexpected token {kind:?}"),
         }
     }
 

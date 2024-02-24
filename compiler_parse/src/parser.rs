@@ -5,7 +5,7 @@ mod pmatch;
 mod tydef;
 mod tyexpr;
 
-use std::{ops::ControlFlow, str::FromStr};
+use std::ops::ControlFlow;
 
 use camino::{Utf8Path, Utf8PathBuf};
 use compiler_ast::{Module, TyParam};
@@ -194,14 +194,6 @@ impl<'a> Parser<'a> {
     #[inline]
     pub(super) fn eat_ident(&mut self) -> DiagnosticResult<Token> {
         self.eat(TokenKind::empty_ident())
-    }
-
-    pub(super) fn int_lit<F>(value: &str) -> F
-    where
-        F: FromStr,
-        <F as FromStr>::Err: core::fmt::Debug,
-    {
-        value.replace('_', "").parse().expect("to be a valid integer")
     }
 
     #[inline]

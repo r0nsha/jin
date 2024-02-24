@@ -146,17 +146,12 @@ impl<'a> Parser<'a> {
                 let targs = self.parse_optional_ty_args()?;
                 Expr::Name { word: tok.word(), targs, span: tok.span }
             }
-            TokenKind::Int(value) => {
-                Expr::IntLit { value: Self::int_lit(value.as_str()), span: tok.span }
+            TokenKind::Int(value) => Expr::IntLit { value: value.parse().unwrap(), span: tok.span },
+            TokenKind::Float(value) => {
+                Expr::FloatLit { value: value.parse().unwrap(), span: tok.span }
             }
-            TokenKind::Float(value) => Expr::FloatLit {
-                value: value.replace('_', "").parse().expect("to be a valid float"),
-                span: tok.span,
-            },
             TokenKind::Str(value) => Expr::StrLit { value, span: tok.span },
-            TokenKind::Char(value) => {
-                Expr::CharLit { value, kind: CharKind::Char, span: tok.span }
-            }
+            TokenKind::Char(value) => Expr::CharLit { value, kind: CharKind::Char, span: tok.span },
             TokenKind::ByteChar(value) => {
                 Expr::CharLit { value, kind: CharKind::Byte, span: tok.span }
             }
