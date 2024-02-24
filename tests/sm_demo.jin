@@ -12,10 +12,10 @@ fn main() = {
 
 fn int_types() = {
 	let id: i8 = 126
-	let promoted = as[i64](id) + 5555
-	let demoted_inferred: i32 = as[_](promoted)
-	let demoted_explicit: i16 = as[_](demoted_inferred - 4000)
-	let int_to_uint: uint = as[_](as[int](663151))
+	let promoted = i64(id) + 5555
+	let demoted_1 = i32(promoted)
+	let demoted_2 = i16(demoted_1 - 4000)
+	let int_to_uint = uint(int(663151))
 }
 
 fn unary() = {

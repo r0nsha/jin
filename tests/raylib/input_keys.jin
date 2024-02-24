@@ -7,7 +7,7 @@ pub fn run() = unsafe {
 	InitWindow(screen_width, screen_height, "raylib - input keys".data)
 	SetTargetFPS(60)
 
-	let mut ball_position = Vector2(as[f32](screen_width / 2), as[f32](screen_height / 2))
+	let mut ball_position = Vector2(f32(screen_width / 2), f32(screen_height / 2))
 
 	for if !WindowShouldClose() {
 		if IsKeyDown(KEY_RIGHT) { ball_position.x += 2.0 }

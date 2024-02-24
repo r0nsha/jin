@@ -24,6 +24,4 @@ fn map[A, B](val: A, f: fn(A) -> B) -> B = {
 	f(val)
 }
 
-fn int_to_uint(val: int) -> uint = {
-	as[_](val)
-}
+fn int_to_uint(val: int) -> uint = uint(val)

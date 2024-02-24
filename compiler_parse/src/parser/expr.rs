@@ -89,7 +89,6 @@ impl<'a> Parser<'a> {
             TokenKind::Kw(Kw::Match) => self.parse_match()?,
             TokenKind::Kw(Kw::For) => self.parse_loop()?,
             TokenKind::Kw(Kw::Break) => Expr::Break { span: tok.span },
-            TokenKind::Kw(Kw::As) => self.parse_cast()?,
             TokenKind::Kw(Kw::Transmute) => self.parse_transmute()?,
             TokenKind::Minus => {
                 let expr = self.parse_operand()?;
@@ -185,22 +184,6 @@ impl<'a> Parser<'a> {
         let expr = self.parse_block()?;
         let span = start.merge(expr.span());
         Ok(Expr::Loop { cond, expr: Box::new(expr), span })
-    }
-
-    fn parse_cast(&mut self) -> DiagnosticResult<Expr> {
-        let start = self.last_span();
-
-        self.eat(TokenKind::OpenBracket)?;
-        let target = self.parse_ty()?;
-        self.eat(TokenKind::CloseBracket)?;
-
-        self.eat(TokenKind::OpenParen)?;
-        let expr = self.parse_expr()?;
-        self.eat(TokenKind::CloseParen)?;
-
-        let span = start.merge(self.last_span());
-
-        Ok(Expr::Cast { expr: Box::new(expr), target, span })
     }
 
     fn parse_transmute(&mut self) -> DiagnosticResult<Expr> {
