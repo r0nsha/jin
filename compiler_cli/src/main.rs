@@ -50,15 +50,25 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn build(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Option<Utf8PathBuf>> {
-    Ok(build_to_mir(db, root_file)?.map(|mir| compiler_backend_c::codegen(db, &mir)))
+    if let Some(mut mir) = build_to_mir(db, root_file)? {
+        db.time("Mir Monomorphization", |db| compiler_mir::monomorphize(db, &mut mir));
+        db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))?;
+
+        Ok(Some(compiler_backend_c::codegen(db, &mir)))
+    } else {
+        Ok(None)
+    }
 }
 
 fn check(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<()> {
-    build_to_mir(db, root_file).map(|_| ())
+    if let Some(mir) = build_to_mir(db, root_file)? {
+        db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))?;
+    }
+
+    Ok(())
 }
 
 fn build_to_mir(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Option<Mir>> {
-    // File -> Ast
     let ast = db.time("Parse", |db| compiler_parse::parse(db, root_file))?;
     fs::create_dir_all(db.output_dir())?;
     db.emit_file(EmitOption::Ast, |_, file| ast.pretty_print(file))?;
@@ -67,22 +77,14 @@ fn build_to_mir(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Option<Mir>
         return Ok(None);
     }
 
-    // Ast -> Hir
     let hir = db.time("Type checking", |db| compiler_typeck::typeck(db, ast));
     db.emit_file(EmitOption::Hir, |db, file| hir.pretty_print(db, file))?;
     if db.diagnostics.any_errors() {
         return Ok(None);
     }
 
-    let mut mir = db.time("Hir -> Mir", |db| compiler_mir::lower(db, &hir));
-    if db.diagnostics.any_errors() {
-        return Ok(None);
-    }
-
-    db.time("Mir Monomorphization", |db| compiler_mir::monomorphize(db, &mut mir));
-    db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))?;
-
-    Ok(Some(mir))
+    let mir = db.time("Hir -> Mir", |db| compiler_mir::lower(db, &hir));
+    Ok(if db.diagnostics.any_errors() { None } else { Some(mir) })
 }
 
 #[derive(Parser)]
