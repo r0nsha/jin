@@ -16,7 +16,8 @@ impl Token {
     #[track_caller]
     pub fn str_value(&self) -> Ustr {
         match self.kind {
-            TokenKind::Ident(v) | TokenKind::Int(v) | TokenKind::Float(v) | TokenKind::Str(v) => v,
+            TokenKind::Ident(v) | TokenKind::Str(v) => v,
+            TokenKind::Int(v) => ustr(&v.to_string()),
             kind => panic!("unexpected token {kind:?}"),
         }
     }
@@ -24,11 +25,12 @@ impl Token {
     #[track_caller]
     pub fn int_value(&self) -> i128 {
         match self.kind {
-            TokenKind::Int(v) => v.parse().unwrap(),
+            TokenKind::Int(v) => v,
             kind => panic!("unexpected token {kind:?}"),
         }
     }
 
+    #[track_caller]
     pub fn word(&self) -> Word {
         Word::new(self.str_value(), self.span)
     }
@@ -98,8 +100,8 @@ pub enum TokenKind {
     Kw(Kw),
 
     // Literals
-    Int(Ustr),
-    Float(Ustr),
+    Int(i128),
+    Float(f64),
     Str(Ustr),
     Char(char),
     ByteChar(char),

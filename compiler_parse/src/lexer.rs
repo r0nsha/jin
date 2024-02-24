@@ -273,10 +273,10 @@ impl<'s> Lexer<'s> {
         if self.peek() == Some('.') && self.peek_offset(1).map_or(false, |c| c.is_ascii_digit()) {
             self.next();
             self.eat_number_decimal();
-            return TokenKind::Float(ustr(&self.number_range(start)));
+            return TokenKind::Float(self.number_range(start).parse().unwrap());
         }
 
-        TokenKind::Int(ustr(&self.number_range(start)))
+        TokenKind::Int(self.number_range(start).parse().unwrap())
     }
 
     fn eat_number_decimal(&mut self) {
@@ -333,7 +333,7 @@ impl<'s> Lexer<'s> {
 
     fn int_range_radix(&self, start: u32, radix: u32) -> TokenKind {
         let value = i128::from_str_radix(&self.number_range(start), radix).unwrap();
-        TokenKind::Int(ustr(&value.to_string()))
+        TokenKind::Int(value)
     }
 
     fn eat_str(&mut self, start: u32) -> DiagnosticResult<TokenKind> {

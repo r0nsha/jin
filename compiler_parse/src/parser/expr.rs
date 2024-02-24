@@ -9,11 +9,9 @@ use compiler_core::{
     ty::TyKind,
 };
 use compiler_data_structures::index_vec::Key as _;
-use ustr::ustr;
 
-use crate::bin_op_from_assign_op;
 use crate::{
-    errors,
+    bin_op_from_assign_op, errors,
     parser::{item::RequireTy, AllowOmitParens, Parser, RequireSigTy},
     token::{Kw, TokenKind},
 };
@@ -146,10 +144,8 @@ impl<'a> Parser<'a> {
                 let targs = self.parse_optional_ty_args()?;
                 Expr::Name { word: tok.word(), targs, span: tok.span }
             }
-            TokenKind::Int(value) => Expr::IntLit { value: value.parse().unwrap(), span: tok.span },
-            TokenKind::Float(value) => {
-                Expr::FloatLit { value: value.parse().unwrap(), span: tok.span }
-            }
+            TokenKind::Int(value) => Expr::IntLit { value: value as u128, span: tok.span },
+            TokenKind::Float(value) => Expr::FloatLit { value, span: tok.span },
             TokenKind::Str(value) => Expr::StrLit { value, span: tok.span },
             TokenKind::Char(value) => Expr::CharLit { value, kind: CharKind::Char, span: tok.span },
             TokenKind::ByteChar(value) => {
@@ -359,7 +355,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_field(&mut self, expr: Expr) -> DiagnosticResult<Expr> {
-        if self.is(TokenKind::Int(ustr(""))) {
+        if self.is(TokenKind::Int(0)) {
             let field = self.last_token().word();
             let span = expr.span().merge(field.span());
             return Ok(Expr::Field { expr: Box::new(expr), field, span });

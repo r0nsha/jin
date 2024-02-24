@@ -7,7 +7,6 @@ use compiler_core::{
     span::Spanned,
     word::Word,
 };
-use ustr::ustr;
 
 use crate::{
     parser::Parser,
@@ -86,9 +85,9 @@ impl<'a> Parser<'a> {
             Ok(MatchPat::Unit(start_span.merge(last_span)))
         } else if self.is(TokenKind::Minus) {
             let start_span = self.last_span();
-            let tok = self.eat(TokenKind::Int(ustr("")))?;
+            let tok = self.eat(TokenKind::Int(0))?;
             Ok(MatchPat::Int(-tok.int_value(), start_span.merge(tok.span)))
-        } else if self.is(TokenKind::Int(ustr(""))) {
+        } else if self.is(TokenKind::Int(0)) {
             let tok = self.last_token();
             Ok(MatchPat::Int(tok.int_value(), tok.span))
         } else if self.is(TokenKind::empty_str()) {
