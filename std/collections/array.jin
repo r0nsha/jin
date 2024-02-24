@@ -50,9 +50,7 @@ pub fn set[T](self: &mut Array[T], index: uint, value: T) -> Option[T] = {
 }
 
 pub fn push[T](self: &mut Array[T], value: T) = {
-	if self.needs_to_grow(additional: 1) {
-		self.grow()
-	}
+	self.reserve(1)
 	unsafe self.buf.len += 1
 	self.buf.[self.buf.len - 1] = value
 }
