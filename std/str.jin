@@ -16,11 +16,8 @@ pub type StrBuilder(array: Array[u8])
 
 pub fn StrBuilder.new() -> StrBuilder = StrBuilder.with_cap(1)
 
-pub fn StrBuilder.with_cap(cap: uint) -> StrBuilder = {
-	let mut b = StrBuilder(Array.with_cap(cap))
-	b.array.push(0) # TODO: NUL byte
-	b
-}
+pub fn StrBuilder.with_cap(cap: uint) -> StrBuilder =
+	StrBuilder(array_with_nul_byte(cap))
 
 pub fn len(self: &StrBuilder) -> uint = self.array.len() - 1
 pub fn cap(self: &StrBuilder) -> uint = self.array.cap()
@@ -34,6 +31,8 @@ pub fn as_mut(self: &mut StrBuilder) -> &mut str =
 
 pub fn take(self: StrBuilder) -> str =
 	str.from_utf8_unchecked(self.array.take())
+
+pub fn to_str(self: StrBuilder) -> str = self.take()
 
 pub fn push(self: &mut StrBuilder, s: &str) = {
 	if s.len == 0 {
@@ -57,4 +56,14 @@ pub fn push(self: &mut StrBuilder, s: &str) = {
 
 	# Set the NUL byte to the last position
 	self.array.push(0) # TODO: NUL byte
+}
+
+pub fn clear(self: &mut StrBuilder) = {
+	self.array = array_with_nul_byte(self.array.cap())
+}
+
+fn array_with_nul_byte(cap: uint) -> Array[u8] = {
+	let mut a = Array.with_cap(cap)
+	a.push(0) # TODO: NUL byte
+	a
 }
