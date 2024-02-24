@@ -1,3 +1,4 @@
+use compiler_core::ty::{IntTy, UintTy};
 use compiler_core::{
     db::Db,
     diagnostics::{Diagnostic, Label},
@@ -199,6 +200,6 @@ fn is_valid_cast(source: Ty, target: Ty) -> bool {
         ) | (
             TyKind::RawPtr(_) | TyKind::Int(_) | TyKind::Uint(_),
             TyKind::RawPtr(_) | TyKind::Int(_) | TyKind::Uint(_)
-        )
+        ) | (TyKind::Char, TyKind::Int(IntTy::I32) | TyKind::Uint(UintTy::U32))
     )
 }

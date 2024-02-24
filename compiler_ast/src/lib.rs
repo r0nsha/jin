@@ -553,5 +553,6 @@ impl fmt::Display for AttrId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CharKind {
+    Char,
     Byte,
 }

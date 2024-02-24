@@ -501,6 +501,7 @@ pub(crate) fn check_expr(
         )),
         ast::Expr::CharLit { value, kind, span } => {
             let ty = match kind {
+                ast::CharKind::Char => cx.db.types.char,
                 ast::CharKind::Byte => cx.db.types.u8,
             };
             Ok(cx.expr(hir::ExprKind::CharLit(*value), ty, *span))

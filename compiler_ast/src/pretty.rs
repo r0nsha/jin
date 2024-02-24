@@ -219,6 +219,9 @@ impl PrettyPrint for Expr {
                 cx.builder.add_empty_child(format!("str: {value}"));
             }
             Self::CharLit { value, kind, .. } => match kind {
+                CharKind::Char => {
+                    cx.builder.add_empty_child(format!("char: {value}"));
+                }
                 CharKind::Byte => {
                     cx.builder.add_empty_child(format!("byte char: {value}"));
                 }

@@ -750,6 +750,7 @@ pub struct CommonTypes {
     pub f64: Ty,
 
     pub str: Ty,
+    pub char: Ty,
     pub bool: Ty,
     pub unit: Ty,
     pub never: Ty,
@@ -781,6 +782,7 @@ impl CommonTypes {
             f64: Ty::new(TyKind::Float(FloatTy::F64)),
 
             str: Ty::new(TyKind::Str),
+            char: Ty::new(TyKind::Char),
             bool: Ty::new(TyKind::Bool),
             unit: Ty::new(TyKind::Unit),
             never: Ty::new(TyKind::Never),

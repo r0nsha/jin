@@ -112,6 +112,7 @@ impl Ty {
                 | TyKind::Uint(_)
                 | TyKind::Float(_)
                 | TyKind::Str
+                | TyKind::Char
                 | TyKind::Bool
                 | TyKind::Unit
                 | TyKind::Never
@@ -143,6 +144,7 @@ impl Ty {
             | TyKind::Uint(_)
             | TyKind::Float(_)
             | TyKind::Str
+            | TyKind::Char
             | TyKind::Bool
             | TyKind::Unit
             | TyKind::Never
@@ -190,6 +192,7 @@ impl Ty {
             | TyKind::Uint(_)
             | TyKind::Float(_)
             | TyKind::Str
+            | TyKind::Char
             | TyKind::Bool
             | TyKind::Unit
             | TyKind::Never
@@ -273,6 +276,7 @@ pub enum TyKind {
     Uint(UintTy),
     Float(FloatTy),
     Str,
+    Char,
     Bool,
     Unit, // TODO: when we implement tuples, Unit should become Tuple([])
     Never,

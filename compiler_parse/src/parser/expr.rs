@@ -154,6 +154,9 @@ impl<'a> Parser<'a> {
                 span: tok.span,
             },
             TokenKind::Str(value) => Expr::StrLit { value, span: tok.span },
+            TokenKind::Char(value) => {
+                Expr::CharLit { value, kind: CharKind::Char, span: tok.span }
+            }
             TokenKind::ByteChar(value) => {
                 Expr::CharLit { value, kind: CharKind::Byte, span: tok.span }
             }

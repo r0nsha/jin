@@ -44,6 +44,7 @@ impl TyKind {
                     AdtKind::Union(_) => word,
                 }
             }
+            TyKind::Char => 4,
             TyKind::Bool => 1,
             TyKind::Unit | TyKind::Never => 0,
             TyKind::Param(_)
@@ -86,6 +87,7 @@ impl TyKind {
                     AdtKind::Union(_) => db.target_metrics().word_size,
                 }
             }
+            TyKind::Char => 4,
             TyKind::Bool | TyKind::Unit | TyKind::Never => 1,
             TyKind::Param(_)
             | TyKind::Infer(_)

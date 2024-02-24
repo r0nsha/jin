@@ -94,6 +94,7 @@ impl<'s> Lexer<'s> {
                         return self.eat_token();
                     }
                     '"' => self.eat_str(start + 1)?,
+                    '\'' => self.eat_char(CharKind::Char, start + 1)?,
                     '#' => {
                         self.eat_comment();
                         return self.eat_token();
@@ -309,6 +310,7 @@ impl<'s> Lexer<'s> {
         let ch = unescaped.chars().nth(0).unwrap();
 
         match kind {
+            CharKind::Char => Ok(TokenKind::Char(ch)),
             CharKind::Byte => {
                 if !ch.is_ascii() {
                     return Err(Diagnostic::error(format!(
@@ -316,10 +318,10 @@ impl<'s> Lexer<'s> {
                     ))
                     .with_label(Label::primary(self.create_span(self.pos), "non-ascii char")));
                 }
+
+                Ok(TokenKind::ByteChar(ch))
             }
         }
-
-        Ok(TokenKind::ByteChar(ch))
     }
 
     fn eat_terminated_lit<'a>(
@@ -408,5 +410,6 @@ impl<'s> Lexer<'s> {
 
 #[derive(Debug)]
 enum CharKind {
+    Char,
     Byte,
 }
