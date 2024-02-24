@@ -33,9 +33,13 @@ impl<'a> Unescape<'a> {
         let start = self.pos - 1;
 
         match self.next() {
-            Some('\\') => Ok('\\'),
             Some('"') => Ok('"'),
             Some('\'') => Ok('\''),
+            Some('n') => Ok('\n'),
+            Some('r') => Ok('\r'),
+            Some('t') => Ok('\t'),
+            Some('\\') => Ok('\\'),
+            Some('0') => Ok('\0'),
             _ => Err(UnescapeError::InvalidEscape(start..self.pos)),
         }
     }
