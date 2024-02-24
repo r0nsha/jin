@@ -780,13 +780,11 @@ fn check_call(
                 span,
             ))
         }
-        _ => {
-            let ty = cx.normalize(callee.ty);
-            let span = callee.span;
-
-            Err(Diagnostic::error(format!("expected a function, found `{}`", ty.display(cx.db)))
-                .with_label(Label::primary(span, "expected a function")))
-        }
+        _ => Err(Diagnostic::error(format!(
+            "expected a function, found `{}`",
+            cx.normalize(callee.ty).display(cx.db)
+        ))
+        .with_label(Label::primary(callee.span, "expected a function"))),
     }
 }
 

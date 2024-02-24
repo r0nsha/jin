@@ -61,6 +61,7 @@ const RcSlice = extern struct {
 
             std.c.free(array.data);
             array.data = new_data;
+            array.cap = new_cap;
 
             return Self{
                 .array = array,

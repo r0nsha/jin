@@ -1,5 +1,69 @@
+use std.collections.Array
+
+pub fn str.from_utf8_unchecked(bytes: [u8]) -> str =
+	unsafe transmute[_](bytes)
+
 pub fn str.from_utf8_unchecked(bytes: &[u8]) -> &str =
+	unsafe transmute[_](bytes)
+
+pub fn str.from_utf8_mut_unchecked(bytes: &mut [u8]) -> &mut str =
 	unsafe transmute[_](bytes)
 
 pub fn as_bytes(self: &str) -> &[u8] = 
 	unsafe transmute[_](self)
+
+pub type StrBuilder(array: Array[u8])
+
+pub fn StrBuilder.new() -> StrBuilder = StrBuilder.with_cap(1)
+
+pub fn StrBuilder.with_cap(cap: uint) -> StrBuilder =
+	StrBuilder(array_with_nul_byte(cap))
+
+pub fn len(self: &StrBuilder) -> uint = self.array.len() - 1
+pub fn cap(self: &StrBuilder) -> uint = self.array.cap()
+pub fn is_empty(self: &StrBuilder) -> bool = self.len() == 0
+
+pub fn as_ref(self: &StrBuilder) -> &str =
+	str.from_utf8_unchecked(self.array.as_ref())
+
+pub fn as_mut(self: &mut StrBuilder) -> &mut str =
+	str.from_utf8_mut_unchecked(self.array.as_mut())
+
+pub fn take(self: StrBuilder) -> str =
+	str.from_utf8_unchecked(self.array.take())
+
+pub fn to_str(self: StrBuilder) -> str = self.take()
+
+pub fn push(self: &mut StrBuilder, s: &str) = {
+	if s.len == 0 {
+		return
+	}
+
+	let bytes = s.as_bytes()
+	let len = bytes.len
+
+	# Reserve at least `bytes.len` + one more for the NUL byte
+	self.array.reserve(len + 1)
+
+	# Set the first byte to where the previous NUL byte was
+	self.array.set(self.array.len() - 1, bytes.[0])
+
+	let mut i = 1 # We start at one since we already used the first byte
+	for if i < len {
+		self.array.push_unchecked(bytes.[i])
+		i += 1
+	}
+
+	# Set the NUL byte to the last position
+	self.array.push(0) # TODO: NUL byte
+}
+
+pub fn clear(self: &mut StrBuilder) = {
+	self.array = array_with_nul_byte(self.array.cap())
+}
+
+fn array_with_nul_byte(cap: uint) -> Array[u8] = {
+	let mut a = Array.with_cap(cap)
+	a.push(0) # TODO: NUL byte
+	a
+}
