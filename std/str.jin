@@ -58,6 +58,9 @@ pub fn push(self: &mut StrBuilder, s: &str) = {
 	self.array.push(b'\0')
 }
 
+pub fn push(self: &mut StrBuilder, ch: char) = {
+}
+
 pub fn clear(self: &mut StrBuilder) = {
 	self.array = array_with_nul_byte(self.array.cap())
 }
