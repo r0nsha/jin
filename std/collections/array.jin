@@ -68,10 +68,8 @@ pub fn clear[T](self: &mut Array[T]) = {
 	self.buf = []
 }
 
-fn extern "c" printf(fmt: *u8, ..) -> i32
 pub fn reserve[T](self: &mut Array[T], additional: uint) = {
 	if self.needs_to_grow(additional) {
-		unsafe printf("grow\n".data)
 		self.grow()
 	}
 }
