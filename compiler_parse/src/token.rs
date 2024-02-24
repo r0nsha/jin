@@ -93,6 +93,7 @@ pub enum TokenKind {
     Int(Ustr),
     Float(Ustr),
     Str(Ustr),
+    ByteChar(char),
 }
 
 impl TokenKind {
@@ -114,6 +115,7 @@ impl TokenKind {
             | TokenKind::Int(_)
             | TokenKind::Float(_)
             | TokenKind::Str(_)
+            | TokenKind::ByteChar(_)
             | TokenKind::Ident(_)
             | TokenKind::Underscore
             | TokenKind::QuestionMark
@@ -208,6 +210,7 @@ impl TokenKind {
             | TokenKind::Int(_)
             | TokenKind::Float(_)
             | TokenKind::Str(_)
+            | TokenKind::ByteChar(_)
             | TokenKind::Ident(_)
             | TokenKind::Underscore
             | TokenKind::Semi(_)
@@ -321,6 +324,7 @@ impl fmt::Display for TokenKind {
             Self::Int(lit) => write!(f, "integer literal `{lit}`"),
             Self::Float(lit) => write!(f, "float literal `{lit}`"),
             Self::Str(lit) => write!(f, "\"{lit}\""),
+            Self::ByteChar(ch) => write!(f, "\'{ch}\'"),
         }
     }
 }

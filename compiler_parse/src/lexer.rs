@@ -78,7 +78,13 @@ impl<'s> Lexer<'s> {
         match self.bump() {
             Some(ch) => {
                 let kind = match ch {
-                    ch if ch.is_ascii_alphabetic() || ch == '_' => self.ident(start),
+                    ch if ch.is_ascii_alphabetic() || ch == '_' => {
+                        if ch == 'b' && self.eat('\'') {
+                            self.eat_char(CharKind::Byte)?
+                        } else {
+                            self.ident(start)
+                        }
+                    }
                     ch if ch.is_ascii_digit() => self.numeric(start),
                     ch if ch.is_ascii_whitespace() => {
                         if ch == '\n' {
@@ -294,6 +300,17 @@ impl<'s> Lexer<'s> {
         Ok(TokenKind::Str(ustr(str)))
     }
 
+    fn eat_char(&mut self, kind: CharKind) -> DiagnosticResult<TokenKind> {
+        let ch = self.bump().unwrap(); // TODO: remove unwrap
+
+        if self.bump() != Some('\'') {
+            return Err(Diagnostic::error("missing trailing `'` to end the char")
+                .with_label(Label::primary(self.create_span(self.pos), "unterminated char")));
+        }
+
+        Ok(TokenKind::ByteChar(ch))
+    }
+
     fn eat_comment(&mut self) {
         while let Some(ch) = self.peek() {
             if ch == '\n' {
@@ -342,4 +359,9 @@ impl<'s> Lexer<'s> {
     fn create_span(&self, start: u32) -> Span {
         Span::new(self.source_id, start, self.pos)
     }
+}
+
+#[derive(Debug)]
+enum CharKind {
+    Byte,
 }

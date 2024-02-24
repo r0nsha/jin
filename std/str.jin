@@ -55,7 +55,7 @@ pub fn push(self: &mut StrBuilder, s: &str) = {
 	}
 
 	# Set the NUL byte to the last position
-	self.array.push(0) # TODO: NUL byte
+	self.array.push(b'x') # TODO: NUL byte
 }
 
 pub fn clear(self: &mut StrBuilder) = {
@@ -64,6 +64,6 @@ pub fn clear(self: &mut StrBuilder) = {
 
 fn array_with_nul_byte(cap: uint) -> Array[u8] = {
 	let mut a = Array.with_cap(cap)
-	a.push(0) # TODO: NUL byte
+	a.push(b'x') # TODO: NUL byte
 	a
 }

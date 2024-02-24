@@ -685,6 +685,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 slice
             }
             hir::ExprKind::StrLit(lit) => self.lower_const(&Const::Str(*lit), expr.ty),
+            hir::ExprKind::CharLit(lit) => self.lower_const(&Const::Int(*lit as i128), expr.ty),
             #[allow(clippy::cast_possible_wrap)]
             hir::ExprKind::IntLit(lit) => self.lower_const(&Const::Int(*lit as i128), expr.ty),
             hir::ExprKind::FloatLit(lit) => self.lower_const(&Const::Float(*lit), expr.ty),

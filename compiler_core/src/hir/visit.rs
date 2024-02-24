@@ -28,6 +28,7 @@ pub trait Visitor: Sized {
             ExprKind::IntLit(x) => self.visit_int_lit(expr, *x),
             ExprKind::FloatLit(x) => self.visit_float_lit(expr, *x),
             ExprKind::StrLit(x) => self.visit_str_lit(expr, *x),
+            ExprKind::CharLit(x) => self.visit_char_lit(expr, *x),
         }
     }
 
@@ -110,6 +111,7 @@ pub trait Visitor: Sized {
     fn visit_int_lit(&mut self, _: &Expr, _: u128) {}
     fn visit_float_lit(&mut self, _: &Expr, _: f64) {}
     fn visit_str_lit(&mut self, _: &Expr, _: Ustr) {}
+    fn visit_char_lit(&mut self, _: &Expr, _: char) {}
 }
 
 pub fn walk_let(v: &mut impl Visitor, let_: &Let) {

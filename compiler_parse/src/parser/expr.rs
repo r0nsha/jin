@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use compiler_ast::{Attrs, CallArg, Expr};
+use compiler_ast::{Attrs, CallArg, CharKind, Expr};
 use compiler_core::{
     db::DefId,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -154,6 +154,9 @@ impl<'a> Parser<'a> {
                 span: tok.span,
             },
             TokenKind::Str(value) => Expr::StrLit { value, span: tok.span },
+            TokenKind::ByteChar(value) => {
+                Expr::CharLit { value, kind: CharKind::Byte, span: tok.span }
+            }
             _ => return Err(errors::unexpected_token_err("an expression", tok.kind, tok.span)),
         };
 

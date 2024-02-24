@@ -100,6 +100,7 @@ pub enum ExprKind {
     IntLit(u128),
     FloatLit(f64),
     StrLit(Ustr),
+    CharLit(char),
 }
 
 #[derive(Debug, Clone)]

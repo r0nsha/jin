@@ -78,7 +78,8 @@ impl<S: SubstTy> Subst<S> for Expr {
             | ExprKind::BoolLit(_)
             | ExprKind::IntLit(_)
             | ExprKind::FloatLit(_)
-            | ExprKind::StrLit(_) => (),
+            | ExprKind::StrLit(_)
+            | ExprKind::CharLit(_) => (),
         }
 
         self.ty = s.subst_ty(self.ty, self.span);

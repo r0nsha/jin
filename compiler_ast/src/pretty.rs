@@ -7,8 +7,8 @@ use compiler_core::{
 };
 
 use crate::{
-    CallArg, Expr, ExternImport, ExternLet, Fn, FnKind, FnParam, FnSig, Import, ImportTree, Item,
-    Let, Module, TyDef, TyDefKind, TyExpr,
+    CallArg, CharKind, Expr, ExternImport, ExternLet, Fn, FnKind, FnParam, FnSig, Import,
+    ImportTree, Item, Let, Module, TyDef, TyDefKind, TyExpr,
 };
 
 pub(super) fn print_module(module: &Module, w: &mut impl io::Write) -> io::Result<()> {
@@ -218,6 +218,11 @@ impl PrettyPrint for Expr {
             Self::StrLit { value, .. } => {
                 cx.builder.add_empty_child(format!("str: {value}"));
             }
+            Self::CharLit { value, kind, .. } => match kind {
+                CharKind::Byte => {
+                    cx.builder.add_empty_child(format!("byte char: {value}"));
+                }
+            },
             Self::UnitLit { .. } => {
                 cx.builder.add_empty_child("unit".to_string());
             }
