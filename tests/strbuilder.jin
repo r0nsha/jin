@@ -17,9 +17,7 @@ fn main() = {
 	print_str(&b)
 
 	b.push('👍')
-	print_str(&b)
 	b.push(' ')
-	print_str(&b)
 	b.push('👍')
 	print_str(&b)
 

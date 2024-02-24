@@ -55,7 +55,6 @@ pub fn push(self: &mut StrBuilder, s: &str) = {
 	self.array.push(b'\0')
 }
 
-fn extern "c" printf(fmt: *u8, ..) -> i32
 pub fn push(self: &mut StrBuilder, ch: char) = {
 	let len = self.array.len()
 	let ch_len = ch.len_utf8()
@@ -64,7 +63,6 @@ pub fn push(self: &mut StrBuilder, ch: char) = {
 	self.array.reserve(ch_len + 1)
 	self.array.set_len(new_len - 1)
 
-	unsafe printf("%d..%d\n".data, len - 1, new_len - 1)
 	ch.encode_utf8(&mut self.array.as_mut().[len - 1..new_len - 1])
 	self.array.push(b'\0')
 }
