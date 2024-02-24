@@ -51,6 +51,10 @@ pub fn set[T](self: &mut Array[T], index: uint, value: T) -> Option[T] = {
 
 pub fn push[T](self: &mut Array[T], value: T) = {
 	self.reserve(1)
+	self.push_unchecked(value)
+}
+
+pub fn push_unchecked[T](self: &mut Array[T], value: T) = {
 	unsafe self.buf.len += 1
 	self.buf.[self.buf.len - 1] = value
 }

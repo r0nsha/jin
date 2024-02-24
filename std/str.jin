@@ -50,7 +50,7 @@ pub fn push(self: &mut StrBuilder, s: &str) = {
 
 	let mut i = 1 # We start at one since we already used the first byte
 	for if i < len {
-		self.array.push(bytes.[i])
+		self.array.push_unchecked(bytes.[i])
 		i += 1
 	}
 
