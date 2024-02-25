@@ -607,24 +607,25 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.try_use(ptr, deref.expr.span);
                 self.lower_deref(ptr, expr.ty)
             }
-            hir::ExprKind::Cast(cast) => {
-                let source = self.lower_input_expr(&cast.expr);
+            hir::ExprKind::Convert(conv) => {
+                let source = self.lower_input_expr(&conv.expr);
 
-                self.push_inst_with_register(cast.target, |value| Inst::Cast {
+                self.push_inst_with_register(conv.target, |value| Inst::Convert {
                     value,
                     source,
-                    target: cast.target,
+                    target: conv.target,
                     span: expr.span,
                 })
             }
-            hir::ExprKind::Transmute(trans) => {
+            hir::ExprKind::Cast(trans) => {
                 let source = self.lower_expr(&trans.expr);
                 self.try_use(source, trans.expr.span);
 
-                self.push_inst_with_register(trans.target, |value| Inst::Transmute {
+                self.push_inst_with_register(trans.target, |value| Inst::Cast {
                     value,
                     source,
                     target: trans.target,
+                    span: expr.span,
                 })
             }
             hir::ExprKind::Field(access) => {
@@ -1516,7 +1517,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 CoercionKind::NeverToAny | CoercionKind::RefToOwned => coerced_value,
                 CoercionKind::AnyToUnit => self.const_unit(),
                 CoercionKind::IntPromotion => {
-                    self.push_inst_with_register(coercion.target, |value| Inst::Cast {
+                    self.push_inst_with_register(coercion.target, |value| Inst::Convert {
                         value,
                         source: coerced_value,
                         target: coercion.target,

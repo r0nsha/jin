@@ -198,8 +198,7 @@ impl<'a> Parser<'a> {
         self.eat(TokenKind::CloseParen)?;
 
         let span = start.merge(self.last_span());
-
-        Ok(Expr::Transmute { expr: Box::new(expr), target, span })
+        Ok(Expr::Cast { expr: Box::new(expr), target, span })
     }
 
     fn parse_postfix(&mut self, mut expr: Expr) -> DiagnosticResult<Expr> {

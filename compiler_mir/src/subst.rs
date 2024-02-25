@@ -58,7 +58,7 @@ impl<S: SubstTy> Subst<S> for Block {
 
 impl<S: SubstTy> Subst<S> for Inst {
     fn subst(&mut self, s: &mut S) {
-        if let Inst::Cast { target, span, .. } = self {
+        if let Inst::Convert { target, span, .. } | Inst::Cast { target, span, .. } = self {
             *target = s.subst_ty(*target, *span);
         }
     }

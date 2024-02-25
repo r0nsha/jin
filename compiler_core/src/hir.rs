@@ -88,8 +88,8 @@ pub enum ExprKind {
     Unary(Unary),
     Binary(Binary),
     Deref(Deref),
+    Convert(Convert),
     Cast(Cast),
-    Transmute(Transmute),
     Field(Field),
     Index(Index),
     Slice(Slice),
@@ -272,13 +272,13 @@ pub struct Deref {
 }
 
 #[derive(Debug, Clone)]
-pub struct Cast {
+pub struct Convert {
     pub expr: Box<Expr>,
     pub target: Ty,
 }
 
 #[derive(Debug, Clone)]
-pub struct Transmute {
+pub struct Cast {
     pub expr: Box<Expr>,
     pub target: Ty,
 }

@@ -441,8 +441,8 @@ pub enum Inst {
     RtCall { value: ValueId, kind: RtCallKind, span: Span },
     Binary { value: ValueId, lhs: ValueId, rhs: ValueId, op: BinOp, span: Option<Span> },
     Unary { value: ValueId, inner: ValueId, op: UnOp },
+    Convert { value: ValueId, source: ValueId, target: Ty, span: Span },
     Cast { value: ValueId, source: ValueId, target: Ty, span: Span },
-    Transmute { value: ValueId, source: ValueId, target: Ty },
     StrLit { value: ValueId, lit: Ustr },
 }
 

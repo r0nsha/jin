@@ -46,13 +46,13 @@ impl<S: SubstTy> Subst<S> for Expr {
             ExprKind::Deref(deref) => {
                 deref.expr.subst(s);
             }
+            ExprKind::Convert(conv) => {
+                conv.expr.subst(s);
+                conv.target = s.subst_ty(conv.target, self.span);
+            }
             ExprKind::Cast(cast) => {
                 cast.expr.subst(s);
                 cast.target = s.subst_ty(cast.target, self.span);
-            }
-            ExprKind::Transmute(trans) => {
-                trans.expr.subst(s);
-                trans.target = s.subst_ty(trans.target, self.span);
             }
             ExprKind::Field(access) => {
                 access.expr.subst(s);

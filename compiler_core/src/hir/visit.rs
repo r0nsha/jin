@@ -16,8 +16,8 @@ pub trait Visitor: Sized {
             ExprKind::Unary(x) => self.visit_unary(expr, x),
             ExprKind::Binary(x) => self.visit_binary(expr, x),
             ExprKind::Deref(x) => self.visit_deref(expr, x),
+            ExprKind::Convert(x) => self.visit_convert(expr, x),
             ExprKind::Cast(x) => self.visit_cast(expr, x),
-            ExprKind::Transmute(x) => self.visit_transmute(expr, x),
             ExprKind::Field(x) => self.visit_field(expr, x),
             ExprKind::Index(x) => self.visit_index(expr, x),
             ExprKind::Slice(x) => self.visit_slice(expr, x),
@@ -80,12 +80,12 @@ pub trait Visitor: Sized {
         walk_deref(self, deref);
     }
 
-    fn visit_cast(&mut self, _: &Expr, cast: &Cast) {
-        walk_cast(self, cast);
+    fn visit_convert(&mut self, _: &Expr, convert: &Convert) {
+        walk_convert(self, convert);
     }
 
-    fn visit_transmute(&mut self, _: &Expr, transmute: &Transmute) {
-        walk_transmute(self, transmute);
+    fn visit_cast(&mut self, _: &Expr, cast: &Cast) {
+        walk_cast(self, cast);
     }
 
     fn visit_field(&mut self, _: &Expr, field: &Field) {
@@ -186,12 +186,12 @@ pub fn walk_deref(v: &mut impl Visitor, deref: &Deref) {
     v.visit_expr(&deref.expr);
 }
 
-pub fn walk_cast(v: &mut impl Visitor, cast: &Cast) {
-    v.visit_expr(&cast.expr);
+pub fn walk_convert(v: &mut impl Visitor, convert: &Convert) {
+    v.visit_expr(&convert.expr);
 }
 
-pub fn walk_transmute(v: &mut impl Visitor, transmute: &Transmute) {
-    v.visit_expr(&transmute.expr);
+pub fn walk_cast(v: &mut impl Visitor, cast: &Cast) {
+    v.visit_expr(&cast.expr);
 }
 
 pub fn walk_field(v: &mut impl Visitor, field: &Field) {

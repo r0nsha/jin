@@ -30,7 +30,7 @@ impl BinOpData {
 }
 
 impl<'db> Generator<'db> {
-    pub fn codegen_cast(
+    pub fn codegen_convert(
         &mut self,
         state: &GenState<'db>,
         value: ValueId,

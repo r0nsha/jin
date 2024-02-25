@@ -198,15 +198,15 @@ impl PrettyCx<'_> {
                 self.pp_expr(&deref.expr);
                 self.builder.end_child();
             }
-            ExprKind::Cast(cast) => {
-                self.builder.begin_child(format!("cast (to: {})", cast.target.display(self.db)));
-                self.pp_expr(&cast.expr);
+            ExprKind::Convert(conv) => {
+                self.builder.begin_child(format!("convert (to: {})", conv.target.display(self.db)));
+                self.pp_expr(&conv.expr);
                 self.builder.end_child();
             }
-            ExprKind::Transmute(trans) => {
+            ExprKind::Cast(cast) => {
                 self.builder
-                    .begin_child(format!("transmute (to: {})", trans.target.display(self.db)));
-                self.pp_expr(&trans.expr);
+                    .begin_child(format!("cast (to: {})", cast.target.display(self.db)));
+                self.pp_expr(&cast.expr);
                 self.builder.end_child();
             }
             ExprKind::Field(access) => {

@@ -372,22 +372,22 @@ pub(crate) fn check_expr(
                 *span,
             ))
         }
+        ast::Expr::Convert { expr, target, span } => {
+            let expr = check_expr(cx, env, expr, None)?;
+            let target = tyexpr::check(cx, env, target, AllowTyHole::Yes)?;
+
+            Ok(cx.expr(
+                hir::ExprKind::Convert(hir::Convert { expr: Box::new(expr), target }),
+                target,
+                *span,
+            ))
+        }
         ast::Expr::Cast { expr, target, span } => {
             let expr = check_expr(cx, env, expr, None)?;
             let target = tyexpr::check(cx, env, target, AllowTyHole::Yes)?;
 
             Ok(cx.expr(
                 hir::ExprKind::Cast(hir::Cast { expr: Box::new(expr), target }),
-                target,
-                *span,
-            ))
-        }
-        ast::Expr::Transmute { expr, target, span } => {
-            let expr = check_expr(cx, env, expr, None)?;
-            let target = tyexpr::check(cx, env, target, AllowTyHole::Yes)?;
-
-            Ok(cx.expr(
-                hir::ExprKind::Transmute(hir::Transmute { expr: Box::new(expr), target }),
                 target,
                 *span,
             ))
@@ -782,7 +782,7 @@ fn check_call(
             }
 
             Ok(cx.expr(
-                hir::ExprKind::Cast(hir::Cast { expr: Box::new(arg.expr.clone()), target: *ty }),
+                hir::ExprKind::Convert(hir::Convert { expr: Box::new(arg.expr.clone()), target: *ty }),
                 *ty,
                 span,
             ))
@@ -1044,8 +1044,8 @@ fn check_assign_lhs_aux(expr: &hir::Expr) -> bool {
         | hir::ExprKind::Call(_)
         | hir::ExprKind::Unary(_)
         | hir::ExprKind::Binary(_)
+        | hir::ExprKind::Convert(_)
         | hir::ExprKind::Cast(_)
-        | hir::ExprKind::Transmute(_)
         | hir::ExprKind::Let(_)
         | hir::ExprKind::Assign(_)
         | hir::ExprKind::Swap(_)

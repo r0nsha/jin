@@ -182,12 +182,12 @@ pub enum Expr {
         op: BinOp,
         span: Span,
     },
-    Cast {
+    Convert {
         expr: Box<Self>,
         target: TyExpr,
         span: Span,
     },
-    Transmute {
+    Cast {
         expr: Box<Self>,
         target: TyExpr,
         span: Span,
@@ -269,8 +269,8 @@ impl Spanned for Expr {
             | Self::MethodCall { span, .. }
             | Self::Unary { span, .. }
             | Self::Binary { span, .. }
+            | Self::Convert { span, .. }
             | Self::Cast { span, .. }
-            | Self::Transmute { span, .. }
             | Self::SliceLit { span, .. }
             | Self::SliceLitCap { span, .. }
             | Self::BoolLit { span, .. }

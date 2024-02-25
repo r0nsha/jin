@@ -4,8 +4,8 @@ use compiler_core::{
     diagnostics::{Diagnostic, Label},
     hir::{
         visit::{self, Visitor},
-        Assign, Binary, Call, Cast, Deref, Expr, ExprKind, FnKind, Hir, Name, Swap, Transmute,
-        Unary, Unsafe,
+        Assign, Binary, Call, Cast, Convert, Deref, Expr, ExprKind, FnKind, Hir, Name, Swap, Unary,
+        Unsafe,
     },
     middle::UnOp,
     span::Span,
@@ -118,51 +118,51 @@ impl<'db, 'cx> Visitor for CheckBody<'db, 'cx> {
         visit::walk_deref(self, deref);
     }
 
-    fn visit_cast(&mut self, expr: &Expr, cast: &Cast) {
-        let source = cast.expr.ty;
+    fn visit_convert(&mut self, expr: &Expr, convert: &Convert) {
+        let source = convert.expr.ty;
         let target = expr.ty;
 
-        if !is_valid_cast(source, target) {
+        if !is_valid_conversion(source, target) {
             let source = source.display(self.cx.db);
             let target = target.display(self.cx.db);
 
             self.cx.diagnostics.push(
-                Diagnostic::error(format!("cannot cast `{source}` to `{target}`"))
-                    .with_label(Label::primary(expr.span, "invalid cast")),
+                Diagnostic::error(format!("cannot convert `{source}` to `{target}`"))
+                    .with_label(Label::primary(expr.span, "invalid conversion")),
             );
         }
 
         if source.is_raw_ptr() || target.is_raw_ptr() {
-            self.expect_unsafe_cx("raw pointer cast", expr.span);
+            self.expect_unsafe_cx("raw pointer conversion", expr.span);
         }
 
-        visit::walk_cast(self, cast);
+        visit::walk_convert(self, convert);
     }
 
-    fn visit_transmute(&mut self, expr: &Expr, transmute: &Transmute) {
-        self.expect_unsafe_cx("transmute", expr.span);
+    fn visit_cast(&mut self, expr: &Expr, cast: &Cast) {
+        self.expect_unsafe_cx("cast", expr.span);
 
-        let source_size = transmute.expr.ty.size(self.cx.db);
-        let target_size = transmute.target.size(self.cx.db);
+        let source_size = cast.expr.ty.size(self.cx.db);
+        let target_size = cast.target.size(self.cx.db);
 
         if source_size != target_size {
             self.cx.diagnostics.push(
-                Diagnostic::error("cannot transmute between types of different sizes")
-                    .with_label(Label::primary(expr.span, "invalid transmute"))
+                Diagnostic::error("cannot cast between types of different sizes")
+                    .with_label(Label::primary(expr.span, "invalid cast"))
                     .with_note(format!(
                         "source type: {} ({} bits)",
-                        transmute.expr.ty.display(self.cx.db),
+                        cast.expr.ty.display(self.cx.db),
                         source_size
                     ))
                     .with_note(format!(
                         "target type: {} ({} bits)",
-                        transmute.target.display(self.cx.db),
+                        cast.target.display(self.cx.db),
                         target_size
                     )),
             );
         }
 
-        visit::walk_transmute(self, transmute);
+        visit::walk_cast(self, cast);
     }
 
     fn visit_unary(&mut self, expr: &Expr, unary: &Unary) {
@@ -191,7 +191,7 @@ impl<'db, 'cx> Visitor for CheckBody<'db, 'cx> {
     }
 }
 
-fn is_valid_cast(source: Ty, target: Ty) -> bool {
+fn is_valid_conversion(source: Ty, target: Ty) -> bool {
     matches!(
         (source.kind(), target.kind()),
         (
