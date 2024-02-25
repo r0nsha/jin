@@ -200,6 +200,14 @@ fn is_valid_conversion(source: Ty, target: Ty) -> bool {
         ) | (
             TyKind::RawPtr(_) | TyKind::Int(_) | TyKind::Uint(_),
             TyKind::RawPtr(_) | TyKind::Int(_) | TyKind::Uint(_)
+        ) | (
+            TyKind::Int(IntTy::I8)
+                | TyKind::Uint(UintTy::U8)
+                | TyKind::Int(IntTy::I16)
+                | TyKind::Uint(UintTy::U16)
+                | TyKind::Int(IntTy::I32)
+                | TyKind::Uint(UintTy::U32),
+            TyKind::Char
         ) | (TyKind::Char, TyKind::Int(IntTy::I32) | TyKind::Uint(UintTy::U32))
     )
 }
