@@ -623,8 +623,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 })
             }
             hir::ExprKind::Cast(trans) => {
-                let source = self.lower_expr(&trans.expr);
-                self.try_move(source, trans.expr.span);
+                let source = self.lower_input_expr(&trans.expr);
 
                 self.push_inst_with_register(trans.target, |value| Inst::Cast {
                     value,
