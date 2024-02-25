@@ -14,6 +14,7 @@ rustc-hash = { workspace = true }
 anyhow = { workspace = true }
 camino = { workspace = true }
 path-absolutize = { workspace = true }
+phf = { workspace = true }
 
 [lints]
 workspace = true

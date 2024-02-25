@@ -4,6 +4,7 @@ use std::{
 };
 
 use compiler_core::{span::Span, word::Word};
+use phf::phf_map;
 use ustr::{ustr, Ustr};
 
 #[derive(Debug, Clone, Copy)]
@@ -364,33 +365,34 @@ pub enum Kw {
     Pub,
 }
 
+static KEYWORDS: phf::Map<&'static str, Kw> = phf_map! {
+    "return" => Kw::Return,
+    "fn" => Kw::Fn,
+    "let" => Kw::Let,
+    "type" => Kw::Type,
+    "extern" => Kw::Extern,
+    "if" => Kw::If,
+    "else" => Kw::Else,
+    "match" => Kw::Match,
+    "true" => Kw::True,
+    "false" => Kw::False,
+    "as" => Kw::As,
+    "use" => Kw::Use,
+    "for" => Kw::For,
+    "break" => Kw::Break,
+    "mut" => Kw::Mut,
+    "imm" => Kw::Imm,
+    "ref" => Kw::Ref,
+    "move" => Kw::Move,
+    "unsafe" => Kw::Unsafe,
+    "pub" => Kw::Pub,
+};
+
 impl<'a> TryFrom<&'a str> for Kw {
     type Error = &'a str;
 
     fn try_from(value: &'a str) -> Result<Self, Self::Error> {
-        Ok(match value {
-            "return" => Self::Return,
-            "fn" => Self::Fn,
-            "let" => Self::Let,
-            "type" => Self::Type,
-            "extern" => Self::Extern,
-            "if" => Self::If,
-            "else" => Self::Else,
-            "match" => Self::Match,
-            "true" => Self::True,
-            "false" => Self::False,
-            "as" => Self::As,
-            "use" => Self::Use,
-            "for" => Self::For,
-            "break" => Self::Break,
-            "mut" => Self::Mut,
-            "imm" => Self::Imm,
-            "ref" => Self::Ref,
-            "move" => Self::Move,
-            "unsafe" => Self::Unsafe,
-            "pub" => Self::Pub,
-            value => return Err(value),
-        })
+        KEYWORDS.get(value).copied().ok_or(value)
     }
 }
 

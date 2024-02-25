@@ -384,6 +384,7 @@ dependencies = [
  "compiler_data_structures",
  "compiler_helpers",
  "path-absolutize",
+ "phf",
  "rustc-hash",
  "ustr",
 ]
