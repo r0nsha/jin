@@ -1,10 +1,7 @@
-fn extern "c" printf(fmt: *u8, ..) -> i32
+use std.int.{Format}
 
 fn main() = {
-	let mut b = StrBuf.new()
-	match char.from_digit(1, 10) {
-		Option.some(ch) -> b.push(ch)
-		_ -> ()
-	}
-	println(b.as_ref())
+	i64(-78787849).to_str().println()
+	u32(4844445).to_str().println()
+	uint(5166813669987).to_str().println()
 }

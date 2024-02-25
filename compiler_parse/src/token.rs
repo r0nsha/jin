@@ -123,7 +123,7 @@ impl TokenKind {
     #[inline]
     pub fn is_before_semi(self) -> bool {
         match self {
-            TokenKind::Kw(Kw::Return | Kw::True | Kw::False | Kw::Break)
+            TokenKind::Kw(Kw::Return | Kw::True | Kw::False | Kw::Break | Kw::As)
             | TokenKind::Int(_)
             | TokenKind::Float(_)
             | TokenKind::Str(_)
@@ -145,7 +145,6 @@ impl TokenKind {
                 | Kw::If
                 | Kw::Else
                 | Kw::Match
-                | Kw::As
                 | Kw::Use
                 | Kw::For
                 | Kw::Mut
@@ -216,7 +215,8 @@ impl TokenKind {
                 | Kw::Use
                 | Kw::For
                 | Kw::Unsafe
-                | Kw::Pub,
+                | Kw::Pub
+                | Kw::As,
             )
             | TokenKind::Int(_)
             | TokenKind::Float(_)
@@ -238,7 +238,7 @@ impl TokenKind {
             TokenKind::QuestionMark
             | TokenKind::CloseParen
             | TokenKind::CloseBracket
-            | TokenKind::Kw(Kw::Else | Kw::As | Kw::Mut | Kw::Imm | Kw::Ref | Kw::Move)
+            | TokenKind::Kw(Kw::Else | Kw::Mut | Kw::Imm | Kw::Ref | Kw::Move)
             | TokenKind::Dot
             | TokenKind::DotDot
             | TokenKind::Colon

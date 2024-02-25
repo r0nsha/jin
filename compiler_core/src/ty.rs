@@ -504,7 +504,7 @@ impl TyKind {
     pub fn is_rc(&self, db: &Db) -> bool {
         match self {
             Self::Adt(adt_id, _) => db[*adt_id].is_ref(),
-            Self::Slice(_) => true,
+            Self::Slice(_) | Self::Str => true,
             _ => false,
         }
     }

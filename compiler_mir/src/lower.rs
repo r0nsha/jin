@@ -483,34 +483,39 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 output
             }
             hir::ExprKind::Loop(loop_) => {
-                let start_block = self.body.create_block("loop_start");
-                let end_block = self.body.create_block("loop_end");
+                let loop_start = self.body.create_block("loop_start");
+                let loop_end = self.body.create_block("loop_end");
 
-                self.enter_scope(ScopeKind::Loop(LoopScope::new(end_block)), expr.span);
+                self.enter_scope(ScopeKind::Loop(LoopScope::new(loop_end)), expr.span);
 
-                self.ins(self.current_block).br(start_block);
-                self.position_at(start_block);
+                self.ins(self.current_block).br(loop_start);
+                self.position_at(loop_start);
 
-                if let Some(cond_expr) = &loop_.cond {
+                let (loop_start, loop_body) = if let Some(cond_expr) = &loop_.cond {
+                    let loop_body = self.body.create_block("loop_body");
                     let cond = self.lower_input_expr(cond_expr);
+                    self.ins(loop_start).brif(cond, loop_body, Some(loop_end));
+                    (loop_start, loop_body)
+                } else {
+                    (loop_start, loop_start)
+                };
 
-                    let not_cond = self.push_inst_with_register(self.cx.db.types.bool, |value| {
-                        Inst::Unary { value, inner: cond, op: UnOp::Not }
-                    });
-
-                    self.ins(start_block).brif(not_cond, end_block, None);
-                }
-
+                self.position_at(loop_body);
                 self.lower_expr(&loop_.expr);
-                self.ins(self.current_block).br(start_block);
 
-                if self.in_connected_block() {
+                let is_connected = self.in_connected_block();
+
+                if is_connected {
                     self.check_loop_moves();
                 }
 
                 self.exit_scope();
 
-                self.position_at(end_block);
+                if is_connected {
+                    self.ins(self.current_block).br(loop_start);
+                }
+
+                self.position_at(loop_end);
                 self.const_unit()
             }
             hir::ExprKind::Break => {
@@ -618,8 +623,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 })
             }
             hir::ExprKind::Cast(trans) => {
-                let source = self.lower_expr(&trans.expr);
-                self.try_use(source, trans.expr.span);
+                let source = self.lower_input_expr(&trans.expr);
 
                 self.push_inst_with_register(trans.target, |value| Inst::Cast {
                     value,

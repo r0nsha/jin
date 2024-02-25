@@ -69,7 +69,8 @@ const RcSlice = extern struct {
                 .len = self.len,
             };
         } else {
-            return Self.init(elem_size, new_cap);
+            std.debug.panic("called `grow` on an empty slice", .{});
+            // return Self.init(elem_size, new_cap);
         }
     }
 
