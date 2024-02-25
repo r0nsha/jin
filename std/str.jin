@@ -16,6 +16,8 @@ pub fn as_bytes(self: &str) -> &[u8] =
 pub fn as_bytes_mut(self: &mut str) -> &mut [u8] = 
 	unsafe as[_](self)
 
+pub fn fmt(self: &str, buf: &mut StrBuf) = buf.push(self)
+
 pub type StrBuf(array: Array[u8])
 
 pub fn StrBuf.new() -> StrBuf = StrBuf.with_cap(1)
@@ -35,9 +37,6 @@ pub fn as_mut(self: &mut StrBuf) -> &mut str =
 
 pub fn take(self: StrBuf) -> str =
 	str.from_utf8_unchecked(self.array.take())
-
-pub fn to_str(self: StrBuf) -> str = self.take()
-
 
 pub fn push(self: &mut StrBuf, s: str) = self.push(&s)
 
