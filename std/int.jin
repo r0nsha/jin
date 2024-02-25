@@ -41,18 +41,14 @@ pub fn base(f: Format) -> uint = match f {
 	Format.decimal -> 10
 }
 
-# TODO: make this private
-pub type IntFormatter(pub num: uint, pub is_neg: bool, pub format: Format)
+pub fn fmt_impl(mut num: uint, is_neg: bool, format: Format) -> str = {
+	let base = format.base()
+	let mut buf = StrBuf.with_cap(22)
 
-pub fn fmt(self: IntFormatter, buf: &mut StrBuf) = {
-	let base = self.format.base()
-
-	if self.num == 0 {
+	if num == 0 {
 		buf.push('0')	
-		return
+		return buf.take()
 	}
-
-	let mut num = self.num
 
 	for if num > 0 {
 		match char.from_digit(u32(num % base), u32(base)) {
@@ -62,9 +58,9 @@ pub fn fmt(self: IntFormatter, buf: &mut StrBuf) = {
 		num /= base
 	}
 
-	if self.is_neg {
+	if is_neg {
 		buf.push('-')
 	}
-}
 
-fn extern "c" printf(fmt: *u8, ..) -> i32
+	buf.take()
+}

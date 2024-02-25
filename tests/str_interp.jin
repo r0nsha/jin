@@ -1,14 +1,8 @@
-use std.int.{Format, IntFormatter}
+use std.int.{Format, fmt_impl}
 
 fn extern "c" printf(fmt: *u8, ..) -> i32
 
 fn main() = {
-	let mut b = StrBuf.new()
-	match char.from_digit(1, 10) {
-		Option.some(ch) -> b.push(ch)
-		_ -> ()
-	}
-	let f = IntFormatter(num: 15698, is_neg: false, format: Format.decimal)
-	f.fmt(&mut b)
-	println(b.as_ref())
+	let s = fmt_impl(num: 15698, is_neg: true, format: Format.decimal)
+	println(&s)
 }
