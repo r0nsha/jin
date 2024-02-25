@@ -24,10 +24,11 @@ fn main() = {
 	let s = b.as_ref()
 	let mut i = 0
 	for if i < s.len {
-		unsafe printf("%x ".data, s.[i])
+		unsafe printf("%x ".ptr, s.[i])
 		i += 1
 	}
+	unsafe printf("\n".ptr)
 }
 
 fn print_str(b: &StrBuilder) =
-	unsafe printf("str is: '%s'\n".data, b.as_ref().data)
+	unsafe printf("str is: '%s'\n".ptr, b.as_ref().ptr)

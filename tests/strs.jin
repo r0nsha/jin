@@ -17,5 +17,5 @@ fn main() = {
 }
 
 fn print_at(s: &str, at: uint) = {
-	unsafe printf("s.[%d] = %c\n".data, at, s.[at])
+	unsafe printf("s.[%d] = %c\n".ptr, at, s.[at])
 }

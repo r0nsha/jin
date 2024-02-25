@@ -27,7 +27,7 @@ fn ints() = {
 	let mut c = [1, 2, 3, 4, 5]
 	print(&c)
 	c.[1] = 69
-	unsafe printf("old=%d\n".data, c.[2] := 42)
+	unsafe printf("old=%d\n".ptr, c.[2] := 42)
 	print(&c)
 	let c2 = &mut c.[1..3]
 	print(&c2)
@@ -41,16 +41,16 @@ fn ints() = {
 }
 
 fn print(s: &[int]) = {
-	unsafe printf("[".data)
+	unsafe printf("[".ptr)
 	let mut i = 0
 	for if i < s.len {
-		unsafe printf("%d".data, s.[i])
+		unsafe printf("%d".ptr, s.[i])
 		if i < s.len - 1 {
-			unsafe printf(", ".data)
+			unsafe printf(", ".ptr)
 		}
 		i += 1
 	}
-	unsafe printf("], ptr: %p, len: %d, cap: %d\n".data, s.data, s.len, s.cap)
+	unsafe printf("], ptr: %p, len: %d, cap: %d\n".ptr, s.ptr, s.len, s.cap)
 }
 
 type Box(value: int)
