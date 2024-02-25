@@ -338,19 +338,13 @@ impl<'s> Lexer<'s> {
 
     fn eat_str(&mut self, start: u32) -> DiagnosticResult<TokenKind> {
         let s = self.eat_terminated_lit(start, '"', "string")?;
-        Ok(TokenKind::Str(ustr(s)))
+        let unescaped = escape::unescape(s).map_err(|e| self.unescape_err(e, start))?;
+        Ok(TokenKind::Str(ustr(&unescaped)))
     }
 
     fn eat_char(&mut self, kind: CharKind, start: u32) -> DiagnosticResult<TokenKind> {
         let s = self.eat_terminated_lit(start, '\'', "char")?;
-
-        let unescaped = escape::unescape(s).map_err(|e| match e {
-            escape::UnescapeError::InvalidEscape(r) => Diagnostic::error("invalid escape sequence")
-                .with_label(Label::primary(
-                    self.create_span_range(start + r.start, start + r.end),
-                    "invalid sequence",
-                )),
-        })?;
+        let unescaped = escape::unescape(s).map_err(|e| self.unescape_err(e, start))?;
 
         let char_count = unescaped.chars().count();
         if char_count != 1 {
@@ -404,6 +398,16 @@ impl<'s> Lexer<'s> {
 
         let s = self.range(start);
         Ok(&s[..s.len() - 1])
+    }
+
+    fn unescape_err(&self, e: escape::UnescapeError, start: u32) -> Diagnostic {
+        match e {
+            escape::UnescapeError::InvalidEscape(r) => Diagnostic::error("invalid escape sequence")
+                .with_label(Label::primary(
+                    self.create_span_range(start + r.start, start + r.end),
+                    "invalid sequence",
+                )),
+        }
     }
 
     fn eat_comment(&mut self) {
