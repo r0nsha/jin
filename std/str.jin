@@ -38,6 +38,9 @@ pub fn take(self: StrBuf) -> str =
 
 pub fn to_str(self: StrBuf) -> str = self.take()
 
+
+pub fn push(self: &mut StrBuf, s: str) = self.push(&s)
+
 pub fn push(self: &mut StrBuf, s: &str) = {
 	if s.len == 0 {
 		return

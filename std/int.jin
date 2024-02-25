@@ -40,35 +40,35 @@ pub fn abs(self: i32) -> i32 = if self > 0 { self } else { -self }
 pub fn abs(self: i64) -> i64 = if self > 0 { self } else { -self }
 pub fn abs(self: int) -> int = if self > 0 { self } else { -self }
 
-pub fn fmt(self: i8, format: Format) -> str =
-	fmt_impl(uint(self.abs()), self < 0, format)
+pub fn fmt(self: i8, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
+pub fn fmt(self: i8, buf: &mut StrBuf) = buf.push(self.fmt(Format.decimal))
 
-pub fn fmt(self: i16, format: Format) -> str =
-	fmt_impl(uint(self.abs()), self < 0, format)
+pub fn fmt(self: i16, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
+pub fn fmt(self: i16, buf: &mut StrBuf) = buf.push(self.fmt(Format.decimal))
 
-pub fn fmt(self: i32, format: Format) -> str =
-	fmt_impl(uint(self.abs()), self < 0, format)
+pub fn fmt(self: i32, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
+pub fn fmt(self: i32, buf: &mut StrBuf) = buf.push(self.fmt(Format.decimal))
 
-pub fn fmt(self: i64, format: Format) -> str =
-	fmt_impl(uint(self.abs()), self < 0, format)
+pub fn fmt(self: i64, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
+pub fn fmt(self: i64, buf: &mut StrBuf) = buf.push(self.fmt(Format.decimal))
 
-pub fn fmt(self: int, format: Format) -> str =
-	fmt_impl(uint(self.abs()), self < 0, format)
+pub fn fmt(self: int, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
+pub fn fmt(self: int, buf: &mut StrBuf) = buf.push(self.fmt(Format.decimal))
 
-pub fn fmt(self: u8, format: Format) -> str =
-	fmt_impl(self, false, format)
+pub fn fmt(self: u8, format: Format) -> str = fmt_impl(self, false, format)
+pub fn fmt(self: u8, buf: &mut StrBuf) = buf.push(self.fmt(Format.decimal))
 
-pub fn fmt(self: u16, format: Format) -> str =
-	fmt_impl(self, false, format)
+pub fn fmt(self: u16, format: Format) -> str = fmt_impl(self, false, format)
+pub fn fmt(self: u16, buf: &mut StrBuf) = buf.push(self.fmt(Format.decimal))
 
-pub fn fmt(self: u32, format: Format) -> str =
-	fmt_impl(self, false, format)
+pub fn fmt(self: u32, format: Format) -> str = fmt_impl(self, false, format)
+pub fn fmt(self: u32, buf: &mut StrBuf) = buf.push(self.fmt(Format.decimal))
 
-pub fn fmt(self: u64, format: Format) -> str =
-	fmt_impl(self, false, format)
+pub fn fmt(self: u64, format: Format) -> str = fmt_impl(self, false, format)
+pub fn fmt(self: u64, buf: &mut StrBuf) = buf.push(self.fmt(Format.decimal))
 
-pub fn fmt(self: uint, format: Format) -> str =
-	fmt_impl(self, false, format)
+pub fn fmt(self: uint, format: Format) -> str = fmt_impl(self, false, format)
+pub fn fmt(self: uint, buf: &mut StrBuf) = buf.push(self.fmt(Format.decimal))
 
 pub type Format {
 	decimal
