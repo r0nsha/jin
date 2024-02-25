@@ -24,7 +24,7 @@ use crate::{
     name_gen::LocalNames,
     ty::CTy,
     util::{
-        self, assign, attr, block, block_, bool_value, goto_stmt, stmt, str_value, unit_value, NEST,
+        self, assign, attr, block, block_, bool_value, goto_stmt, stmt, escaped_str_value, unit_value, NEST,
     },
 };
 
@@ -625,7 +625,7 @@ impl<'db> Generator<'db> {
                     util::deref(cast)
                 })
             }
-            Inst::StrLit { value, lit } => self.value_assign(state, *value, |_| str_value(lit)),
+            Inst::StrLit { value, lit } => self.value_assign(state, *value, |_| escaped_str_value(lit)),
             Inst::Destroy { .. } => unreachable!(),
         }
     }
@@ -694,7 +694,7 @@ impl<'db> Generator<'db> {
 
 fn codegen_const_value(value: &Const) -> D<'_> {
     match value {
-        Const::Str(value) => str_value(value),
+        Const::Str(value) => escaped_str_value(value),
         Const::Int(value) => D::text(value.to_string()),
         Const::Float(value) => D::text(value.to_string()),
         Const::Bool(value) => bool_value(*value),

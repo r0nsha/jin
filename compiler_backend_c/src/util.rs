@@ -8,6 +8,7 @@ use compiler_core::{
     sym,
     ty::{Ty, TyKind},
 };
+use compiler_helpers::escape;
 use compiler_mir::{Block, ValueId, ValueKind};
 use pretty::RcDoc as D;
 
@@ -201,10 +202,10 @@ pub fn cmp_strs<'a>(a: D<'a>, b: D<'a>) -> D<'a> {
     util::call(D::text("jinrt_strcmp"), [a, b])
 }
 
-pub fn str_value(value: &str) -> D {
+pub fn escaped_str_value(value: &str) -> D {
     D::text("(slice)").append(struct_lit(vec![
         ("array", null_value()),
-        (START_FIELD, str_lit(value)),
+        (START_FIELD, str_lit(escape::escape(value))),
         (sym::field::LEN, D::text(value.len().to_string())),
     ]))
 }

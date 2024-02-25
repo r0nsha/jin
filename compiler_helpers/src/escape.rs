@@ -2,7 +2,7 @@ use phf::phf_map;
 use std::ops::Range;
 use std::str::Chars;
 
-static ESCAPES: phf::Map<char, char> = phf_map! {
+static UNESCAPES: phf::Map<char, char> = phf_map! {
     '"' => '"',
     '\'' => '\'',
     'n' => '\n',
@@ -13,7 +13,7 @@ static ESCAPES: phf::Map<char, char> = phf_map! {
 };
 
 pub fn unescape(input: &str) -> Result<String, UnescapeError> {
-    Unescape::new(input.chars()).unescape()
+    Unescape::run(input)
 }
 
 struct Unescape<'a> {
@@ -23,8 +23,9 @@ struct Unescape<'a> {
 }
 
 impl<'a> Unescape<'a> {
-    fn new(chars: Chars<'a>) -> Self {
-        Self { chars, res: String::new(), pos: 0 }
+    fn run(s: &'a str) -> Result<String, UnescapeError> {
+        let this = Self { chars: s.chars(), res: String::with_capacity(s.len()), pos: 0 };
+        this.unescape()
     }
 
     fn unescape(mut self) -> Result<String, UnescapeError> {
@@ -44,7 +45,7 @@ impl<'a> Unescape<'a> {
         let start = self.pos - 1;
 
         if let Some(ch) = self.next() {
-            if let Some(&esc) = ESCAPES.get(&ch) {
+            if let Some(&esc) = UNESCAPES.get(&ch) {
                 return Ok(esc);
             }
         }
@@ -64,4 +65,42 @@ impl<'a> Unescape<'a> {
 #[derive(Debug)]
 pub enum UnescapeError {
     InvalidEscape(Range<u32>),
+}
+
+static ESCAPES: phf::Map<char, &'static str> = phf_map! {
+    '"' => r#"\""#,
+    '\'' => r#"\'"#,
+    '\n' => r#"\n"#,
+    '\r' => r#"\r"#,
+    '\t' => r#"\t"#,
+    '\\' => r#"\\"#,
+    '\0' => r#"\0"#,
+};
+
+pub fn escape(input: &str) -> String {
+    Escape::run(input)
+}
+
+struct Escape<'a> {
+    chars: Chars<'a>,
+    res: String,
+}
+
+impl<'a> Escape<'a> {
+    fn run(s: &'a str) -> String {
+        let this = Self { chars: s.chars(), res: String::with_capacity(s.len()) };
+        this.escape()
+    }
+
+    fn escape(mut self) -> String {
+        for ch in self.chars {
+            if let Some(unesc) = ESCAPES.get(&ch) {
+                self.res.push_str(unesc);
+            } else {
+                self.res.push(ch);
+            }
+        }
+
+        self.res
+    }
 }
