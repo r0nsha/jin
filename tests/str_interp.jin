@@ -1,8 +1,6 @@
 use std.int.{Format}
 
-fn extern "c" printf(fmt: *u8, ..) -> i32
-
 fn main() = {
-	i64(-78787849).fmt(Format.decimal).println()
-	u32(4844445).fmt(Format.decimal).println()
+	i64(-78787849).to_str(Format.decimal).println()
+	u32(4844445).to_str(Format.decimal).println()
 }

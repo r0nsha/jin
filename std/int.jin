@@ -40,35 +40,35 @@ pub fn abs(self: i32) -> i32 = if self > 0 { self } else { -self }
 pub fn abs(self: i64) -> i64 = if self > 0 { self } else { -self }
 pub fn abs(self: int) -> int = if self > 0 { self } else { -self }
 
-pub fn fmt(self: i8, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
-pub fn fmt(self: i8, buf: &mut StrBuf) = buf.push(self.fmt(Format.decimal))
+pub fn to_str(self: i8, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
+pub fn fmt(self: i8, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
 
-pub fn fmt(self: i16, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
-pub fn fmt(self: i16, buf: &mut StrBuf) = buf.push(self.fmt(Format.decimal))
+pub fn to_str(self: i16, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
+pub fn fmt(self: i16, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
 
-pub fn fmt(self: i32, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
-pub fn fmt(self: i32, buf: &mut StrBuf) = buf.push(self.fmt(Format.decimal))
+pub fn to_str(self: i32, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
+pub fn fmt(self: i32, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
 
-pub fn fmt(self: i64, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
-pub fn fmt(self: i64, buf: &mut StrBuf) = buf.push(self.fmt(Format.decimal))
+pub fn to_str(self: i64, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
+pub fn fmt(self: i64, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
 
-pub fn fmt(self: int, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
-pub fn fmt(self: int, buf: &mut StrBuf) = buf.push(self.fmt(Format.decimal))
+pub fn to_str(self: int, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
+pub fn fmt(self: int, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
 
-pub fn fmt(self: u8, format: Format) -> str = fmt_impl(self, false, format)
-pub fn fmt(self: u8, buf: &mut StrBuf) = buf.push(self.fmt(Format.decimal))
+pub fn to_str(self: u8, format: Format) -> str = fmt_impl(self, false, format)
+pub fn fmt(self: u8, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
 
-pub fn fmt(self: u16, format: Format) -> str = fmt_impl(self, false, format)
-pub fn fmt(self: u16, buf: &mut StrBuf) = buf.push(self.fmt(Format.decimal))
+pub fn to_str(self: u16, format: Format) -> str = fmt_impl(self, false, format)
+pub fn fmt(self: u16, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
 
-pub fn fmt(self: u32, format: Format) -> str = fmt_impl(self, false, format)
-pub fn fmt(self: u32, buf: &mut StrBuf) = buf.push(self.fmt(Format.decimal))
+pub fn to_str(self: u32, format: Format) -> str = fmt_impl(self, false, format)
+pub fn fmt(self: u32, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
 
-pub fn fmt(self: u64, format: Format) -> str = fmt_impl(self, false, format)
-pub fn fmt(self: u64, buf: &mut StrBuf) = buf.push(self.fmt(Format.decimal))
+pub fn to_str(self: u64, format: Format) -> str = fmt_impl(self, false, format)
+pub fn fmt(self: u64, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
 
-pub fn fmt(self: uint, format: Format) -> str = fmt_impl(self, false, format)
-pub fn fmt(self: uint, buf: &mut StrBuf) = buf.push(self.fmt(Format.decimal))
+pub fn to_str(self: uint, format: Format) -> str = fmt_impl(self, false, format)
+pub fn fmt(self: uint, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
 
 pub type Format {
 	decimal
@@ -78,6 +78,8 @@ pub fn base(f: Format) -> uint = match f {
 	Format.decimal -> 10
 }
 
+# TODO: We can avoid this allocation if we add stack allocated arrays to the language,
+# and stack allocate an uninitialized [u8; 22] instead of using a StrBuf
 fn fmt_impl(mut num: uint, is_neg: bool, format: Format) -> str = {
 	let base = format.base()
 	let mut buf = StrBuf.with_cap(22)
