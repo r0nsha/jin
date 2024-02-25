@@ -1,10 +1,14 @@
 [workspace]
-members = [ "compiler_ast",
+members = [
+	"compiler_ast",
 	"compiler_backend_c",
 	"compiler_cli",
 	"compiler_core",
 	"compiler_data_structures",
-	"compiler_helpers", "compiler_mir", "compiler_parse", "compiler_typeck",
+	"compiler_helpers",
+	"compiler_mir",
+	"compiler_parse",
+	"compiler_typeck",
 ]
 resolver = "2"
 
@@ -20,6 +24,7 @@ pretty = "0.12.3"
 typed-index-collections = "3.1.0"
 itertools = "0.12.0"
 path-absolutize = "3.1.0"
+phf = { version = "0.11.2", features = ["macros"] }
 
 [workspace.lints.clippy]
 correctness = "warn"
