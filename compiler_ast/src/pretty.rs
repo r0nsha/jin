@@ -148,14 +148,6 @@ impl PrettyPrint for Expr {
                 rhs.pretty_print(cx);
                 cx.builder.end_child();
             }
-            Self::Convert { expr, target, .. } => {
-                cx.builder.begin_child("convert".to_string());
-                expr.pretty_print(cx);
-                cx.builder.begin_child("to".to_string());
-                target.pretty_print(cx);
-                cx.builder.end_child();
-                cx.builder.end_child();
-            }
             Self::Cast { expr, target, .. } => {
                 cx.builder.begin_child("cast".to_string());
                 expr.pretty_print(cx);

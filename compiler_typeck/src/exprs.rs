@@ -372,16 +372,6 @@ pub(crate) fn check_expr(
                 *span,
             ))
         }
-        ast::Expr::Convert { expr, target, span } => {
-            let expr = check_expr(cx, env, expr, None)?;
-            let target = tyexpr::check(cx, env, target, AllowTyHole::Yes)?;
-
-            Ok(cx.expr(
-                hir::ExprKind::Convert(hir::Convert { expr: Box::new(expr), target }),
-                target,
-                *span,
-            ))
-        }
         ast::Expr::Cast { expr, target, span } => {
             let expr = check_expr(cx, env, expr, None)?;
             let target = tyexpr::check(cx, env, target, AllowTyHole::Yes)?;
@@ -782,7 +772,10 @@ fn check_call(
             }
 
             Ok(cx.expr(
-                hir::ExprKind::Convert(hir::Convert { expr: Box::new(arg.expr.clone()), target: *ty }),
+                hir::ExprKind::Convert(hir::Convert {
+                    expr: Box::new(arg.expr.clone()),
+                    target: *ty,
+                }),
                 *ty,
                 span,
             ))
