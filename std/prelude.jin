@@ -1,9 +1,9 @@
 pub use std
-pub use std.char.(?)
-pub use std.collections.(*)
-pub use std.option.(Option, ?)
-pub use std.result.(Result, ?)
-pub use std.io.(print, println)
-pub use std.ptr.(?)
-pub use std.slice.(?)
-pub use std.str.(StrBuilder, ?)
+pub use std.char.{?}
+pub use std.collections.{*}
+pub use std.option.{Option, ?}
+pub use std.result.{Result, ?}
+pub use std.io.{print, println}
+pub use std.ptr.{?}
+pub use std.slice.{?}
+pub use std.str.{StrBuilder, ?}

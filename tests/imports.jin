@@ -1,6 +1,6 @@
 use .bar.baz.yup
-use .bar.(*)
-use .ufcs.(?)
+use .bar.{*}
+use .ufcs.{?}
 
 fn main() = {
 	hello()

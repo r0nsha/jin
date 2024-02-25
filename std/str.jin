@@ -1,4 +1,4 @@
-use std.char.(encode_utf8_raw, ?)
+use std.char.{encode_utf8_raw, ?}
 use std.collections.Array
 
 pub fn str.from_utf8_unchecked(bytes: [u8]) -> str =
