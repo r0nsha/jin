@@ -94,7 +94,7 @@ fn grow[T](self: &mut Array[T]) = {
 		self.buf.cap * 2
 	}
 
-	let new_buf = unsafe builtin.grow(transmute[[T]](&mut self.buf), new_cap)
+	let new_buf = unsafe builtin.grow(cast[[T]](&mut self.buf), new_cap)
 	let old = self.buf := new_buf
 	unsafe builtin.forget(&old)
 }

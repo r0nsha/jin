@@ -1,2 +1,2 @@
-pub fn null[T]() -> *T = unsafe transmute[_](0)
+pub fn null[T]() -> *T = unsafe cast[_](0)
 pub fn is_null[T](self: *T) -> bool = unsafe uint(self) == 0
