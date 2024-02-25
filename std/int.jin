@@ -1,4 +1,5 @@
 use std.option.Option
+use std.slice.{?}
 use std.str.StrBuf
 
 pub let i8_min: i8 = -128
@@ -45,9 +46,10 @@ pub fn fmt_impl(mut num: uint, is_neg: bool, format: Format) -> str = {
 	let base = format.base()
 	let mut buf = StrBuf.with_cap(22)
 
+	# TODO: We should be able to use an early return here,
+	# but the ownership check dictates that `buf` is `MaybeMoved`, hence it can't be used afterwards.
 	if num == 0 {
 		buf.push('0')	
-		buf.take()
 	} else {
 		for if num > 0 {
 			match char.from_digit(u32(num % base), u32(base)) {
@@ -60,7 +62,9 @@ pub fn fmt_impl(mut num: uint, is_neg: bool, format: Format) -> str = {
 		if is_neg {
 			buf.push('-')
 		}
-
-		buf.take()
 	}
+
+	let mut s = buf.take()
+	s.as_bytes_mut().reverse()
+	s
 }
