@@ -34,6 +34,12 @@ pub let u64_max: u64 = 18_446_744_073_709_551_615
 pub let uint_min: uint = u64_min
 pub let uint_max: uint = u64_max
 
+pub fn abs(num: i8) -> i8 = if num > 0 { num } else { -num }
+pub fn abs(num: i16) -> i16 = if num > 0 { num } else { -num }
+pub fn abs(num: i32) -> i32 = if num > 0 { num } else { -num }
+pub fn abs(num: i64) -> i64 = if num > 0 { num } else { -num }
+pub fn abs(num: int) -> int = if num > 0 { num } else { -num }
+
 pub type Format {
 	decimal
 }
