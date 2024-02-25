@@ -34,11 +34,41 @@ pub let u64_max: u64 = 18_446_744_073_709_551_615
 pub let uint_min: uint = u64_min
 pub let uint_max: uint = u64_max
 
-pub fn abs(num: i8) -> i8 = if num > 0 { num } else { -num }
-pub fn abs(num: i16) -> i16 = if num > 0 { num } else { -num }
-pub fn abs(num: i32) -> i32 = if num > 0 { num } else { -num }
-pub fn abs(num: i64) -> i64 = if num > 0 { num } else { -num }
-pub fn abs(num: int) -> int = if num > 0 { num } else { -num }
+pub fn abs(self: i8) -> i8 = if self > 0 { self } else { -self }
+pub fn abs(self: i16) -> i16 = if self > 0 { self } else { -self }
+pub fn abs(self: i32) -> i32 = if self > 0 { self } else { -self }
+pub fn abs(self: i64) -> i64 = if self > 0 { self } else { -self }
+pub fn abs(self: int) -> int = if self > 0 { self } else { -self }
+
+pub fn fmt(self: i8, format: Format) -> str =
+	fmt_impl(uint(self.abs()), self < 0, format)
+
+pub fn fmt(self: i16, format: Format) -> str =
+	fmt_impl(uint(self.abs()), self < 0, format)
+
+pub fn fmt(self: i32, format: Format) -> str =
+	fmt_impl(uint(self.abs()), self < 0, format)
+
+pub fn fmt(self: i64, format: Format) -> str =
+	fmt_impl(uint(self.abs()), self < 0, format)
+
+pub fn fmt(self: int, format: Format) -> str =
+	fmt_impl(uint(self.abs()), self < 0, format)
+
+pub fn fmt(self: u8, format: Format) -> str =
+	fmt_impl(self, false, format)
+
+pub fn fmt(self: u16, format: Format) -> str =
+	fmt_impl(self, false, format)
+
+pub fn fmt(self: u32, format: Format) -> str =
+	fmt_impl(self, false, format)
+
+pub fn fmt(self: u64, format: Format) -> str =
+	fmt_impl(self, false, format)
+
+pub fn fmt(self: uint, format: Format) -> str =
+	fmt_impl(self, false, format)
 
 pub type Format {
 	decimal
@@ -48,7 +78,7 @@ pub fn base(f: Format) -> uint = match f {
 	Format.decimal -> 10
 }
 
-pub fn fmt_impl(mut num: uint, is_neg: bool, format: Format) -> str = {
+fn fmt_impl(mut num: uint, is_neg: bool, format: Format) -> str = {
 	let base = format.base()
 	let mut buf = StrBuf.with_cap(22)
 

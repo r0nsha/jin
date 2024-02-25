@@ -1,8 +1,8 @@
-use std.int.{Format, fmt_impl}
+use std.int.{Format}
 
 fn extern "c" printf(fmt: *u8, ..) -> i32
 
 fn main() = {
-	let s = fmt_impl(num: 15698, is_neg: true, format: Format.decimal)
-	println(&s)
+	i64(-78787849).fmt(Format.decimal).println()
+	u32(4844445).fmt(Format.decimal).println()
 }
