@@ -47,20 +47,20 @@ pub fn fmt_impl(mut num: uint, is_neg: bool, format: Format) -> str = {
 
 	if num == 0 {
 		buf.push('0')	
-		return buf.take()
-	}
-
-	for if num > 0 {
-		match char.from_digit(u32(num % base), u32(base)) {
-			Option.some(ch) -> buf.push(ch)
-			_ -> () # TODO: or_panic
+		buf.take()
+	} else {
+		for if num > 0 {
+			match char.from_digit(u32(num % base), u32(base)) {
+				Option.some(ch) -> buf.push(ch)
+				_ -> () # TODO: or_panic
+			}
+			num /= base
 		}
-		num /= base
-	}
 
-	if is_neg {
-		buf.push('-')
-	}
+		if is_neg {
+			buf.push('-')
+		}
 
-	buf.take()
+		buf.take()
+	}
 }
