@@ -1,0 +1,10 @@
+fn extern "c" printf(fmt: *u8, ..) -> i32
+
+fn main() = {
+	let mut b = StrBuf.new()
+	match char.from_digit(1, 10) {
+		Option.some(ch) -> b.push(ch)
+		_ -> ()
+	}
+	println(b.as_ref())
+}
