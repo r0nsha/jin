@@ -3,10 +3,10 @@ pub type Option[T] {
 	none
 }
 
-# pub fn get[T](self: Option[T]) -> bool =
+# pub fn or_panic[T](self: Option[T]) -> bool =
 # 	match self {
 # 		Option.some(v) -> v
-# 		Option.none -> panic("called `Option.get` on a `none` value")
+# 		Option.none -> panic("called `or_panic` on a `none` value")
 # 	}
 
 pub fn is_some[T](self: &Option[T]) -> bool =
