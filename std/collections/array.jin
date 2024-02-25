@@ -88,18 +88,11 @@ fn needs_to_grow[T](self: &Array[T], additional: uint) -> bool =
 
 
 fn grow[T](self: &mut Array[T]) = {
-	if self.buf.cap == 0 {
+	if self.buf.cap > 0 {
+		unsafe builtin.grow(&mut self.buf, self.buf.cap * 2)
+	} else {
 		self.buf = [:min_cap]
-		return
 	}
-
-	# TODO: We need to have a way to grow a slice that is behind a mutable reference
-	let new_buf = unsafe builtin.grow(as[[T]](&mut self.buf), self.buf.cap * 2)
-	let old = self.buf := new_buf
-
-	# HACK:Since we created a moved ref from the `grow` function, we must cast
-	# `old` to a ref so that the refcnt is decremented
-	unsafe as[&mut [T]](old)
 }
 
 let min_cap: uint = 4

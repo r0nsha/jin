@@ -24,7 +24,8 @@ use crate::{
     name_gen::LocalNames,
     ty::CTy,
     util::{
-        self, assign, attr, block, block_, bool_value, goto_stmt, stmt, escaped_str_value, unit_value, NEST,
+        self, assign, attr, block, block_, bool_value, escaped_str_value, goto_stmt, stmt,
+        unit_value, NEST,
     },
 };
 
@@ -573,7 +574,7 @@ impl<'db> Generator<'db> {
 
                 match kind {
                     RtCallKind::SliceGrow { slice, new_cap } => {
-                        args.push(self.value(state, *slice));
+                        args.push(util::addr(self.value(state, *slice)));
                         args.push(self.sizeof_slice_elem(state, *slice));
                         args.push(self.value(state, *new_cap));
                     }
@@ -617,15 +618,15 @@ impl<'db> Generator<'db> {
             Inst::Convert { value, source, target, span } => {
                 self.codegen_convert(state, *value, *source, *target, *span)
             }
-            Inst::Cast { value, source, target, .. } => {
-                self.value_assign(state, *value, |this| {
-                    let target_doc = target.cty(this).append(D::text("*"));
-                    let source_doc = util::addr(this.value(state, *source));
-                    let cast = util::cast(target_doc, source_doc);
-                    util::deref(cast)
-                })
+            Inst::Cast { value, source, target, .. } => self.value_assign(state, *value, |this| {
+                let target_doc = target.cty(this).append(D::text("*"));
+                let source_doc = util::addr(this.value(state, *source));
+                let cast = util::cast(target_doc, source_doc);
+                util::deref(cast)
+            }),
+            Inst::StrLit { value, lit } => {
+                self.value_assign(state, *value, |_| escaped_str_value(lit))
             }
-            Inst::StrLit { value, lit } => self.value_assign(state, *value, |_| escaped_str_value(lit)),
             Inst::Destroy { .. } => unreachable!(),
         }
     }

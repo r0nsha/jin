@@ -4,6 +4,7 @@ const testing = std.testing;
 
 const cstr = [*:0]const u8;
 const Refcnt = u32;
+const Unit = extern struct {};
 
 const Rc = extern struct {
     refcnt: Refcnt,
@@ -49,25 +50,13 @@ const RcSlice = extern struct {
         };
     }
 
-    fn grow(self: Self, elem_size: usize, new_cap: usize) Self {
+    fn grow(self: *Self, elem_size: usize, new_cap: usize) void {
         if (self.array) |array| {
-            // Allocate a new backing buffer for the array
-            const new_data: [*]u8 = @ptrCast(alloc_raw(void, elem_size * new_cap));
-
-            // Memcpy the old slice to the new backing buffer
-            const new_data_slice = new_data[0..(elem_size * self.len)];
-            const start_slice = self.start.?[0..(elem_size * self.len)];
-            @memcpy(new_data_slice, start_slice);
-
-            std.c.free(array.data);
+            const slice_offset = @intFromPtr(array.data) - @intFromPtr(self.start.?);
+            const new_data: [*]u8 = @ptrCast(std.c.realloc(array.data, elem_size * new_cap));
             array.data = new_data;
+            self.start = new_data + slice_offset;
             array.cap = new_cap;
-
-            return Self{
-                .array = array,
-                .start = array.data,
-                .len = self.len,
-            };
         } else {
             std.debug.panic("called `grow` on an empty slice", .{});
             // return Self.init(elem_size, new_cap);
@@ -243,11 +232,11 @@ export fn jinrt_slice_slice(
 
 export fn jinrt_slice_grow(
     backtrace: *Backtrace,
-    slice: RcSlice,
+    slice: *RcSlice,
     elem_size: usize,
     new_cap: usize,
     frame: StackFrame,
-) RcSlice {
+) Unit {
     if (slice.array) |a| {
         if (new_cap <= a.cap) {
             const msg = std.fmt.allocPrint(
@@ -257,9 +246,19 @@ export fn jinrt_slice_grow(
             ) catch unreachable;
             jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
         }
+
+        if (a.refcnt > 1) {
+            const msg = std.fmt.allocPrint(
+                std.heap.c_allocator,
+                "cannot grow a slice as it still has {} reference(s)",
+                .{a.refcnt},
+            ) catch unreachable;
+            jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
+        }
     }
 
-    return slice.grow(elem_size, new_cap);
+    slice.grow(elem_size, new_cap);
+    return Unit{};
 }
 
 export fn jinrt_slice_cap(slice: *RcSlice) usize {
@@ -302,7 +301,7 @@ inline fn alloc_raw(comptime T: type, size: usize) *T {
 }
 
 inline fn refcheck(backtrace: *Backtrace, refcnt: u32, tyname: cstr, frame: StackFrame) void {
-    if (refcnt != 0) {
+    if (refcnt > 0) {
         const msg = std.fmt.allocPrint(
             std.heap.c_allocator,
             "cannot destroy a value of type `{s}` as it still has {} reference(s)",
