@@ -1,3 +1,22 @@
+use std.option.Option
+
+pub fn char.from_digit(num: u32, radix: u32) -> Option[char] = {
+	if radix > 36 {
+		# TODO: panic: "radix {radix} is too high (maximum 36)"
+    }
+
+    if num < radix {
+        let num = u8(num)
+		Option.some(char(if num < 10 {
+			b'0' + num
+		} else {
+			b'a' + num - 10
+		}))
+    } else {
+        Option.none
+    }
+}
+
 # The low-level UTF8 implementation was taken from rust's `core::char` module
 pub fn len_utf8(self: char) -> uint = len_utf8(u32(self))
 
