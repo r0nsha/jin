@@ -1,5 +1,16 @@
+use phf::phf_map;
 use std::ops::Range;
 use std::str::Chars;
+
+static ESCAPES: phf::Map<char, char> = phf_map! {
+    '"' => '"',
+    '\'' => '\'',
+    'n' => '\n',
+    'r' => '\r',
+    't' => '\t',
+    '\\' => '\\',
+    '0' => '\0',
+};
 
 pub fn unescape(input: &str) -> Result<String, UnescapeError> {
     Unescape::new(input.chars()).unescape()
@@ -32,16 +43,13 @@ impl<'a> Unescape<'a> {
     fn seq(&mut self) -> Result<char, UnescapeError> {
         let start = self.pos - 1;
 
-        match self.next() {
-            Some('"') => Ok('"'),
-            Some('\'') => Ok('\''),
-            Some('n') => Ok('\n'),
-            Some('r') => Ok('\r'),
-            Some('t') => Ok('\t'),
-            Some('\\') => Ok('\\'),
-            Some('0') => Ok('\0'),
-            _ => Err(UnescapeError::InvalidEscape(start..self.pos)),
+        if let Some(ch) = self.next() {
+            if let Some(&esc) = ESCAPES.get(&ch) {
+                return Ok(esc);
+            }
         }
+
+        Err(UnescapeError::InvalidEscape(start..self.pos))
     }
 
     #[inline]
