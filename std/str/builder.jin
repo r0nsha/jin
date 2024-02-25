@@ -1,0 +1,67 @@
+use std.char.{encode_utf8_raw, ?}
+use std.collections.Array
+use std.str.{?}
+
+pub type StrBuilder(array: Array[u8])
+
+pub fn StrBuilder.new() -> StrBuilder = StrBuilder.with_cap(1)
+
+pub fn StrBuilder.with_cap(cap: uint) -> StrBuilder =
+	StrBuilder(array_with_nul_byte(cap))
+
+pub fn len(self: &StrBuilder) -> uint = self.array.len() - 1
+pub fn cap(self: &StrBuilder) -> uint = self.array.cap()
+pub fn is_empty(self: &StrBuilder) -> bool = self.len() == 0
+
+pub fn as_ref(self: &StrBuilder) -> &str =
+	str.from_utf8_unchecked(self.array.as_ref())
+
+pub fn as_mut(self: &mut StrBuilder) -> &mut str =
+	str.from_utf8_mut_unchecked(self.array.as_mut())
+
+pub fn take(self: StrBuilder) -> str =
+	str.from_utf8_unchecked(self.array.take())
+
+pub fn to_str(self: StrBuilder) -> str = self.take()
+
+pub fn push(self: &mut StrBuilder, s: &str) = {
+	if s.len == 0 {
+		return
+	}
+
+	let bytes = s.as_bytes()
+	let len = bytes.len
+
+	self.array.reserve(len + 1)
+	self.array.set(self.array.len() - 1, bytes.[0])
+
+	let mut i = 1
+	for if i < len {
+		self.array.push_unchecked(bytes.[i])
+		i += 1
+	}
+
+	self.array.push(b'\0')
+}
+
+pub fn push(self: &mut StrBuilder, ch: char) = {
+	let len = self.array.len()
+	let ch_len = ch.len_utf8()
+	let new_len = len + ch_len 
+
+	self.array.reserve(ch_len + 1)
+	self.array.set_len(new_len - 1)
+
+	ch.encode_utf8(&mut self.array.as_mut().[len - 1..new_len - 1])
+	self.array.push(b'\0')
+}
+
+pub fn clear(self: &mut StrBuilder) = {
+	self.array = array_with_nul_byte(self.array.cap())
+}
+
+fn array_with_nul_byte(cap: uint) -> Array[u8] = {
+	let mut a = Array.with_cap(cap)
+	a.push(b'\0')
+	a
+}
