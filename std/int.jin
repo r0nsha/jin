@@ -47,10 +47,10 @@ pub type IntFormatter(pub num: uint, pub is_neg: bool, pub format: Format)
 pub fn fmt(self: IntFormatter, buf: &mut StrBuf) = {
 	let base = self.format.base()
 
-	# if self.num == 0 {
-	# 	buf.push('0')	
-	# 	return
-	# }
+	if self.num == 0 {
+		buf.push('0')	
+		return
+	}
 
 	let mut num = self.num
 
