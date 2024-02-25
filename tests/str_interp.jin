@@ -1,3 +1,5 @@
+use std.int.{Format, IntFormatter}
+
 fn extern "c" printf(fmt: *u8, ..) -> i32
 
 fn main() = {
@@ -6,5 +8,7 @@ fn main() = {
 		Option.some(ch) -> b.push(ch)
 		_ -> ()
 	}
+	let f = IntFormatter(num: 15698, is_neg: false, format: Format.decimal)
+	f.fmt(&mut b)
 	println(b.as_ref())
 }
