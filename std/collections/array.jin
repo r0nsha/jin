@@ -60,7 +60,7 @@ pub fn pop[T](self: &mut Array[T]) -> Option[T] = {
 	}
 
 	unsafe self.buf.len -= 1
-	Option.some(unsafe {self.buf.data + self.buf.len}.0)
+	Option.some(unsafe (self.buf.data + self.buf.len).0)
 }
 
 pub fn clear[T](self: &mut Array[T]) = {
@@ -94,7 +94,7 @@ fn grow[T](self: &mut Array[T]) = {
 		self.buf.cap * 2
 	}
 
-	let new_buf = unsafe builtin.grow(cast[[T]](&mut self.buf), new_cap)
+	let new_buf = unsafe builtin.grow(as[[T]](&mut self.buf), new_cap)
 	let old = self.buf := new_buf
 	unsafe builtin.forget(&old)
 }

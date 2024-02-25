@@ -149,7 +149,6 @@ impl TokenKind {
                 | Kw::For
                 | Kw::Mut
                 | Kw::Imm
-                | Kw::Cast
                 | Kw::Ref
                 | Kw::Move
                 | Kw::Unsafe
@@ -215,7 +214,6 @@ impl TokenKind {
                 | Kw::Match
                 | Kw::Use
                 | Kw::For
-                | Kw::Cast
                 | Kw::Unsafe
                 | Kw::Pub,
             )
@@ -360,7 +358,6 @@ pub enum Kw {
     Break,
     Mut,
     Imm,
-    Cast,
     Ref,
     Move,
     Unsafe,
@@ -388,7 +385,6 @@ impl<'a> TryFrom<&'a str> for Kw {
             "break" => Self::Break,
             "mut" => Self::Mut,
             "imm" => Self::Imm,
-            "cast" => Self::Cast,
             "ref" => Self::Ref,
             "move" => Self::Move,
             "unsafe" => Self::Unsafe,
@@ -420,7 +416,6 @@ impl fmt::Display for Kw {
                 Self::Break => "break",
                 Self::Mut => "mut",
                 Self::Imm => "imm",
-                Self::Cast => "cast",
                 Self::Ref => "ref",
                 Self::Move => "move",
                 Self::Unsafe => "unsafe",

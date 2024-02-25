@@ -89,7 +89,7 @@ impl<'a> Parser<'a> {
             TokenKind::Kw(Kw::Match) => self.parse_match()?,
             TokenKind::Kw(Kw::For) => self.parse_loop()?,
             TokenKind::Kw(Kw::Break) => Expr::Break { span: tok.span },
-            TokenKind::Kw(Kw::Cast) => self.parse_cast()?,
+            TokenKind::Kw(Kw::As) => self.parse_cast()?,
             TokenKind::Minus => {
                 let expr = self.parse_operand()?;
 
