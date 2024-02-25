@@ -9,7 +9,7 @@ pub fn run() = unsafe {
 	let screen_width = 800
 	let screen_height = 450
 
-	InitWindow(screen_width, screen_height, "raylib - following eyes".data)
+	InitWindow(screen_width, screen_height, "raylib - following eyes".ptr)
 	SetTargetFPS(60)
 
 	let half_screen_height = f32(screen_height / 2)

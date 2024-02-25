@@ -31,22 +31,22 @@ fn push_front[T](self: &mut LinkedList[T], data: T) = {
 fn print(self: &LinkedList[int]) = {
     let mut curr = &self.head
 
-    unsafe printf("[".data)
+    unsafe printf("[".ptr)
 
     for {
         match curr {
             Option.some(v) -> {
                 curr = &v.next
-                unsafe printf("%d".data, v.data)
+                unsafe printf("%d".ptr, v.data)
                 if curr.is_some() {
-                    unsafe printf(", ".data)
+                    unsafe printf(", ".ptr)
                 }
             }
             Option.none -> break
         }
     }
 
-    unsafe printf("]\n".data)
+    unsafe printf("]\n".ptr)
 }
 
 fn main() = {

@@ -14,21 +14,21 @@ fn main() = {
 }
 
 fn print(value: int) = {
-	unsafe printf("%d\n".data, value)
+	unsafe printf("%d\n".ptr, value)
 }
 
 fn print(value: f32) = {
-	unsafe printf("%f\n".data, value)
+	unsafe printf("%f\n".ptr, value)
 }
 
 fn print(box: &Box[int]) = {
-	unsafe printf("Box(%d)\n".data, box.value)
+	unsafe printf("Box(%d)\n".ptr, box.value)
 }
 
 fn print[T](box: &Box[T]) = {
-	unsafe printf("Box(%f)\n".data, &box.value)
+	unsafe printf("Box(%f)\n".ptr, &box.value)
 }
 
 fn print(inner: &inner.Inner[int]) = {
-	unsafe printf("Inner(%d)\n".data, inner.value)
+	unsafe printf("Inner(%d)\n".ptr, inner.value)
 }

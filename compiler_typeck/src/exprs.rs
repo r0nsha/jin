@@ -650,8 +650,8 @@ fn check_field(
                 Ok(expr)
             };
         }
-        (TyKind::Slice(elem_ty), sym::field::DATA) => Some(elem_ty.raw_ptr()),
-        (TyKind::Str, sym::field::DATA) => Some(cx.db.types.u8.raw_ptr()),
+        (TyKind::Slice(elem_ty), sym::field::PTR) => Some(elem_ty.raw_ptr()),
+        (TyKind::Str, sym::field::PTR) => Some(cx.db.types.u8.raw_ptr()),
         (TyKind::Slice(..) | TyKind::Str, sym::field::LEN) => Some(cx.db.types.uint),
         (TyKind::Slice(..) | TyKind::Str, sym::field::CAP) => Some(cx.db.types.uint),
         (TyKind::RawPtr(pointee), "0") => {

@@ -42,7 +42,7 @@ impl<'db> Generator<'db> {
                     self.rc_field(state, value.id, field)
                 }
                 (TyKind::Ref(_, _), _) => self.rc_field(state, value.id, field),
-                (TyKind::Slice(_) | TyKind::Str, sym::field::DATA) => {
+                (TyKind::Slice(_) | TyKind::Str, sym::field::PTR) => {
                     self.slice_addr_field(state, value.id)
                 }
                 (TyKind::Slice(_) | TyKind::Str, sym::field::CAP) => {

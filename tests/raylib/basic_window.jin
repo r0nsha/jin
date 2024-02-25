@@ -4,13 +4,13 @@ pub fn run() = unsafe {
 	let screen_width = 800
 	let screen_height = 450
 
-	InitWindow(screen_width, screen_height, "raylib - basic window".data)
+	InitWindow(screen_width, screen_height, "raylib - basic window".ptr)
 	SetTargetFPS(60)
 
 	for if !WindowShouldClose() {
 		BeginDrawing()
 		ClearBackground(RAYWHITE)
-		DrawText("Congrats! You created your first window!".data, 190, 200, 20, LIGHTGRAY)
+		DrawText("Congrats! You created your first window!".ptr, 190, 200, 20, LIGHTGRAY)
 		EndDrawing()
 	}
 

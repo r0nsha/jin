@@ -1,5 +1,5 @@
 pub fn swap[T](self: &mut [T], a: uint, b: uint) = unsafe {
-	let pa = self.data + a
-	let pb = self.data + b
+	let pa = self.ptr + a
+	let pb = self.ptr + b
 	pb.0 = pa.0 := pb.0
 }
