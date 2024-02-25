@@ -1,3 +1,5 @@
+use std.int.{Format}
+
 fn main() = {
 	i64(-78787849).to_str().println()
 	u32(4844445).to_str().println()
