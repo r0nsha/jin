@@ -41,8 +41,13 @@ impl<'a> Parser<'a> {
                 TyExpr::RawPtr(Box::new(pointee), span)
             }
             TokenKind::OpenParen => {
-                self.eat(TokenKind::CloseParen)?;
-                TyExpr::Unit(tok.span.merge(self.last_span()))
+                if self.is(TokenKind::CloseParen) {
+                    TyExpr::Unit(tok.span.merge(self.last_span()))
+                } else {
+                    let ty = self.parse_ty()?;
+                    self.eat(TokenKind::CloseParen)?;
+                    ty
+                }
             }
             TokenKind::Underscore => TyExpr::Hole(tok.span),
             _ => return Err(errors::unexpected_token_err("a type", tok.kind, tok.span)),
