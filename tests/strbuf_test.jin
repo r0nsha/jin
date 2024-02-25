@@ -1,7 +1,7 @@
 fn extern "c" printf(fmt: *u8, ..) -> i32
 
 fn main() = {
-	let mut b = StrBuilder.new()
+	let mut b = StrBuf.new()
 	print_str(&b)
 
 	b.push("Hello")
@@ -30,5 +30,5 @@ fn main() = {
 	unsafe printf("\n".ptr)
 }
 
-fn print_str(b: &StrBuilder) =
+fn print_str(b: &StrBuf) =
 	unsafe printf("str is: '%s'\n".ptr, b.as_ref().ptr)
