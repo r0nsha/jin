@@ -199,9 +199,8 @@ impl<'db> PrettyCx<'db> {
                 .append(D::text(")"))
                 .append(D::space())
                 .append(body.block(*then).display_name())
-                .append(D::text(", "))
                 .append(if let Some(o) = otherwise {
-                    D::text(body.block(*o).display_name())
+                    D::text(", ").append(D::text(body.block(*o).display_name()))
                 } else {
                     D::nil()
                 }),
