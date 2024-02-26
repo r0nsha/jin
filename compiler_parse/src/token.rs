@@ -345,7 +345,7 @@ impl fmt::Display for TokenKind {
             Self::StrClose => f.write_str("a terminating `\"`"),
             Self::StrText(_) => f.write_str("a string literal"),
             Self::StrExprOpen => f.write_str("the start of a string interpolation"),
-            Self::StrExprClose => f.write_str("a terminating `)`"),
+            Self::StrExprClose => f.write_str("the end of a string interpolation"),
             Self::Kw(kw) => write!(f, "the `{kw}` keyword"),
             Self::Int(lit) => write!(f, "the integer literal `{lit}`"),
             Self::Float(lit) => write!(f, "the float literal `{lit}`"),

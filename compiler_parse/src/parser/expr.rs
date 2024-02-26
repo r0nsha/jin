@@ -437,8 +437,27 @@ impl<'a> Parser<'a> {
 
     fn parse_str(&mut self) -> DiagnosticResult<Expr> {
         let start = self.last_span();
-        let value = self.eat(TokenKind::StrText(ustr("")))?.str_value();
-        let close = self.eat(TokenKind::StrClose)?.span;
-        Ok(Expr::StrLit { value, span: start.merge(close) })
+        let mut exprs = vec![];
+
+        while !self.is(TokenKind::StrClose) {
+            if self.is(TokenKind::StrText(ustr(""))) {
+                exprs.push(Expr::StrLit {
+                    value: self.last_token().str_value(),
+                    span: self.last_span(),
+                });
+            } else if self.is(TokenKind::StrExprOpen) {
+                let expr = self.parse_expr()?;
+                self.eat(TokenKind::StrExprClose)?;
+                exprs.push(expr);
+            } else {
+                return Err(self.unexpected_token("a string"));
+            }
+        }
+
+        match exprs.len() {
+            0 => Ok(Expr::StrLit { value: ustr(""), span: start.merge(self.last_span()) }),
+            1 if matches!(&exprs[0], Expr::StrLit { .. }) => Ok(exprs.swap_remove(0)),
+            _ => todo!("interp {exprs:?}"),
+        }
     }
 }

@@ -449,12 +449,11 @@ impl<'s> Lexer<'s> {
         loop {
             match self.peek() {
                 Some('\\') => {
-                    self.next();
-
-                    if self.eat('(') {
-                        return Ok(self.eat_str_expr_open());
+                    if self.peek_offset(1) == Some('(') {
+                        break;
                     }
 
+                    self.next();
                     let ch = self.eat_unescaped_char()? as u8;
                     buf.push(ch);
                 }
