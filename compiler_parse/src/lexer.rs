@@ -1,4 +1,7 @@
-use compiler_helpers::escape;
+use std::ops::Range;
+use std::str::Chars;
+
+use phf::phf_map;
 use ustr::ustr;
 
 use compiler_core::{
@@ -338,13 +341,13 @@ impl<'s> Lexer<'s> {
 
     fn eat_str(&mut self, start: u32) -> DiagnosticResult<TokenKind> {
         let s = self.eat_terminated_lit(start, '"', "string")?;
-        let unescaped = escape::unescape(s).map_err(|e| self.unescape_err(e, start))?;
+        let unescaped = unescape(s).map_err(|e| self.unescape_err(e, start))?;
         Ok(TokenKind::Str(ustr(&unescaped)))
     }
 
     fn eat_char(&mut self, kind: CharKind, start: u32) -> DiagnosticResult<TokenKind> {
         let s = self.eat_terminated_lit(start, '\'', "char")?;
-        let unescaped = escape::unescape(s).map_err(|e| self.unescape_err(e, start))?;
+        let unescaped = unescape(s).map_err(|e| self.unescape_err(e, start))?;
 
         let char_count = unescaped.chars().count();
         if char_count != 1 {
@@ -400,9 +403,9 @@ impl<'s> Lexer<'s> {
         Ok(&s[..s.len() - 1])
     }
 
-    fn unescape_err(&self, e: escape::UnescapeError, start: u32) -> Diagnostic {
+    fn unescape_err(&self, e: UnescapeError, start: u32) -> Diagnostic {
         match e {
-            escape::UnescapeError::InvalidEscape(r) => Diagnostic::error("invalid escape sequence")
+            UnescapeError::InvalidEscape(r) => Diagnostic::error("invalid escape sequence")
                 .with_label(Label::primary(
                     self.create_span_range(start + r.start, start + r.end),
                     "invalid sequence",
@@ -475,3 +478,68 @@ enum CharKind {
     Char,
     Byte,
 }
+
+pub fn unescape(input: &str) -> Result<String, UnescapeError> {
+    Unescape::run(input)
+}
+
+struct Unescape<'a> {
+    chars: Chars<'a>,
+    res: String,
+    pos: u32,
+}
+
+impl<'a> Unescape<'a> {
+    fn run(s: &'a str) -> Result<String, UnescapeError> {
+        let this = Self { chars: s.chars(), res: String::with_capacity(s.len()), pos: 0 };
+        this.unescape()
+    }
+
+    fn unescape(mut self) -> Result<String, UnescapeError> {
+        while let Some(ch) = self.next() {
+            let ch = match ch {
+                '\\' => self.seq()?,
+                ch => ch,
+            };
+
+            self.res.push(ch);
+        }
+
+        Ok(self.res)
+    }
+
+    fn seq(&mut self) -> Result<char, UnescapeError> {
+        let start = self.pos - 1;
+
+        if let Some(ch) = self.next() {
+            if let Some(&esc) = UNESCAPES.get(&ch) {
+                return Ok(esc);
+            }
+        }
+
+        Err(UnescapeError::InvalidEscape(start..self.pos))
+    }
+
+    #[inline]
+    fn next(&mut self) -> Option<char> {
+        self.chars.next().map(|ch| {
+            self.pos += 1;
+            ch
+        })
+    }
+}
+
+#[derive(Debug)]
+pub enum UnescapeError {
+    InvalidEscape(Range<u32>),
+}
+
+static UNESCAPES: phf::Map<char, char> = phf_map! {
+    '"' => '"',
+    '\'' => '\'',
+    'n' => '\n',
+    'r' => '\r',
+    't' => '\t',
+    '\\' => '\\',
+    '0' => '\0',
+};
