@@ -4,7 +4,7 @@ fn main() = {
 	let letter = "R"
 	let n = 18
 
-	println("\(letter) is the \(n)th letter of the alphabet.")
+	# println("\(letter) is the \(n)th letter of the alphabet.")
 
 	# Desugared
 	let mut interp = StrBuf.new()

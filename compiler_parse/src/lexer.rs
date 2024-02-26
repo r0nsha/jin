@@ -21,6 +21,13 @@ struct Lexer<'s> {
     source_bytes: &'s [u8],
     pos: u32,
     encountered_nl: bool,
+    modes: Vec<Mode>,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Mode {
+    Default,
+    Str,
 }
 
 impl<'s> Lexer<'s> {
@@ -31,6 +38,7 @@ impl<'s> Lexer<'s> {
             source_bytes: source.contents().as_bytes(),
             pos: 0,
             encountered_nl: false,
+            modes: vec![],
         }
     }
 
@@ -75,8 +83,14 @@ impl<'s> Lexer<'s> {
         tokens.last().and_then(|t| t.kind.is_before_semi().then_some(t))
     }
 
-    #[allow(clippy::too_many_lines)]
     fn eat_token(&mut self) -> DiagnosticResult<Option<Token>> {
+        match self.modes.last() {
+            Some(Mode::Str) => self.eat_token_str(),
+            _ => self.eat_token_default(),
+        }
+    }
+
+    fn eat_token_default(&mut self) -> DiagnosticResult<Option<Token>> {
         let start = self.pos;
 
         match self.bump() {
@@ -241,6 +255,18 @@ impl<'s> Lexer<'s> {
         }
     }
 
+    fn eat_token_str(&mut self) -> DiagnosticResult<Option<Token>> {
+        let start = self.pos;
+
+        // match self.bump() {
+        //     Some('"') => {
+        //         self.modes.pop();
+        //     }
+        //     None => Ok(None),
+        // }
+        todo!()
+    }
+
     fn eat_ident(&mut self, start: u32) -> TokenKind {
         while let Some(ch) = self.peek() {
             if ch.is_ascii_alphanumeric() || ch == '_' {
@@ -340,16 +366,14 @@ impl<'s> Lexer<'s> {
     }
 
     fn eat_str(&mut self, start: u32) -> DiagnosticResult<TokenKind> {
-        let s = self.eat_terminated_lit(start, '"', "string")?;
-        let unescaped = unescape(s).map_err(|e| self.unescape_err(e, start))?;
-        Ok(TokenKind::Str(ustr(&unescaped)))
+        let s = self.eat_terminated_lit('"', "string")?;
+        Ok(TokenKind::Str(ustr(&s)))
     }
 
     fn eat_char(&mut self, kind: CharKind, start: u32) -> DiagnosticResult<TokenKind> {
-        let s = self.eat_terminated_lit(start, '\'', "char")?;
-        let unescaped = unescape(s).map_err(|e| self.unescape_err(e, start))?;
+        let s = self.eat_terminated_lit('\'', "char")?;
 
-        let char_count = unescaped.chars().count();
+        let char_count = s.chars().count();
         if char_count != 1 {
             return Err(Diagnostic::error("character literal can only contain one codepoint")
                 .with_label(Label::primary(
@@ -358,7 +382,7 @@ impl<'s> Lexer<'s> {
                 )));
         }
 
-        let ch = unescaped.chars().nth(0).unwrap();
+        let ch = s.chars().nth(0).unwrap();
 
         match kind {
             CharKind::Char => Ok(TokenKind::Char(ch)),
@@ -375,18 +399,25 @@ impl<'s> Lexer<'s> {
         }
     }
 
-    fn eat_terminated_lit<'a>(
-        &'a mut self,
-        start: u32,
-        term: char,
-        kind: &str,
-    ) -> DiagnosticResult<&'a str> {
-        let mut last: Option<char> = None;
+    fn eat_terminated_lit(&mut self, term: char, kind: &str) -> DiagnosticResult<String> {
+        let mut buf = Vec::<u8>::new();
 
         loop {
             match self.bump() {
-                Some(ch) if last != Some('\\') && ch == term => break,
-                Some(ch) => last = Some(ch),
+                Some('\\') => {
+                    if let Some(ch) = self.bump() {
+                        if let Some(&esc) = UNESCAPES.get(&ch) {
+                            buf.push(esc as u8);
+                            continue;
+                        }
+                    }
+
+                    return Err(Diagnostic::error("invalid escape sequence").with_label(
+                        Label::primary(self.create_span(self.pos), "invalid sequence"),
+                    ));
+                }
+                Some(ch) if ch == term => break,
+                Some(ch) => buf.push(ch as u8),
                 None => {
                     return Err(Diagnostic::error(format!(
                         "missing trailing `{term}` to end the {kind}"
@@ -399,18 +430,11 @@ impl<'s> Lexer<'s> {
             }
         }
 
-        let s = self.range(start);
-        Ok(&s[..s.len() - 1])
-    }
+        // SAFETY: the buf is constructed from utf8-encoded chars,
+        // so it remains utf8-encoded.
+        let s = unsafe { String::from_utf8_unchecked(buf) };
 
-    fn unescape_err(&self, e: UnescapeError, start: u32) -> Diagnostic {
-        match e {
-            UnescapeError::InvalidEscape(r) => Diagnostic::error("invalid escape sequence")
-                .with_label(Label::primary(
-                    self.create_span_range(start + r.start, start + r.end),
-                    "invalid sequence",
-                )),
-        }
+        Ok(s)
     }
 
     fn eat_comment(&mut self) {
@@ -477,61 +501,6 @@ impl<'s> Lexer<'s> {
 enum CharKind {
     Char,
     Byte,
-}
-
-pub fn unescape(input: &str) -> Result<String, UnescapeError> {
-    Unescape::run(input)
-}
-
-struct Unescape<'a> {
-    chars: Chars<'a>,
-    res: String,
-    pos: u32,
-}
-
-impl<'a> Unescape<'a> {
-    fn run(s: &'a str) -> Result<String, UnescapeError> {
-        let this = Self { chars: s.chars(), res: String::with_capacity(s.len()), pos: 0 };
-        this.unescape()
-    }
-
-    fn unescape(mut self) -> Result<String, UnescapeError> {
-        while let Some(ch) = self.next() {
-            let ch = match ch {
-                '\\' => self.seq()?,
-                ch => ch,
-            };
-
-            self.res.push(ch);
-        }
-
-        Ok(self.res)
-    }
-
-    fn seq(&mut self) -> Result<char, UnescapeError> {
-        let start = self.pos - 1;
-
-        if let Some(ch) = self.next() {
-            if let Some(&esc) = UNESCAPES.get(&ch) {
-                return Ok(esc);
-            }
-        }
-
-        Err(UnescapeError::InvalidEscape(start..self.pos))
-    }
-
-    #[inline]
-    fn next(&mut self) -> Option<char> {
-        self.chars.next().map(|ch| {
-            self.pos += 1;
-            ch
-        })
-    }
-}
-
-#[derive(Debug)]
-pub enum UnescapeError {
-    InvalidEscape(Range<u32>),
 }
 
 static UNESCAPES: phf::Map<char, char> = phf_map! {
