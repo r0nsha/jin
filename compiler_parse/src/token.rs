@@ -343,12 +343,12 @@ impl fmt::Display for TokenKind {
             Self::Underscore => f.write_str("_"),
             Self::StrOpen => f.write_char('"'),
             Self::StrClose => f.write_str("a terminating `\"`"),
-            Self::StrText(lit) => write!(f, "string literal \"{lit}\""),
-            Self::StrExprOpen => f.write_char('('),
+            Self::StrText(_) => f.write_str("a string literal"),
+            Self::StrExprOpen => f.write_str("the start of a string interpolation"),
             Self::StrExprClose => f.write_str("a terminating `)`"),
-            Self::Kw(kw) => write!(f, "{kw}"),
-            Self::Int(lit) => write!(f, "integer literal `{lit}`"),
-            Self::Float(lit) => write!(f, "float literal `{lit}`"),
+            Self::Kw(kw) => write!(f, "the `{kw}` keyword"),
+            Self::Int(lit) => write!(f, "the integer literal `{lit}`"),
+            Self::Float(lit) => write!(f, "the float literal `{lit}`"),
             Self::Char(ch) | Self::ByteChar(ch) => write!(f, "character literal \'{ch}\'"),
         }
     }

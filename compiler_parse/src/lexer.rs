@@ -285,21 +285,12 @@ impl<'s> Lexer<'s> {
                 self.modes.pop();
                 Ok(Some(Token { kind: TokenKind::StrClose, span: self.create_span(start) }))
             }
-            Some('\\') if self.peek_offset(2) == Some('(') => {
+            Some('\\') if self.peek_offset(1) == Some('(') => {
                 self.next();
                 self.next();
-                self.modes.push(Mode::Default);
-                self.parens_stack.push(self.parens);
-                self.parens += 1;
-                Ok(Some(Token { kind: TokenKind::StrExprOpen, span: self.create_span(start) }))
+                Ok(Some(self.eat_str_expr_open()))
             }
-            Some(_) => {
-                let s = self.eat_str_text('"')?;
-                Ok(Some(Token {
-                    kind: TokenKind::StrText(ustr(&s)),
-                    span: self.create_span(start),
-                }))
-            }
+            Some(_) => Ok(Some(self.eat_str_text(start)?)),
             None => Ok(None),
         }
     }
@@ -452,29 +443,47 @@ impl<'s> Lexer<'s> {
         }
     }
 
-    fn eat_str_text(&mut self, term: char) -> DiagnosticResult<String> {
+    fn eat_str_text(&mut self, start: u32) -> DiagnosticResult<Token> {
         let mut buf = Vec::<u8>::new();
 
-        while let Some(ch) = self.peek() {
-            match ch {
-                '\\' => {
+        loop {
+            match self.peek() {
+                Some('\\') => {
                     self.next();
-                    buf.push(self.eat_unescaped_char()? as u8);
-                }
-                ch => {
-                    if ch == term {
-                        break;
+
+                    if self.eat('(') {
+                        return Ok(self.eat_str_expr_open());
                     }
 
-                    buf.push(ch as u8);
+                    let ch = self.eat_unescaped_char()? as u8;
+                    buf.push(ch);
+                }
+                Some('"') => break,
+                Some(ch) => {
                     self.next();
+                    buf.push(ch as u8)
+                }
+                None => {
+                    return Err(Diagnostic::error("missing trailing \" to end the string")
+                        .with_label(Label::primary(
+                            self.create_span(self.pos),
+                            "unterminated string",
+                        )))
                 }
             }
         }
 
         // SAFETY: the buf is constructed from utf8-encoded chars,
         // so it remains utf8-encoded.
-        Ok(unsafe { String::from_utf8_unchecked(buf) })
+        let s = unsafe { String::from_utf8_unchecked(buf) };
+        Ok(Token { kind: TokenKind::StrText(ustr(&s)), span: self.create_span(start) })
+    }
+
+    fn eat_str_expr_open(&mut self) -> Token {
+        self.modes.push(Mode::Default);
+        self.parens_stack.push(self.parens);
+        self.parens += 1;
+        Token { kind: TokenKind::StrExprOpen, span: self.create_span(self.pos - 2) }
     }
 
     fn eat_unescaped_char(&mut self) -> DiagnosticResult<char> {
