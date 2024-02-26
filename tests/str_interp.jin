@@ -5,4 +5,5 @@ fn main() = {
 	let n = 18
 	println("\(letter) is the \(n)th letter of the alphabet.")
 	println("\(1) + \(2) = \(1 + 2)")
+	println("bool: \(true), \(!true)")
 }

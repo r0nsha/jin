@@ -1,0 +1,6 @@
+use std.str.StrBuf
+
+pub fn fmt(self: &bool, buf: &mut StrBuf) =
+    buf.push(if self { "true" } else { "false "})
+
+pub fn to_str(self: bool) -> str = "\(self)"
