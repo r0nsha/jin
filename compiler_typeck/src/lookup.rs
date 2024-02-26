@@ -1,5 +1,6 @@
 use std::iter;
 
+use compiler_core::ty::{FloatTy, InferTy, IntTy};
 use compiler_core::{
     db::{AdtKind, Db, DefId, ModuleId, UnionDef, Variant, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -549,6 +550,18 @@ impl FnCandidate {
         param: Ty,
         allow_owned_to_ref: bool,
     ) -> Option<FnCandidateScore> {
+        if arg == param {
+            return Some(FnCandidateScore::EqExact);
+        }
+
+        match (arg.kind(), param.kind()) {
+            (TyKind::Infer(InferTy::Int(_)), TyKind::Int(IntTy::Int))
+            | (TyKind::Infer(InferTy::Float(_)), TyKind::Float(FloatTy::F64)) => {
+                return Some(FnCandidateScore::EqPreferred)
+            }
+            _ => (),
+        }
+
         if arg.can_unify(param, cx, UnifyOptions::default()).is_ok() {
             return Some(FnCandidateScore::Eq);
         }
@@ -638,9 +651,11 @@ fn fn_candidate_tys_eq(a: Ty, b: Ty) -> bool {
 #[derive(Debug, Clone, Copy)]
 #[repr(u32)]
 pub(crate) enum FnCandidateScore {
-    Eq = 0,
-    Polymorphic = 1,
-    Coerce = 2,
+    EqExact = 0,
+    EqPreferred = 1,
+    Eq = 2,
+    Polymorphic = 3,
+    Coerce = 4,
 }
 
 #[derive(Debug, Clone)]
