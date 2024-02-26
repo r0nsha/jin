@@ -1,7 +1,16 @@
 use std.int.{Format}
 
 fn main() = {
-	i64(-78787849).to_str(Format.decimal).println()
-	u32(4844445).to_str(Format.binary).println()
-	uint(5166813669987).to_str(Format.hex).println()
+	let letter = "R"
+	let n = 18
+
+	# println("\(letter) is the \(n)th letter of the alphabet.")
+
+	# Desugared
+	let mut interp = StrBuf.new()
+	letter.fmt(&mut interp)
+	interp.push(" is the ")
+	n.fmt(&mut interp)
+	interp.push("th letter of the alphabet.")
+	println(interp.take())
 }
