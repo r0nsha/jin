@@ -1,6 +1,6 @@
 use std.str.{?}
 
-fn extern "c" write(fd: i32, buf: *u8, count: uint) -> i32
+fn extern "c" write(fd: i32, buf: *u8, count: uint) -> int
 
 let stdout: i32 = 1
 
