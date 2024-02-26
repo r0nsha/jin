@@ -2,14 +2,16 @@ fn extern "c" write(fd: i32, buf: *u8, count: uint) -> i32
 
 let stdout: i32 = 1
 
-pub fn print(fmt: &str) =
-	unsafe write(stdout, fmt.ptr, fmt.len)
+pub fn print(msg: &str) =
+	unsafe write(stdout, msg.ptr, msg.len)
 
 pub fn println() = {
 	print("\n")
 }
 
-pub fn println(fmt: &str) = {
-	print(fmt)
+pub fn println(msg: &str) = {
+	print(msg)
 	println()
 }
+
+pub fn println(msg: str) = println(&msg)
