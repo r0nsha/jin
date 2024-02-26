@@ -12,5 +12,5 @@ fn main() = {
 	interp.push(" is the ")
 	n.fmt(&mut interp)
 	interp.push("th letter of the alphabet.")
-	println(interp.take())
+	interp.take().println()
 }
