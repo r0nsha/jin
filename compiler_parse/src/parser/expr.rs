@@ -9,6 +9,7 @@ use compiler_core::{
     ty::TyKind,
 };
 use compiler_data_structures::index_vec::Key as _;
+use ustr::ustr;
 
 use crate::{
     bin_op_from_assign_op, errors,
@@ -145,7 +146,7 @@ impl<'a> Parser<'a> {
             }
             TokenKind::Int(value) => Expr::IntLit { value: value as u128, span: tok.span },
             TokenKind::Float(value) => Expr::FloatLit { value, span: tok.span },
-            TokenKind::Str(value) => Expr::StrLit { value, span: tok.span },
+            TokenKind::StrOpen => self.parse_str()?,
             TokenKind::Char(value) => Expr::CharLit { value, kind: CharKind::Char, span: tok.span },
             TokenKind::ByteChar(value) => {
                 Expr::CharLit { value, kind: CharKind::Byte, span: tok.span }
@@ -432,5 +433,12 @@ impl<'a> Parser<'a> {
         let span = start.merge(body.span());
 
         Ok(Expr::Fn { params, ret, body: Box::new(body), span })
+    }
+
+    fn parse_str(&mut self) -> DiagnosticResult<Expr> {
+        let start = self.last_span();
+        let value = self.eat(TokenKind::StrText(ustr("")))?.str_value();
+        let close = self.eat(TokenKind::StrClose)?.span;
+        Ok(Expr::StrLit { value, span: start.merge(close) })
     }
 }

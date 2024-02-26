@@ -153,13 +153,12 @@ impl<'a> Parser<'a> {
         attrs: &Attrs,
         start: Span,
     ) -> DiagnosticResult<ExternImport> {
-        let path_tok = self.eat(TokenKind::empty_str())?;
-        let path = path_tok.str_value();
+        let path = self.eat_str_lit()?;
         let relative_to = self.parent_path().unwrap();
 
-        let lib = ExternLib::try_from_str(&path, relative_to)
-            .ok_or_else(|| errors::path_not_found(path.as_str(), path_tok.span))?;
+        let lib = ExternLib::try_from_str(path.as_str(), relative_to)
+            .ok_or_else(|| errors::path_not_found(path.as_str(), path.span()))?;
 
-        Ok(ExternImport { attrs: attrs.to_owned(), lib, span: start.merge(path_tok.span) })
+        Ok(ExternImport { attrs: attrs.to_owned(), lib, span: start.merge(path.span()) })
     }
 }

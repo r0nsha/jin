@@ -1,6 +1,3 @@
-use std::ops::Range;
-use std::str::Chars;
-
 use phf::phf_map;
 use ustr::ustr;
 
@@ -110,7 +107,10 @@ impl<'s> Lexer<'s> {
                         }
                         return self.eat_token();
                     }
-                    '"' => self.eat_str(start + 1)?,
+                    '"' => {
+                        self.modes.push(Mode::Str);
+                        TokenKind::StrOpen
+                    }
                     '\'' => self.eat_char(CharKind::Char, start + 1)?,
                     '#' => {
                         self.eat_comment();
@@ -256,15 +256,23 @@ impl<'s> Lexer<'s> {
     }
 
     fn eat_token_str(&mut self) -> DiagnosticResult<Option<Token>> {
-        let start = self.pos;
+        let start = self.pos - 1;
 
-        // match self.bump() {
-        //     Some('"') => {
-        //         self.modes.pop();
-        //     }
-        //     None => Ok(None),
-        // }
-        todo!()
+        match self.peek() {
+            Some('"') => {
+                self.next();
+                self.modes.pop();
+                Ok(Some(Token { kind: TokenKind::StrClose, span: self.create_span(start) }))
+            }
+            Some(_) => {
+                let s = self.eat_terminated_lit('"')?;
+                Ok(Some(Token {
+                    kind: TokenKind::StrText(ustr(&s)),
+                    span: self.create_span(start),
+                }))
+            }
+            None => Ok(None),
+        }
     }
 
     fn eat_ident(&mut self, start: u32) -> TokenKind {
@@ -365,13 +373,12 @@ impl<'s> Lexer<'s> {
         TokenKind::Int(value)
     }
 
-    fn eat_str(&mut self, start: u32) -> DiagnosticResult<TokenKind> {
-        let s = self.eat_terminated_lit('"', "string")?;
-        Ok(TokenKind::Str(ustr(&s)))
-    }
-
     fn eat_char(&mut self, kind: CharKind, start: u32) -> DiagnosticResult<TokenKind> {
-        let s = self.eat_terminated_lit('\'', "char")?;
+        let s = self.eat_terminated_lit('\'')?;
+        if !self.eat('\'') {
+            return Err(Diagnostic::error("missing trailing ' to end the character literal")
+                .with_label(Label::primary(self.create_span(self.pos), "unterminated character")));
+        }
 
         let char_count = s.chars().count();
         if char_count != 1 {
@@ -399,12 +406,14 @@ impl<'s> Lexer<'s> {
         }
     }
 
-    fn eat_terminated_lit(&mut self, term: char, kind: &str) -> DiagnosticResult<String> {
+    fn eat_terminated_lit(&mut self, term: char) -> DiagnosticResult<String> {
         let mut buf = Vec::<u8>::new();
 
-        loop {
-            match self.bump() {
-                Some('\\') => {
+        while let Some(ch) = self.peek() {
+            match ch {
+                '\\' => {
+                    self.next();
+
                     if let Some(&esc) = self.bump().and_then(|ch| UNESCAPES.get(&ch)) {
                         buf.push(esc as u8);
                     } else {
@@ -413,16 +422,13 @@ impl<'s> Lexer<'s> {
                         ));
                     }
                 }
-                Some(ch) if ch == term => break,
-                Some(ch) => buf.push(ch as u8),
-                None => {
-                    return Err(Diagnostic::error(format!(
-                        "missing trailing `{term}` to end the {kind}"
-                    ))
-                    .with_label(Label::primary(
-                        self.create_span(self.pos),
-                        format!("unterminated {kind}"),
-                    )));
+                ch => {
+                    if ch == term {
+                        break;
+                    }
+
+                    buf.push(ch as u8);
+                    self.next();
                 }
             }
         }

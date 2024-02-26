@@ -17,7 +17,7 @@ impl Token {
     #[track_caller]
     pub fn str_value(&self) -> Ustr {
         match self.kind {
-            TokenKind::Ident(v) | TokenKind::Str(v) => v,
+            TokenKind::Ident(v) | TokenKind::StrText(v) => v,
             TokenKind::Int(v) => ustr(&v.to_string()),
             kind => panic!("unexpected token {kind:?}"),
         }
@@ -100,10 +100,14 @@ pub enum TokenKind {
     Underscore,
     Kw(Kw),
 
+    // Strings
+    StrOpen,
+    StrText(Ustr),
+    StrClose,
+
     // Literals
     Int(i128),
     Float(f64),
-    Str(Ustr),
     Char(char),
     ByteChar(char),
 }
@@ -114,11 +118,6 @@ impl TokenKind {
         Self::Ident(ustr(""))
     }
 
-    #[inline]
-    pub fn empty_str() -> Self {
-        Self::Str(ustr(""))
-    }
-
     // Whether this token can come before a semicolon
     #[inline]
     pub fn is_before_semi(self) -> bool {
@@ -126,7 +125,6 @@ impl TokenKind {
             TokenKind::Kw(Kw::Return | Kw::True | Kw::False | Kw::Break | Kw::As)
             | TokenKind::Int(_)
             | TokenKind::Float(_)
-            | TokenKind::Str(_)
             | TokenKind::Char(_)
             | TokenKind::ByteChar(_)
             | TokenKind::Ident(_)
@@ -135,7 +133,9 @@ impl TokenKind {
             | TokenKind::CloseParen
             | TokenKind::CloseBracket
             | TokenKind::CloseCurly
-            | TokenKind::Semi(_) => true,
+            | TokenKind::Semi(_)
+            | TokenKind::StrOpen
+            | TokenKind::StrClose => true,
 
             TokenKind::Kw(
                 Kw::Fn
@@ -193,7 +193,8 @@ impl TokenKind {
             | TokenKind::PipeEq
             | TokenKind::PipePipe
             | TokenKind::Walrus
-            | TokenKind::At => false,
+            | TokenKind::At
+            | TokenKind::StrText(_) => false,
         }
     }
 
@@ -220,7 +221,6 @@ impl TokenKind {
             )
             | TokenKind::Int(_)
             | TokenKind::Float(_)
-            | TokenKind::Str(_)
             | TokenKind::Char(_)
             | TokenKind::ByteChar(_)
             | TokenKind::Ident(_)
@@ -233,7 +233,8 @@ impl TokenKind {
             | TokenKind::Bang
             | TokenKind::Minus
             | TokenKind::Amp
-            | TokenKind::At => true,
+            | TokenKind::At
+            | TokenKind::StrOpen => true,
 
             TokenKind::QuestionMark
             | TokenKind::CloseParen
@@ -271,7 +272,9 @@ impl TokenKind {
             | TokenKind::Pipe
             | TokenKind::PipeEq
             | TokenKind::PipePipe
-            | TokenKind::Walrus => false,
+            | TokenKind::Walrus
+            | TokenKind::StrText(_)
+            | TokenKind::StrClose => false,
         }
     }
 }
@@ -332,10 +335,12 @@ impl fmt::Display for TokenKind {
             Self::Walrus => f.write_str(":="),
             Self::Ident(..) => f.write_str("identifier"),
             Self::Underscore => f.write_str("_"),
+            Self::StrOpen => f.write_char('"'),
+            Self::StrClose => f.write_str("a trailing `\"`"),
+            Self::StrText(lit) => write!(f, "string literal \"{lit}\""),
             Self::Kw(kw) => write!(f, "{kw}"),
             Self::Int(lit) => write!(f, "integer literal `{lit}`"),
             Self::Float(lit) => write!(f, "float literal `{lit}`"),
-            Self::Str(lit) => write!(f, "string literal \"{lit}\""),
             Self::Char(ch) | Self::ByteChar(ch) => write!(f, "character literal \'{ch}\'"),
         }
     }

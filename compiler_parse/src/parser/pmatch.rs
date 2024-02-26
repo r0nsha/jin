@@ -90,9 +90,8 @@ impl<'a> Parser<'a> {
         } else if self.is(TokenKind::Int(0)) {
             let tok = self.last_token();
             Ok(MatchPat::Int(tok.int_value(), tok.span))
-        } else if self.is(TokenKind::empty_str()) {
-            let tok = self.last_token();
-            Ok(MatchPat::Str(tok.str_value(), tok.span))
+        } else if let Ok(w) = self.eat_str_lit() {
+            Ok(MatchPat::Str(w.name(), w.span()))
         } else if self.is_kw(Kw::True) {
             Ok(MatchPat::Bool(true, self.last_span()))
         } else if self.is_kw(Kw::False) {
