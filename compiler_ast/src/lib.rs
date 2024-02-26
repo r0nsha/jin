@@ -228,6 +228,10 @@ pub enum Expr {
         value: f64,
         span: Span,
     },
+    StrInterp {
+        exprs: Vec<Expr>,
+        span: Span,
+    },
     StrLit {
         value: Ustr,
         span: Span,
@@ -270,6 +274,7 @@ impl Spanned for Expr {
             | Self::BoolLit { span, .. }
             | Self::IntLit { span, .. }
             | Self::FloatLit { span, .. }
+            | Self::StrInterp { span, .. }
             | Self::StrLit { span, .. }
             | Self::CharLit { span, .. }
             | Self::UnitLit { span, .. } => *span,

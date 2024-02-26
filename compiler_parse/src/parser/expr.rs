@@ -457,7 +457,7 @@ impl<'a> Parser<'a> {
         match exprs.len() {
             0 => Ok(Expr::StrLit { value: ustr(""), span: start.merge(self.last_span()) }),
             1 if matches!(&exprs[0], Expr::StrLit { .. }) => Ok(exprs.swap_remove(0)),
-            _ => todo!("interp {exprs:?}"),
+            _ => Ok(Expr::StrInterp { exprs, span: start.merge(self.last_span()) }),
         }
     }
 }

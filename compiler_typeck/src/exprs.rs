@@ -484,6 +484,9 @@ pub(crate) fn check_expr(
         ast::Expr::FloatLit { value, span } => {
             Ok(cx.expr(hir::ExprKind::FloatLit(*value), cx.fresh_float_var(), *span))
         }
+        ast::Expr::StrInterp { exprs, span } => {
+            todo!();
+        }
         ast::Expr::StrLit { value, span } => Ok(cx.expr(
             hir::ExprKind::StrLit(*value),
             cx.db.types.str.create_ref(Mutability::Imm),
