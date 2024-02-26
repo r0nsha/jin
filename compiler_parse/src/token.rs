@@ -102,8 +102,10 @@ pub enum TokenKind {
 
     // Strings
     StrOpen,
-    StrText(Ustr),
     StrClose,
+    StrText(Ustr),
+    StrExprOpen,
+    StrExprClose,
 
     // Literals
     Int(i128),
@@ -194,6 +196,8 @@ impl TokenKind {
             | TokenKind::PipePipe
             | TokenKind::Walrus
             | TokenKind::At
+            | TokenKind::StrExprOpen
+            | TokenKind::StrExprClose
             | TokenKind::StrText(_) => false,
         }
     }
@@ -234,6 +238,7 @@ impl TokenKind {
             | TokenKind::Minus
             | TokenKind::Amp
             | TokenKind::At
+            | TokenKind::StrExprClose
             | TokenKind::StrOpen => true,
 
             TokenKind::QuestionMark
@@ -274,6 +279,7 @@ impl TokenKind {
             | TokenKind::PipePipe
             | TokenKind::Walrus
             | TokenKind::StrText(_)
+            | TokenKind::StrExprOpen
             | TokenKind::StrClose => false,
         }
     }
@@ -336,8 +342,10 @@ impl fmt::Display for TokenKind {
             Self::Ident(..) => f.write_str("identifier"),
             Self::Underscore => f.write_str("_"),
             Self::StrOpen => f.write_char('"'),
-            Self::StrClose => f.write_str("a trailing `\"`"),
+            Self::StrClose => f.write_str("a terminating `\"`"),
             Self::StrText(lit) => write!(f, "string literal \"{lit}\""),
+            Self::StrExprOpen => f.write_char('('),
+            Self::StrExprClose => f.write_str("a terminating `)`"),
             Self::Kw(kw) => write!(f, "{kw}"),
             Self::Int(lit) => write!(f, "integer literal `{lit}`"),
             Self::Float(lit) => write!(f, "float literal `{lit}`"),

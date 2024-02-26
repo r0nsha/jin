@@ -19,6 +19,8 @@ struct Lexer<'s> {
     pos: u32,
     encountered_nl: bool,
     modes: Vec<Mode>,
+    parens: usize,
+    parens_stack: Vec<usize>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -36,6 +38,8 @@ impl<'s> Lexer<'s> {
             pos: 0,
             encountered_nl: false,
             modes: vec![],
+            parens: 0,
+            parens_stack: vec![],
         }
     }
 
@@ -116,8 +120,8 @@ impl<'s> Lexer<'s> {
                         self.eat_comment();
                         return self.eat_token();
                     }
-                    '(' => TokenKind::OpenParen,
-                    ')' => TokenKind::CloseParen,
+                    '(' => self.open_paren(),
+                    ')' => self.close_paren(),
                     '[' => TokenKind::OpenBracket,
                     ']' => TokenKind::CloseBracket,
                     '{' => TokenKind::OpenCurly,
@@ -255,6 +259,23 @@ impl<'s> Lexer<'s> {
         }
     }
 
+    fn open_paren(&mut self) -> TokenKind {
+        self.parens += 1;
+        TokenKind::OpenParen
+    }
+
+    fn close_paren(&mut self) -> TokenKind {
+        self.parens = self.parens.saturating_sub(1);
+
+        if self.parens_stack.last().copied() == Some(self.parens) {
+            self.parens_stack.pop();
+            self.modes.pop();
+            TokenKind::StrExprClose
+        } else {
+            TokenKind::CloseParen
+        }
+    }
+
     fn eat_token_str(&mut self) -> DiagnosticResult<Option<Token>> {
         let start = self.pos - 1;
 
@@ -263,6 +284,14 @@ impl<'s> Lexer<'s> {
                 self.next();
                 self.modes.pop();
                 Ok(Some(Token { kind: TokenKind::StrClose, span: self.create_span(start) }))
+            }
+            Some('\\') if self.peek_offset(1) == Some('(') => {
+                self.next();
+                self.next();
+                self.modes.push(Mode::Default);
+                self.parens_stack.push(self.parens);
+                self.parens += 1;
+                Ok(Some(Token { kind: TokenKind::StrExprOpen, span: self.create_span(start) }))
             }
             Some(_) => {
                 let s = self.eat_terminated_lit('"')?;
@@ -413,14 +442,7 @@ impl<'s> Lexer<'s> {
             match ch {
                 '\\' => {
                     self.next();
-
-                    if let Some(&esc) = self.bump().and_then(|ch| UNESCAPES.get(&ch)) {
-                        buf.push(esc as u8);
-                    } else {
-                        return Err(Diagnostic::error("invalid escape sequence").with_label(
-                            Label::primary(self.create_span(self.pos), "invalid sequence"),
-                        ));
-                    }
+                    buf.push(self.eat_unescaped_char()? as u8);
                 }
                 ch => {
                     if ch == term {
@@ -435,9 +457,16 @@ impl<'s> Lexer<'s> {
 
         // SAFETY: the buf is constructed from utf8-encoded chars,
         // so it remains utf8-encoded.
-        let s = unsafe { String::from_utf8_unchecked(buf) };
+        Ok(unsafe { String::from_utf8_unchecked(buf) })
+    }
 
-        Ok(s)
+    fn eat_unescaped_char(&mut self) -> DiagnosticResult<char> {
+        if let Some(&esc) = self.bump().and_then(|ch| UNESCAPES.get(&ch)) {
+            Ok(esc)
+        } else {
+            Err(Diagnostic::error("invalid escape sequence")
+                .with_label(Label::primary(self.create_span(self.pos), "invalid sequence")))
+        }
     }
 
     fn eat_comment(&mut self) {
