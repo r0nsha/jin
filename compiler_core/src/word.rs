@@ -14,6 +14,11 @@ impl Word {
     }
 
     #[inline]
+    pub fn new_unknown(name: Ustr) -> Self {
+        Self(name, Span::unknown())
+    }
+
+    #[inline]
     pub fn name(&self) -> Ustr {
         self.0
     }

@@ -555,7 +555,7 @@ impl FnCandidate {
             return Some(FnCandidateScore::EqExact);
         }
 
-        match (arg.kind(), param.kind()) {
+        match (arg.auto_deref().kind(), param.auto_deref().kind()) {
             (TyKind::Infer(InferTy::Int(_)), TyKind::Int(IntTy::Int))
             | (TyKind::Infer(InferTy::Float(_)), TyKind::Float(FloatTy::F64)) => {
                 return Some(FnCandidateScore::EqPreferred)
