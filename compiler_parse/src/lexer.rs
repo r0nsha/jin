@@ -405,16 +405,13 @@ impl<'s> Lexer<'s> {
         loop {
             match self.bump() {
                 Some('\\') => {
-                    if let Some(ch) = self.bump() {
-                        if let Some(&esc) = UNESCAPES.get(&ch) {
-                            buf.push(esc as u8);
-                            continue;
-                        }
+                    if let Some(&esc) = self.bump().and_then(|ch| UNESCAPES.get(&ch)) {
+                        buf.push(esc as u8);
+                    } else {
+                        return Err(Diagnostic::error("invalid escape sequence").with_label(
+                            Label::primary(self.create_span(self.pos), "invalid sequence"),
+                        ));
                     }
-
-                    return Err(Diagnostic::error("invalid escape sequence").with_label(
-                        Label::primary(self.create_span(self.pos), "invalid sequence"),
-                    ));
                 }
                 Some(ch) if ch == term => break,
                 Some(ch) => buf.push(ch as u8),
