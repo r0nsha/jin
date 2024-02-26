@@ -3,14 +3,6 @@ use std.int.{Format}
 fn main() = {
 	let letter = "R"
 	let n = 18
-
 	println("\(letter) is the \(n)th letter of the alphabet.")
-
-	# Desugared
-	let mut interp = StrBuf.new()
-	letter.fmt(&mut interp)
-	interp.push(" is the ")
-	n.fmt(&mut interp)
-	interp.push("th letter of the alphabet.")
-	interp.take().println()
+	println("\(1) + \(2) = \(1 + 2)")
 }

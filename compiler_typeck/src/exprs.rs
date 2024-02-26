@@ -1071,70 +1071,30 @@ fn check_str_interp(
     };
     let strbuf_ty = cx.db[strbuf_adt_id].ty();
 
-    let strbuf_new = cx.lookup().query_assoc_ns(
-        env_module,
-        strbuf_ty,
-        cx.db[strbuf_def_id].span,
-        &Query::Fn(FnQuery {
-            word: Word::new_unknown(ustr("new")),
-            ty_args: None,
-            args: &[],
-            is_ufcs: IsUfcs::No,
-        }),
-    );
+    let mut block_exprs = Vec::with_capacity(exprs.len() + 2);
 
     let (let_interp_buf, interp_buf) =
         interp_let_buf(cx, env, strbuf_ty, cx.db[strbuf_def_id].span, span);
 
-    let mut new_exprs = vec![];
-    for expr in exprs {
-        new_exprs.push(check_expr(cx, env, expr, None)?);
+    block_exprs.push(let_interp_buf);
+
+    {
+        let mut new_exprs = vec![];
+        for expr in exprs {
+            new_exprs.push(check_expr(cx, env, expr, None)?);
+        }
+
+        for expr in new_exprs {
+            let fmt_call = interp_fmt_expr(cx, env, strbuf_ty, interp_buf.clone(), expr)?;
+            block_exprs.push(fmt_call);
+        }
     }
 
-    // let mut fmt_exprs: Vec<hir::Expr> = Vec::with_capacity(new_exprs.capacity());
-    // for expr in new_exprs {
-    //     let ty = cx.normalize(expr.ty);
-    //
-    //     let fmt_word = Word::new(ustr("fmt"), expr.span);
-    //     let fmt_fn = cx.lookup().query(
-    //         env_module,
-    //         env_module,
-    //         &Query::Fn(FnQuery {
-    //             word: fmt_word,
-    //             ty_args: None,
-    //             args: &[
-    //                 FnTyParam { name: None, ty: ty.create_ref(Mutability::Imm) },
-    //                 FnTyParam { name: None, ty: strbuf_ty.create_ref(Mutability::Mut) },
-    //             ],
-    //             is_ufcs: IsUfcs::Yes,
-    //         }),
-    //     )?;
-    //
-    //     let callee = cx.expr(
-    //         hir::ExprKind::Name(hir::Name {
-    //             id: fmt_fn,
-    //             word: fmt_word,
-    //             instantiation: Instantiation::default(),
-    //         }),
-    //         cx.def_ty(fmt_fn),
-    //         expr.span,
-    //     );
-    //
-    //     let args = vec![];
-    //
-    //     let fmt_call = cx.expr(
-    //         hir::ExprKind::Call(hir::Call { callee: Box::new(callee), args }),
-    //         cx.db.types.unit,
-    //         expr.span,
-    //     );
-    //
-    //     fmt_exprs.push(fmt_call);
-    // }
+    let take_call = interp_strbuf_take(cx, env, str_module, strbuf_ty, interp_buf, span);
+    let ty = take_call.ty;
+    block_exprs.push(take_call);
 
-    let exprs =
-        vec![let_interp_buf, interp_strbuf_take(cx, env, str_module, strbuf_ty, interp_buf, span)];
-
-    Ok(cx.expr(hir::ExprKind::Block(hir::Block { exprs }), cx.db.types.str, span))
+    Ok(cx.expr(hir::ExprKind::Block(hir::Block { exprs: block_exprs }), ty, span))
 }
 
 fn interp_let_buf(
@@ -1211,6 +1171,61 @@ fn interp_let_buf(
             span,
         ),
     )
+}
+
+fn interp_fmt_expr(
+    cx: &mut Typeck<'_>,
+    env: &Env,
+    strbuf_ty: Ty,
+    interp_buf: hir::Expr,
+    expr: hir::Expr,
+) -> DiagnosticResult<hir::Expr> {
+    let span = expr.span;
+    let ty = cx.normalize(expr.ty);
+
+    let fmt_word = Word::new(ustr("fmt"), expr.span);
+    let fmt_fn = cx.lookup().query(
+        env.module_id(),
+        env.module_id(),
+        &Query::Fn(FnQuery {
+            word: fmt_word,
+            ty_args: None,
+            args: &[
+                FnTyParam { name: None, ty: ty.create_ref(Mutability::Imm) },
+                FnTyParam { name: None, ty: strbuf_ty.create_ref(Mutability::Mut) },
+            ],
+            is_ufcs: IsUfcs::Yes,
+        }),
+    )?;
+
+    let callee = cx.expr(
+        hir::ExprKind::Name(hir::Name {
+            id: fmt_fn,
+            word: fmt_word,
+            instantiation: Instantiation::default(),
+        }),
+        cx.def_ty(fmt_fn),
+        expr.span,
+    );
+
+    let args = vec![
+        hir::CallArg {
+            name: None,
+            expr: check_ref(cx, expr, ty, Mutability::Imm, span)?,
+            index: Some(0),
+        },
+        hir::CallArg {
+            name: None,
+            expr: check_ref(cx, interp_buf, strbuf_ty, Mutability::Imm, span)?,
+            index: Some(0),
+        },
+    ];
+
+    Ok(cx.expr(
+        hir::ExprKind::Call(hir::Call { callee: Box::new(callee), args }),
+        cx.db.types.unit,
+        span,
+    ))
 }
 
 fn interp_strbuf_take(
