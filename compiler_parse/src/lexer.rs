@@ -294,7 +294,7 @@ impl<'s> Lexer<'s> {
                 Ok(Some(Token { kind: TokenKind::StrExprOpen, span: self.create_span(start) }))
             }
             Some(_) => {
-                let s = self.eat_terminated_lit('"')?;
+                let s = self.eat_str_text('"')?;
                 Ok(Some(Token {
                     kind: TokenKind::StrText(ustr(&s)),
                     span: self.create_span(start),
@@ -452,7 +452,7 @@ impl<'s> Lexer<'s> {
         }
     }
 
-    fn eat_terminated_lit(&mut self, term: char) -> DiagnosticResult<String> {
+    fn eat_str_text(&mut self, term: char) -> DiagnosticResult<String> {
         let mut buf = Vec::<u8>::new();
 
         while let Some(ch) = self.peek() {
