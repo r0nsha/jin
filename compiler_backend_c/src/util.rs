@@ -203,7 +203,7 @@ pub fn cmp_strs<'a>(a: D<'a>, b: D<'a>) -> D<'a> {
 }
 
 pub fn escaped_str_value(value: &str) -> D {
-    D::text("(slice)").append(struct_lit(vec![
+    D::text("(str)").append(struct_lit(vec![
         ("array", null_value()),
         (START_FIELD, str_lit(escape::escape(value))),
         (sym::field::LEN, D::text(value.len().to_string())),
