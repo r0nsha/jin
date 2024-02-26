@@ -30,13 +30,19 @@ pub fn cap(self: &StrBuf) -> uint = self.array.cap()
 pub fn is_empty(self: &StrBuf) -> bool = self.len() == 0
 
 pub fn as_ref(self: &StrBuf) -> &str =
-	str.from_utf8_unchecked(self.array.as_ref())
+	str.from_utf8_unchecked(
+		&self.array.as_ref().[..self.array.len() - 1]
+	)
 
 pub fn as_mut(self: &mut StrBuf) -> &mut str =
-	str.from_utf8_mut_unchecked(self.array.as_mut())
+	str.from_utf8_mut_unchecked(
+		&mut self.array.as_mut().[..self.array.len() - 1]
+	)
 
-pub fn take(self: StrBuf) -> str =
+pub fn take(mut self: StrBuf) -> str = {
+	self.array.set_len(self.array.len() - 1)
 	str.from_utf8_unchecked(self.array.take())
+}
 
 pub fn push(self: &mut StrBuf, s: str) = self.push(&s)
 
