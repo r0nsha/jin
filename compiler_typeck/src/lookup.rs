@@ -9,6 +9,7 @@ use compiler_core::{
     ty::{printer::FnTyPrinter, FnTy, FnTyFlags, FnTyParam, Ty, TyKind},
     word::Word,
 };
+use compiler_helpers::create_bool_enum;
 use itertools::Itertools as _;
 use rustc_hash::FxHashSet;
 use ustr::{ustr, Ustr};
@@ -65,7 +66,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
 
         // We should only lookup functions if we didn't already query for a function
         let should_lookup_fns = match query {
-            Query::Name(_) => ShouldLookupFns::Candidates,
+            Query::Name(_) => ShouldLookupFns::Yes,
             Query::Fn(_) => ShouldLookupFns::No,
         };
 
@@ -320,7 +321,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
                 }
 
                 results.insert(LookupResult::Def(*def));
-            } else if let ShouldLookupFns::Candidates = should_lookup_fns {
+            } else if let ShouldLookupFns::Yes = should_lookup_fns {
                 if let Some(candidates) = env.ns.fns.get(&name) {
                     results.extend(candidates.iter().cloned().map(LookupResult::Fn));
                 }
@@ -713,8 +714,4 @@ impl<'a> FnQuery<'a> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ShouldLookupFns {
-    Candidates,
-    No,
-}
+create_bool_enum!(ShouldLookupFns);
