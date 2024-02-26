@@ -293,7 +293,7 @@ pub type PolyTyArgs = Vec<Ty>;
 
 impl TyKind {
     pub const DEFAULT_INT: Self = Self::Int(IntTy::Int);
-    pub const DEFAULT_FLOAT: Self = Self::Float(FloatTy::F32);
+    pub const DEFAULT_FLOAT: Self = Self::Float(FloatTy::F64);
 
     pub fn is_any_int(&self) -> bool {
         matches!(self, TyKind::Int(_) | TyKind::Uint(_) | TyKind::Infer(InferTy::Int(_)))
