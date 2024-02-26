@@ -285,7 +285,7 @@ impl<'s> Lexer<'s> {
                 self.modes.pop();
                 Ok(Some(Token { kind: TokenKind::StrClose, span: self.create_span(start) }))
             }
-            Some('\\') if self.peek_offset(1) == Some('(') => {
+            Some('\\') if self.peek_offset(2) == Some('(') => {
                 self.next();
                 self.next();
                 self.modes.push(Mode::Default);
@@ -403,11 +403,28 @@ impl<'s> Lexer<'s> {
     }
 
     fn eat_char(&mut self, kind: CharKind, start: u32) -> DiagnosticResult<TokenKind> {
-        let s = self.eat_terminated_lit('\'')?;
-        if !self.eat('\'') {
-            return Err(Diagnostic::error("missing trailing ' to end the character literal")
-                .with_label(Label::primary(self.create_span(self.pos), "unterminated character")));
+        let mut buf = Vec::<u8>::new();
+
+        loop {
+            match self.bump() {
+                Some('\\') => buf.push(self.eat_unescaped_char()? as u8),
+                Some('\'') => break,
+                Some(ch) => buf.push(ch as u8),
+                None => {
+                    return Err(Diagnostic::error(
+                        "missing trailing ' to end the character literal",
+                    )
+                    .with_label(Label::primary(
+                        self.create_span(self.pos),
+                        "unterminated character",
+                    )))
+                }
+            }
         }
+
+        // SAFETY: the buf is constructed from utf8-encoded chars,
+        // so it remains utf8-encoded.
+        let s = unsafe { String::from_utf8_unchecked(buf) };
 
         let char_count = s.chars().count();
         if char_count != 1 {
