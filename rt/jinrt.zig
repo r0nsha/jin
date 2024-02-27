@@ -237,7 +237,7 @@ export fn jinrt_slice_grow(
 ) Unit {
     if (slice.array) |a| {
         if (new_cap <= a.cap) {
-            return;
+            return Unit{};
         }
 
         if (a.refcnt > 1) {
