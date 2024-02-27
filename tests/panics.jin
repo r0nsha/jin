@@ -1,5 +1,3 @@
-use std.panicking.panic
-
 fn main() = {
-	panic()
+	todo("foobar")
 }

@@ -6,6 +6,7 @@ pub use std.option.{Option, ?}
 pub use std.result.{Result, ?}
 pub use std.int.{?}
 pub use std.io.{print, println}
+pub use std.panicking.{panic, todo}
 pub use std.ptr.{?}
 pub use std.slice.{?}
 pub use std.str.{StrBuf, ?}
