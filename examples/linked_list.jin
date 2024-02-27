@@ -1,5 +1,3 @@
-fn extern "c" printf(fmt: *u8, ..) -> i32
-
 type LinkedList[T](
     tail: Option[&mut Node[T]],
     head: Option[Node[T]],
@@ -31,22 +29,22 @@ fn push_front[T](self: &mut LinkedList[T], data: T) = {
 fn print(self: &LinkedList[int]) = {
     let mut curr = &self.head
 
-    unsafe printf("[".ptr)
+    print("[")
 
     for {
         match curr {
             Option.some(v) -> {
                 curr = &v.next
-                unsafe printf("%d".ptr, v.data)
+                print("\(v.data)")
                 if curr.is_some() {
-                    unsafe printf(", ".ptr)
+                    print(", ")
                 }
             }
             Option.none -> break
         }
     }
 
-    unsafe printf("]\n".ptr)
+    println("]")
 }
 
 fn main() = {
