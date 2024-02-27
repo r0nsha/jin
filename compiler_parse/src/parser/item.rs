@@ -89,11 +89,11 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_callconv(&mut self) -> DiagnosticResult<CallConv> {
-        let callconv = self.eat(TokenKind::empty_str())?;
-        let callconv_str = callconv.str_value().as_str();
+        let callconv = self.eat_str_lit()?;
+        let callconv_str = callconv.as_str();
         CallConv::try_from(callconv_str).map_err(|()| {
             Diagnostic::error(format!("unknown calling convention `{callconv_str}`"))
-                .with_label(Label::primary(callconv.span, "unknown calling convention"))
+                .with_label(Label::primary(callconv.span(), "unknown calling convention"))
         })
     }
 
@@ -200,7 +200,7 @@ impl<'a> Parser<'a> {
         match id {
             AttrId::Builtin => {
                 self.eat(TokenKind::OpenParen)?;
-                let name = self.eat(TokenKind::empty_str())?.word();
+                let name = self.eat_str_lit()?;
                 self.eat(TokenKind::CloseParen)?;
                 Ok(AttrArgs::Builtin(name))
             }

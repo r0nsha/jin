@@ -9,6 +9,7 @@ use compiler_core::{
     ty::TyKind,
 };
 use compiler_data_structures::index_vec::Key as _;
+use ustr::ustr;
 
 use crate::{
     bin_op_from_assign_op, errors,
@@ -145,7 +146,7 @@ impl<'a> Parser<'a> {
             }
             TokenKind::Int(value) => Expr::IntLit { value: value as u128, span: tok.span },
             TokenKind::Float(value) => Expr::FloatLit { value, span: tok.span },
-            TokenKind::Str(value) => Expr::StrLit { value, span: tok.span },
+            TokenKind::StrOpen => self.parse_str()?,
             TokenKind::Char(value) => Expr::CharLit { value, kind: CharKind::Char, span: tok.span },
             TokenKind::ByteChar(value) => {
                 Expr::CharLit { value, kind: CharKind::Byte, span: tok.span }
@@ -432,5 +433,31 @@ impl<'a> Parser<'a> {
         let span = start.merge(body.span());
 
         Ok(Expr::Fn { params, ret, body: Box::new(body), span })
+    }
+
+    fn parse_str(&mut self) -> DiagnosticResult<Expr> {
+        let start = self.last_span();
+        let mut exprs = vec![];
+
+        while !self.is(TokenKind::StrClose) {
+            if self.is(TokenKind::StrText(ustr(""))) {
+                exprs.push(Expr::StrLit {
+                    value: self.last_token().str_value(),
+                    span: self.last_span(),
+                });
+            } else if self.is(TokenKind::StrExprOpen) {
+                let expr = self.parse_expr()?;
+                self.eat(TokenKind::StrExprClose)?;
+                exprs.push(expr);
+            } else {
+                return Err(self.unexpected_token("a string"));
+            }
+        }
+
+        match exprs.len() {
+            0 => Ok(Expr::StrLit { value: ustr(""), span: start.merge(self.last_span()) }),
+            1 if matches!(&exprs[0], Expr::StrLit { .. }) => Ok(exprs.swap_remove(0)),
+            _ => Ok(Expr::StrInterp { exprs, span: start.merge(self.last_span()) }),
+        }
     }
 }

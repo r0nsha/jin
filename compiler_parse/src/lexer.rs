@@ -1,4 +1,4 @@
-use compiler_helpers::escape;
+use phf::phf_map;
 use ustr::ustr;
 
 use compiler_core::{
@@ -18,6 +18,15 @@ struct Lexer<'s> {
     source_bytes: &'s [u8],
     pos: u32,
     encountered_nl: bool,
+    modes: Vec<Mode>,
+    parens: usize,
+    parens_stack: Vec<usize>,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Mode {
+    Default,
+    Str,
 }
 
 impl<'s> Lexer<'s> {
@@ -28,6 +37,9 @@ impl<'s> Lexer<'s> {
             source_bytes: source.contents().as_bytes(),
             pos: 0,
             encountered_nl: false,
+            modes: vec![],
+            parens: 0,
+            parens_stack: vec![],
         }
     }
 
@@ -72,8 +84,14 @@ impl<'s> Lexer<'s> {
         tokens.last().and_then(|t| t.kind.is_before_semi().then_some(t))
     }
 
-    #[allow(clippy::too_many_lines)]
     fn eat_token(&mut self) -> DiagnosticResult<Option<Token>> {
+        match self.modes.last() {
+            Some(Mode::Str) => self.eat_token_str(),
+            _ => self.eat_token_default(),
+        }
+    }
+
+    fn eat_token_default(&mut self) -> DiagnosticResult<Option<Token>> {
         let start = self.pos;
 
         match self.bump() {
@@ -93,14 +111,17 @@ impl<'s> Lexer<'s> {
                         }
                         return self.eat_token();
                     }
-                    '"' => self.eat_str(start + 1)?,
+                    '"' => {
+                        self.modes.push(Mode::Str);
+                        TokenKind::StrOpen
+                    }
                     '\'' => self.eat_char(CharKind::Char, start + 1)?,
                     '#' => {
                         self.eat_comment();
                         return self.eat_token();
                     }
-                    '(' => TokenKind::OpenParen,
-                    ')' => TokenKind::CloseParen,
+                    '(' => self.open_paren(),
+                    ')' => self.close_paren(),
                     '[' => TokenKind::OpenBracket,
                     ']' => TokenKind::CloseBracket,
                     '{' => TokenKind::OpenCurly,
@@ -238,6 +259,42 @@ impl<'s> Lexer<'s> {
         }
     }
 
+    fn open_paren(&mut self) -> TokenKind {
+        self.parens += 1;
+        TokenKind::OpenParen
+    }
+
+    fn close_paren(&mut self) -> TokenKind {
+        self.parens = self.parens.saturating_sub(1);
+
+        if self.parens_stack.last().copied() == Some(self.parens) {
+            self.parens_stack.pop();
+            self.modes.pop();
+            TokenKind::StrExprClose
+        } else {
+            TokenKind::CloseParen
+        }
+    }
+
+    fn eat_token_str(&mut self) -> DiagnosticResult<Option<Token>> {
+        let start = self.pos - 1;
+
+        match self.peek() {
+            Some('"') => {
+                self.next();
+                self.modes.pop();
+                Ok(Some(Token { kind: TokenKind::StrClose, span: self.create_span(start) }))
+            }
+            Some('\\') if self.peek_offset(1) == Some('(') => {
+                self.next();
+                self.next();
+                Ok(Some(self.eat_str_expr_open()))
+            }
+            Some(_) => Ok(Some(self.eat_str_text(start)?)),
+            None => Ok(None),
+        }
+    }
+
     fn eat_ident(&mut self, start: u32) -> TokenKind {
         while let Some(ch) = self.peek() {
             if ch.is_ascii_alphanumeric() || ch == '_' {
@@ -336,17 +393,31 @@ impl<'s> Lexer<'s> {
         TokenKind::Int(value)
     }
 
-    fn eat_str(&mut self, start: u32) -> DiagnosticResult<TokenKind> {
-        let s = self.eat_terminated_lit(start, '"', "string")?;
-        let unescaped = escape::unescape(s).map_err(|e| self.unescape_err(e, start))?;
-        Ok(TokenKind::Str(ustr(&unescaped)))
-    }
-
     fn eat_char(&mut self, kind: CharKind, start: u32) -> DiagnosticResult<TokenKind> {
-        let s = self.eat_terminated_lit(start, '\'', "char")?;
-        let unescaped = escape::unescape(s).map_err(|e| self.unescape_err(e, start))?;
+        let mut buf = Vec::<u8>::new();
 
-        let char_count = unescaped.chars().count();
+        loop {
+            match self.bump() {
+                Some('\\') => buf.push(self.eat_unescaped_char()? as u8),
+                Some('\'') => break,
+                Some(ch) => buf.push(ch as u8),
+                None => {
+                    return Err(Diagnostic::error(
+                        "missing trailing ' to end the character literal",
+                    )
+                    .with_label(Label::primary(
+                        self.create_span(self.pos),
+                        "unterminated character",
+                    )))
+                }
+            }
+        }
+
+        // SAFETY: the buf is constructed from utf8-encoded chars,
+        // so it remains utf8-encoded.
+        let s = unsafe { String::from_utf8_unchecked(buf) };
+
+        let char_count = s.chars().count();
         if char_count != 1 {
             return Err(Diagnostic::error("character literal can only contain one codepoint")
                 .with_label(Label::primary(
@@ -355,7 +426,7 @@ impl<'s> Lexer<'s> {
                 )));
         }
 
-        let ch = unescaped.chars().nth(0).unwrap();
+        let ch = s.chars().nth(0).unwrap();
 
         match kind {
             CharKind::Char => Ok(TokenKind::Char(ch)),
@@ -372,41 +443,54 @@ impl<'s> Lexer<'s> {
         }
     }
 
-    fn eat_terminated_lit<'a>(
-        &'a mut self,
-        start: u32,
-        term: char,
-        kind: &str,
-    ) -> DiagnosticResult<&'a str> {
-        let mut last: Option<char> = None;
+    fn eat_str_text(&mut self, start: u32) -> DiagnosticResult<Token> {
+        let mut buf = Vec::<u8>::new();
 
         loop {
-            match self.bump() {
-                Some(ch) if last != Some('\\') && ch == term => break,
-                Some(ch) => last = Some(ch),
+            match self.peek() {
+                Some('\\') => {
+                    if self.peek_offset(1) == Some('(') {
+                        break;
+                    }
+
+                    self.next();
+                    let ch = self.eat_unescaped_char()? as u8;
+                    buf.push(ch);
+                }
+                Some('"') => break,
+                Some(ch) => {
+                    self.next();
+                    buf.push(ch as u8)
+                }
                 None => {
-                    return Err(Diagnostic::error(format!(
-                        "missing trailing `{term}` to end the {kind}"
-                    ))
-                    .with_label(Label::primary(
-                        self.create_span(self.pos),
-                        format!("unterminated {kind}"),
-                    )));
+                    return Err(Diagnostic::error("missing trailing \" to end the string")
+                        .with_label(Label::primary(
+                            self.create_span(self.pos),
+                            "unterminated string",
+                        )))
                 }
             }
         }
 
-        let s = self.range(start);
-        Ok(&s[..s.len() - 1])
+        // SAFETY: the buf is constructed from utf8-encoded chars,
+        // so it remains utf8-encoded.
+        let s = unsafe { String::from_utf8_unchecked(buf) };
+        Ok(Token { kind: TokenKind::StrText(ustr(&s)), span: self.create_span(start) })
     }
 
-    fn unescape_err(&self, e: escape::UnescapeError, start: u32) -> Diagnostic {
-        match e {
-            escape::UnescapeError::InvalidEscape(r) => Diagnostic::error("invalid escape sequence")
-                .with_label(Label::primary(
-                    self.create_span_range(start + r.start, start + r.end),
-                    "invalid sequence",
-                )),
+    fn eat_str_expr_open(&mut self) -> Token {
+        self.modes.push(Mode::Default);
+        self.parens_stack.push(self.parens);
+        self.parens += 1;
+        Token { kind: TokenKind::StrExprOpen, span: self.create_span(self.pos - 2) }
+    }
+
+    fn eat_unescaped_char(&mut self) -> DiagnosticResult<char> {
+        if let Some(&esc) = self.bump().and_then(|ch| UNESCAPES.get(&ch)) {
+            Ok(esc)
+        } else {
+            Err(Diagnostic::error("invalid escape sequence")
+                .with_label(Label::primary(self.create_span(self.pos), "invalid sequence")))
         }
     }
 
@@ -475,3 +559,13 @@ enum CharKind {
     Char,
     Byte,
 }
+
+static UNESCAPES: phf::Map<char, char> = phf_map! {
+    '"' => '"',
+    '\'' => '\'',
+    'n' => '\n',
+    'r' => '\r',
+    't' => '\t',
+    '\\' => '\\',
+    '0' => '\0',
+};

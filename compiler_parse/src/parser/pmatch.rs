@@ -46,7 +46,6 @@ impl<'a> Parser<'a> {
 
     fn parse_match_pat(&mut self) -> DiagnosticResult<MatchPat> {
         self.skip(TokenKind::Pipe);
-
         let pat = self.parse_match_pat_atom()?;
 
         if self.peek_is(TokenKind::Pipe) {
@@ -90,9 +89,9 @@ impl<'a> Parser<'a> {
         } else if self.is(TokenKind::Int(0)) {
             let tok = self.last_token();
             Ok(MatchPat::Int(tok.int_value(), tok.span))
-        } else if self.is(TokenKind::empty_str()) {
-            let tok = self.last_token();
-            Ok(MatchPat::Str(tok.str_value(), tok.span))
+        } else if self.peek_is(TokenKind::StrOpen) {
+            let s = self.eat_str_lit()?;
+            Ok(MatchPat::Str(s.name(), s.span()))
         } else if self.is_kw(Kw::True) {
             Ok(MatchPat::Bool(true, self.last_span()))
         } else if self.is_kw(Kw::False) {

@@ -1,7 +1,10 @@
 use std.int.{Format}
 
 fn main() = {
-	i64(-78787849).to_str(Format.decimal).println()
-	u32(4844445).to_str(Format.binary).println()
-	uint(5166813669987).to_str(Format.hex).println()
+	let letter = "R"
+	let n = 18
+	println("\(letter) is the \(n)th letter of the alphabet.")
+	println("\(1) + \(2) = \(1 + 2)")
+	println("\(420) is \(420.to_str(Format.hex)) in hex")
+	println("bool: \(true), \(!true)")
 }

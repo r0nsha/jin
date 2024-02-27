@@ -1,5 +1,6 @@
 use std::iter;
 
+use compiler_core::ty::{FloatTy, InferTy, IntTy};
 use compiler_core::{
     db::{AdtKind, Db, DefId, ModuleId, UnionDef, Variant, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -8,6 +9,7 @@ use compiler_core::{
     ty::{printer::FnTyPrinter, FnTy, FnTyFlags, FnTyParam, Ty, TyKind},
     word::Word,
 };
+use compiler_helpers::create_bool_enum;
 use itertools::Itertools as _;
 use rustc_hash::FxHashSet;
 use ustr::{ustr, Ustr};
@@ -64,7 +66,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
 
         // We should only lookup functions if we didn't already query for a function
         let should_lookup_fns = match query {
-            Query::Name(_) => ShouldLookupFns::Candidates,
+            Query::Name(_) => ShouldLookupFns::Yes,
             Query::Fn(_) => ShouldLookupFns::No,
         };
 
@@ -319,7 +321,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
                 }
 
                 results.insert(LookupResult::Def(*def));
-            } else if let ShouldLookupFns::Candidates = should_lookup_fns {
+            } else if let ShouldLookupFns::Yes = should_lookup_fns {
                 if let Some(candidates) = env.ns.fns.get(&name) {
                     results.extend(candidates.iter().cloned().map(LookupResult::Fn));
                 }
@@ -549,6 +551,18 @@ impl FnCandidate {
         param: Ty,
         allow_owned_to_ref: bool,
     ) -> Option<FnCandidateScore> {
+        if arg == param {
+            return Some(FnCandidateScore::EqExact);
+        }
+
+        match (arg.auto_deref().kind(), param.auto_deref().kind()) {
+            (TyKind::Infer(InferTy::Int(_)), TyKind::Int(IntTy::Int))
+            | (TyKind::Infer(InferTy::Float(_)), TyKind::Float(FloatTy::F64)) => {
+                return Some(FnCandidateScore::EqPreferred)
+            }
+            _ => (),
+        }
+
         if arg.can_unify(param, cx, UnifyOptions::default()).is_ok() {
             return Some(FnCandidateScore::Eq);
         }
@@ -638,9 +652,11 @@ fn fn_candidate_tys_eq(a: Ty, b: Ty) -> bool {
 #[derive(Debug, Clone, Copy)]
 #[repr(u32)]
 pub(crate) enum FnCandidateScore {
-    Eq = 0,
-    Polymorphic = 1,
-    Coerce = 2,
+    EqExact = 0,
+    EqPreferred = 1,
+    Eq = 2,
+    Polymorphic = 3,
+    Coerce = 4,
 }
 
 #[derive(Debug, Clone)]
@@ -698,8 +714,4 @@ impl<'a> FnQuery<'a> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ShouldLookupFns {
-    Candidates,
-    No,
-}
+create_bool_enum!(ShouldLookupFns);

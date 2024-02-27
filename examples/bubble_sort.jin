@@ -1,11 +1,9 @@
-fn extern "c" printf(fmt: *u8, ..) -> i32
-
 fn main() = {
     let mut slice = [1, 3, 42, 487, 5, 66, 4055, 33]
-    unsafe printf("Before: ".ptr)
+    print("Before: ")
     slice.print()
     bubble_sort(&mut slice)
-    unsafe printf("After: ".ptr)
+    print("After: ")
     slice.print()
 }
 
@@ -33,8 +31,8 @@ fn bubble_sort(slice: &mut [int]) = {
 fn print(slice: &[int]) = {
     let mut i = 0
     for if i < slice.len {
-        unsafe printf("%d ".ptr, slice.[i])
+        print("\(slice.[i]) ")
         i += 1
     }
-    unsafe printf("\n".ptr)
+    println()
 }

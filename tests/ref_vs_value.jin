@@ -1,11 +1,9 @@
-fn extern "c" printf(fmt: *u8, ..) -> i32
-
 fn main() = {
-	unsafe printf("Reference semantics:\n".ptr)
+	println("Reference semantics:")
 	ref_type()
-	unsafe printf("\n".ptr)
+	println()
 
-	unsafe printf("Value semantics (extern):\n".ptr)
+	println("Value semantics (extern):")
 	ext_type()
 }
 
@@ -27,7 +25,7 @@ fn mutate(r: &mut Ref) = {
 }
 
 fn print(r: &Ref) = {
-	unsafe printf("Ref(field: %d)\n".ptr, r.field)
+	println("Ref(field: \(r.field))")
 }
 
 type Ext extern(field: int)
@@ -48,6 +46,6 @@ fn mutate(mut ext: Ext) = {
 }
 
 fn print(ext: Ext) = {
-	unsafe printf("Ext(field: %d)\n".ptr, ext.field)	
+	println("Ext(field: \(ext.field))")
 }
 

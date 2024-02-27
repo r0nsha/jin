@@ -70,10 +70,9 @@ const RcSlice = extern struct {
         high: usize,
     ) Self {
         if (self.start) |start| {
-            const new_start = start[(low * elem_size)..(high * elem_size)];
             return Self{
                 .array = self.array,
-                .start = new_start.ptr,
+                .start = start + (low * elem_size),
                 .len = high - low,
             };
         } else {

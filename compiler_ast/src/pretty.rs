@@ -207,6 +207,15 @@ impl PrettyPrint for Expr {
             Self::FloatLit { value, .. } => {
                 cx.builder.add_empty_child(format!("float: {value}"));
             }
+            Self::StrInterp { exprs, .. } => {
+                cx.builder.begin_child("str interp".to_string());
+
+                for expr in exprs {
+                    expr.pretty_print(cx);
+                }
+
+                cx.builder.end_child();
+            }
             Self::StrLit { value, .. } => {
                 cx.builder.add_empty_child(format!("str: {value}"));
             }

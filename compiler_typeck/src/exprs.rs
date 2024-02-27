@@ -1,4 +1,5 @@
 use compiler_ast::{self as ast};
+use compiler_core::middle::{NamePat, Pat};
 use compiler_core::{
     db::{Adt, AdtField, AdtId, AdtKind, DefId, DefKind, FnInfo, ModuleId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -11,7 +12,7 @@ use compiler_core::{
 };
 use compiler_data_structures::index_vec::{IndexVecExt as _, Key as _};
 use itertools::{Itertools as _, Position};
-use ustr::UstrMap;
+use ustr::{ustr, UstrMap};
 
 use crate::{
     coerce::{CoerceExt as _, CoerceOptions},
@@ -348,7 +349,7 @@ pub(crate) fn check_expr(
                         Err(errors::invalid_un_op(cx.db, *op, ty, *span))
                     }
                 }
-                UnOp::Ref(mutability) => check_ref(cx, expr, ty, *op, *mutability, *span),
+                UnOp::Ref(mutability) => check_ref(cx, expr, ty, *mutability, *span),
             }
         }
         ast::Expr::Binary { lhs, rhs, op, span } => {
@@ -484,6 +485,7 @@ pub(crate) fn check_expr(
         ast::Expr::FloatLit { value, span } => {
             Ok(cx.expr(hir::ExprKind::FloatLit(*value), cx.fresh_float_var(), *span))
         }
+        ast::Expr::StrInterp { exprs, span } => check_str_interp(cx, env, exprs, *span),
         ast::Expr::StrLit { value, span } => Ok(cx.expr(
             hir::ExprKind::StrLit(*value),
             cx.db.types.str.create_ref(Mutability::Imm),
@@ -864,7 +866,7 @@ fn check_call_fn(
         }
     }
 
-    // Unify all args with their corresponding param type
+    // Unify all args with their corresponding param type, coercing as needed
     for (arg_idx, arg) in args.iter().enumerate() {
         let param_idx = arg.index.expect("arg index to be resolved");
 
@@ -888,13 +890,12 @@ fn check_ref(
     cx: &mut Typeck<'_>,
     expr: hir::Expr,
     ty: Ty,
-    op: UnOp,
     mutability: Mutability,
     span: Span,
 ) -> DiagnosticResult<hir::Expr> {
     // if ty.can_create_ref(cx.db) {
     Ok(cx.expr(
-        hir::ExprKind::Unary(hir::Unary { expr: Box::new(expr), op }),
+        hir::ExprKind::Unary(hir::Unary { expr: Box::new(expr), op: UnOp::Ref(mutability) }),
         ty.create_ref(mutability),
         span,
     ))
@@ -1050,4 +1051,218 @@ fn check_assign_lhs_aux(expr: &hir::Expr) -> bool {
         | hir::ExprKind::StrLit(_)
         | hir::ExprKind::CharLit(_) => false,
     }
+}
+
+fn check_str_interp(
+    cx: &mut Typeck<'_>,
+    env: &mut Env,
+    exprs: &[ast::Expr],
+    span: Span,
+) -> DiagnosticResult<hir::Expr> {
+    let env_module = env.module_id();
+    let str_module = cx.db.find_module_by_qpath("std", ["str"]).expect("std.str to exist").id;
+
+    let strbuf_def_id = cx
+        .lookup()
+        .query(env_module, str_module, &Query::Name(Word::new_unknown(ustr("StrBuf"))))
+        .expect("std.str.StrBuf to exist");
+    let &DefKind::Adt(strbuf_adt_id) = cx.db[strbuf_def_id].kind.as_ref() else {
+        panic!("expected std.str.StrBuf to be an Adt")
+    };
+    let strbuf_ty = cx.db[strbuf_adt_id].ty();
+
+    let mut block_exprs = Vec::with_capacity(exprs.len() + 2);
+
+    let (let_interp_buf, interp_buf) =
+        interp_let_buf(cx, env, strbuf_ty, cx.db[strbuf_def_id].span, span);
+
+    block_exprs.push(let_interp_buf);
+
+    {
+        let mut new_exprs = vec![];
+        for expr in exprs {
+            new_exprs.push(check_expr(cx, env, expr, None)?);
+        }
+
+        for expr in new_exprs {
+            let fmt_call = interp_fmt_expr(cx, env, strbuf_ty, interp_buf.clone(), expr)?;
+            block_exprs.push(fmt_call);
+        }
+    }
+
+    let take_call = interp_strbuf_take(cx, env, str_module, strbuf_ty, interp_buf, span);
+    let ty = take_call.ty;
+    block_exprs.push(take_call);
+
+    Ok(cx.expr(hir::ExprKind::Block(hir::Block { exprs: block_exprs }), ty, span))
+}
+
+fn interp_let_buf(
+    cx: &mut Typeck<'_>,
+    env: &mut Env,
+    strbuf_ty: Ty,
+    strbuf_span: Span,
+    span: Span,
+) -> (hir::Expr, hir::Expr) {
+    let from_module = env.module_id();
+    let new_word = Word::new(ustr("new"), span);
+    let AssocLookup::AssocFn(strbuf_new) = cx
+        .lookup()
+        .query_assoc_ns(
+            from_module,
+            strbuf_ty,
+            strbuf_span,
+            &Query::Fn(FnQuery { word: new_word, ty_args: None, args: &[], is_ufcs: IsUfcs::No }),
+        )
+        .expect("StrBuf.new() to exist")
+    else {
+        unreachable!()
+    };
+
+    let callee = cx.expr(
+        hir::ExprKind::Name(hir::Name {
+            id: strbuf_new,
+            word: new_word,
+            instantiation: Instantiation::default(),
+        }),
+        cx.def_ty(strbuf_new),
+        span,
+    );
+
+    let args = vec![];
+
+    let call =
+        cx.expr(hir::ExprKind::Call(hir::Call { callee: Box::new(callee), args }), strbuf_ty, span);
+
+    let interp_buf_word = Word::new(ustr("interp_buf"), span);
+    let id = cx.define().create_local(
+        env,
+        DefKind::Variable,
+        interp_buf_word,
+        Mutability::Mut,
+        strbuf_ty,
+    );
+
+    (
+        cx.expr(
+            hir::ExprKind::Let(hir::Let {
+                id: hir::LetId::null(),
+                module_id: from_module,
+                pat: Pat::Name(NamePat {
+                    id,
+                    word: interp_buf_word,
+                    mutability: Mutability::Mut,
+                    ty: strbuf_ty,
+                }),
+                value: Box::new(call),
+                ty: strbuf_ty,
+                span,
+            }),
+            cx.db.types.unit,
+            span,
+        ),
+        cx.expr(
+            hir::ExprKind::Name(hir::Name {
+                id,
+                word: interp_buf_word,
+                instantiation: Instantiation::default(),
+            }),
+            strbuf_ty,
+            span,
+        ),
+    )
+}
+
+fn interp_fmt_expr(
+    cx: &mut Typeck<'_>,
+    env: &Env,
+    strbuf_ty: Ty,
+    interp_buf: hir::Expr,
+    expr: hir::Expr,
+) -> DiagnosticResult<hir::Expr> {
+    let span = expr.span;
+    let ty = cx.normalize(expr.ty);
+
+    let fmt_word = Word::new(ustr("fmt"), expr.span);
+    let fmt_fn = cx.lookup().query(
+        env.module_id(),
+        env.module_id(),
+        &Query::Fn(FnQuery {
+            word: fmt_word,
+            ty_args: None,
+            args: &[
+                FnTyParam { name: None, ty: ty.create_ref(Mutability::Imm) },
+                FnTyParam { name: None, ty: strbuf_ty.create_ref(Mutability::Mut) },
+            ],
+            is_ufcs: IsUfcs::Yes,
+        }),
+    )?;
+
+    let callee = cx.expr(
+        hir::ExprKind::Name(hir::Name {
+            id: fmt_fn,
+            word: fmt_word,
+            instantiation: Instantiation::default(),
+        }),
+        cx.def_ty(fmt_fn),
+        expr.span,
+    );
+
+    let args = vec![
+        hir::CallArg {
+            name: None,
+            expr: check_ref(cx, expr, ty, Mutability::Imm, span)?,
+            index: Some(0),
+        },
+        hir::CallArg {
+            name: None,
+            expr: check_ref(cx, interp_buf, strbuf_ty, Mutability::Imm, span)?,
+            index: Some(0),
+        },
+    ];
+
+    Ok(cx.expr(
+        hir::ExprKind::Call(hir::Call { callee: Box::new(callee), args }),
+        cx.db.types.unit,
+        span,
+    ))
+}
+
+fn interp_strbuf_take(
+    cx: &mut Typeck<'_>,
+    env: &Env,
+    str_module: ModuleId,
+    strbuf_ty: Ty,
+    interp_buf: hir::Expr,
+    span: Span,
+) -> hir::Expr {
+    let word = Word::new(ustr("take"), span);
+    let id = cx
+        .lookup()
+        .query(
+            env.module_id(),
+            str_module,
+            &Query::Fn(FnQuery {
+                word,
+                ty_args: None,
+                args: &[FnTyParam { name: None, ty: strbuf_ty }],
+                is_ufcs: IsUfcs::Yes,
+            }),
+        )
+        .expect("std.str.take(StrBuf) to exist");
+
+    let callee = cx.expr(
+        hir::ExprKind::Name(hir::Name { id, word, instantiation: Instantiation::default() }),
+        cx.def_ty(id),
+        span,
+    );
+
+    cx.expr(
+        hir::ExprKind::Call(hir::Call {
+            callee: Box::new(callee),
+            args: vec![hir::CallArg { name: None, expr: interp_buf, index: Some(0) }],
+        }),
+        cx.db.types.str,
+        span,
+    )
 }

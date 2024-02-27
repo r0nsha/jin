@@ -147,8 +147,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn insert_loop_move(&mut self, value: ValueId, span: Span) {
         let scope = self.scope();
 
-        if scope.loop_depth == 0 || self.value_depth(value) >= scope.loop_depth {
+        if scope.loop_depth == 0 {
             return;
+        }
+
+        match &self.body.value(value).kind {
+            ValueKind::Param(_, _) | ValueKind::Local(_)
+                if self.value_depth(value) < scope.loop_depth => {}
+            ValueKind::Field(_, _) => (),
+            _ => return,
         }
 
         if let Some(loop_scope) = self.closest_loop_scope_mut() {

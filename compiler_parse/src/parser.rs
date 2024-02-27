@@ -9,6 +9,7 @@ use std::ops::ControlFlow;
 
 use camino::{Utf8Path, Utf8PathBuf};
 use compiler_ast::{Module, TyParam};
+use compiler_core::word::Word;
 use compiler_core::{
     db::Db,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -18,6 +19,7 @@ use compiler_core::{
 };
 use compiler_helpers::create_bool_enum;
 use rustc_hash::FxHashSet;
+use ustr::ustr;
 use ustr::Ustr;
 
 use crate::{
@@ -194,6 +196,14 @@ impl<'a> Parser<'a> {
     #[inline]
     pub(super) fn eat_ident(&mut self) -> DiagnosticResult<Token> {
         self.eat(TokenKind::empty_ident())
+    }
+
+    #[inline]
+    pub(super) fn eat_str_lit(&mut self) -> DiagnosticResult<Word> {
+        let open = self.eat(TokenKind::StrOpen)?.span;
+        let lit = self.eat(TokenKind::StrText(ustr("")))?.str_value();
+        let close = self.eat(TokenKind::StrClose)?.span;
+        Ok(Word::new(lit, open.merge(close)))
     }
 
     #[inline]

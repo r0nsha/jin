@@ -93,7 +93,7 @@ impl<'db> Generator<'db> {
     pub fn codegen_bin_op_unchecked(&mut self, state: &GenState<'db>, data: &BinOpData) -> D<'db> {
         let (lhs, rhs) = (self.value(state, data.lhs), self.value(state, data.rhs));
 
-        let init = match (data.op, data.ty.kind()) {
+        let init = match (data.op, data.ty.auto_deref().kind()) {
             (BinOp::Cmp(CmpOp::Eq), TyKind::Str) => cmp_strs(lhs, rhs),
             (BinOp::Cmp(CmpOp::Ne), TyKind::Str) => D::text("!").append(cmp_strs(lhs, rhs)),
             _ => bin_op(lhs, data.op, rhs),

@@ -1589,10 +1589,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn new_scope(&self, kind: ScopeKind, span: Span) -> Scope {
+        let (depth, loop_depth) =
+            if let Some(s) = self.scopes.last() { (s.depth + 1, s.loop_depth) } else { (0, 0) };
+        let loop_depth = if let ScopeKind::Loop(..) = kind { loop_depth + 1 } else { loop_depth };
+
         Scope {
             kind,
-            depth: self.scopes.len(),
-            loop_depth: self.scopes.last().map(|s| s.loop_depth + 1).unwrap_or_default(),
+            depth,
+            loop_depth,
             span,
             created_values: IndexSet::default(),
             moved_out: IndexSet::default(),

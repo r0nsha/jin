@@ -451,7 +451,7 @@ pub(crate) fn define_transitive_globs(cx: &mut Typeck) {
     for (module_id, pairs) in trans {
         let module_globs = &mut cx.global_env.module_mut(module_id).globs;
         for (glob_module_id, imp) in pairs {
-            module_globs.insert(glob_module_id, imp);
+            module_globs.entry(glob_module_id).or_insert(imp);
         }
     }
 }

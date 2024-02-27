@@ -78,7 +78,6 @@ impl VarFolder<'_, '_> {
 
     fn fold_intvar(&mut self, var: IntVar) -> Ty {
         let root = self.cx.storage.int.find(var);
-
         self.cx.storage.int.probe_value(root).map_or_else(|| TyKind::DEFAULT_INT, Into::into).into()
     }
 

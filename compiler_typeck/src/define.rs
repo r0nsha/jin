@@ -106,12 +106,24 @@ impl<'db, 'cx> Define<'db, 'cx> {
         mutability: Mutability,
         ty: Ty,
     ) -> DefId {
+        let id = self.create_local(env, kind, name, mutability, ty);
+        env.insert(name.name(), id);
+        id
+    }
+
+    pub(crate) fn create_local(
+        &mut self,
+        env: &Env,
+        kind: DefKind,
+        name: Word,
+        mutability: Mutability,
+        ty: Ty,
+    ) -> DefId {
         let qpath = env.scope_path(self.cx.db).child(name.name());
         let scope =
             ScopeInfo { module_id: env.module_id(), level: env.scope_level(), vis: Vis::Module };
         let id = Def::alloc(self.cx.db, qpath, scope, kind, mutability, name.span());
         self.cx.def_to_ty.insert(id, ty);
-        env.insert(name.name(), id);
         id
     }
 
