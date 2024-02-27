@@ -58,8 +58,7 @@ const RcSlice = extern struct {
             self.start = new_data + slice_offset;
             array.cap = new_cap;
         } else {
-            std.debug.panic("called `grow` on an empty slice", .{});
-            // return Self.init(elem_size, new_cap);
+            self.* = Self.init(elem_size, new_cap);
         }
     }
 
@@ -238,12 +237,7 @@ export fn jinrt_slice_grow(
 ) Unit {
     if (slice.array) |a| {
         if (new_cap <= a.cap) {
-            const msg = std.fmt.allocPrint(
-                std.heap.c_allocator,
-                "grow out of bounds: cap is {} but new cap is {}",
-                .{ a.cap, new_cap },
-            ) catch unreachable;
-            jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
+            return;
         }
 
         if (a.refcnt > 1) {
