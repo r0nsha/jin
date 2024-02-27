@@ -1,14 +1,12 @@
-fn extern "c" printf(fmt: *u8, ..) -> i32
-
 fn main() = {
 	for {
-		unsafe printf("Once\n".ptr)
+		println("Once")
 		break
 	}
 
 	let mut i = 0
 	for if i <= 10 {
-		unsafe printf("For for: %d\n".ptr, i)
+		println("For loop: \(i)")
 		i += 1
 	}
 }

@@ -1,24 +1,20 @@
-fn extern "c" printf(fmt: *u8, ..) -> i32
-
 fn main() = {
 	run(print_answer)
 	do_add(add, 1, 2)
-	unsafe printf("map: %d\n".ptr, map(1, int_to_uint))
+	println("map: \(map(1, int_to_uint))")
 }
 
 fn run(f: fn()) = f()
 
-fn print_answer() = {
-	unsafe printf("The answer is %d\n".ptr, 42)
-}
+fn print_answer() =
+	println("The answer is \(42)")
 
 fn add(a: int, b: int) -> int = {
 	a + b
 }
 
-fn do_add(f: fn(int, int) -> int, a: int, b: int) = {
-	unsafe printf("a + b = %d\n".ptr, f(a, b))
-}
+fn do_add(f: fn(int, int) -> int, a: int, b: int) =
+	println("a + b = \(f(a,b))")
 
 fn map[A, B](val: A, f: fn(A) -> B) -> B = {
 	f(val)

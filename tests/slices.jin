@@ -27,7 +27,7 @@ fn ints() = {
 	let mut c = [1, 2, 3, 4, 5]
 	print(&c)
 	c.[1] = 69
-	unsafe printf("old=%d\n".ptr, c.[2] := 42)
+	println("old=\(c.[2] := 42)")
 	print(&c)
 	let c2 = &mut c.[1..3]
 	print(&c2)
@@ -41,12 +41,12 @@ fn ints() = {
 }
 
 fn print(s: &[int]) = {
-	unsafe printf("[".ptr)
+	print("[")
 	let mut i = 0
 	for if i < s.len {
-		unsafe printf("%d".ptr, s.[i])
+		print("\(s.[i])")
 		if i < s.len - 1 {
-			unsafe printf(", ".ptr)
+			print(", ")
 		}
 		i += 1
 	}
