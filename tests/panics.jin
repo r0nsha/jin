@@ -1,0 +1,5 @@
+use std.builtin.panic
+
+fn main() = {
+	unsafe panic("panicking!")
+}

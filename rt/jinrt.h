@@ -70,8 +70,10 @@ unit jinrt_slice_grow(jinrt_backtrace *backtrace, slice *s, size_t elem_size,
 usize jinrt_slice_cap(slice *s);
 
 // Panic
-void jinrt_panic_at(jinrt_backtrace *backtrace, u8 *msg,
-                    jinrt_stackframe frame);
+void jinrt_panic_raw(jinrt_backtrace *backtrace, u8 *msg,
+                     jinrt_stackframe frame);
+
+never jinrt_panic(jinrt_backtrace *backtrace, str msg, jinrt_stackframe frame);
 
 // Utils
 bool jinrt_strcmp(str a, str b);

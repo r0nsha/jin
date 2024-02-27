@@ -578,6 +578,9 @@ impl<'db> Generator<'db> {
                         args.push(self.sizeof_slice_elem(state, *slice));
                         args.push(self.value(state, *new_cap));
                     }
+                    RtCallKind::Panic { msg } => {
+                        args.push(self.value(state, *msg));
+                    }
                 }
 
                 if traced {

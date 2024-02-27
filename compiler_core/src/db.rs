@@ -826,6 +826,7 @@ impl ExternLib {
 pub enum Builtin {
     SliceGrow,
     Forget,
+    Panic,
 }
 
 impl<'a> TryFrom<&'a str> for Builtin {
@@ -835,6 +836,7 @@ impl<'a> TryFrom<&'a str> for Builtin {
         match value {
             "slice_grow" => Ok(Self::SliceGrow),
             "forget" => Ok(Self::Forget),
+            "panic" => Ok(Self::Panic),
             _ => Err(()),
         }
     }

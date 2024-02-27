@@ -240,6 +240,9 @@ impl<'db> PrettyCx<'db> {
                         RtCallKind::SliceGrow { slice, new_cap } => {
                             vec![self.value(body, *slice), self.value(body, *new_cap)]
                         }
+                        RtCallKind::Panic { msg } => {
+                            vec![self.value(body, *msg)]
+                        }
                     },
                     D::text(",").append(D::space()),
                 ))
