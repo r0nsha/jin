@@ -1,0 +1,5 @@
+use std.builtin
+
+pub fn panic() -> never = panic("explicit panic")
+pub fn panic(msg: str) -> never = panic(&msg)
+pub fn panic(msg: &str) -> never = unsafe builtin.panic(msg)

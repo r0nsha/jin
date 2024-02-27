@@ -408,7 +408,7 @@ impl<'db> Generator<'db> {
             D::space().append(D::intersperse(attr_docs, D::space()))
         };
 
-        initial.append(sig_doc).append(attrs).group()
+        attrs.append(initial).append(sig_doc).group()
     }
 
     pub fn define_fns(&mut self) {
