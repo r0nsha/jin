@@ -20,7 +20,7 @@ pub fn Array.new[T](len: uint, f: fn(uint) -> T) -> Array[T] = {
 pub fn Array.from[T](slice: [T]) -> Array[T] = Array(slice)
 
 pub fn Array.with_cap[T](cap: uint) -> Array[T] = {
-	# TODO: use a polymorphic `min` function for this	
+	# TODO: use a polymorphic `std.cmp.max` function for this	
 	let c = if cap > min_cap { cap } else { min_cap }
 	Array([:c])
 }
@@ -69,7 +69,7 @@ pub fn clear[T](self: &mut Array[T]) = {
 
 pub fn reserve[T](self: &mut Array[T], additional: uint) = {
 	if self.needs_to_grow(additional) {
-		self.grow()
+		self.grow(additional)
 	}
 }
 
@@ -87,12 +87,17 @@ fn needs_to_grow[T](self: &Array[T], additional: uint) -> bool =
 	self.buf.len + additional > self.buf.cap
 
 
-fn grow[T](self: &mut Array[T]) = {
+fn grow[T](self: &mut Array[T], additional: uint) = {
 	if self.buf.cap > 0 {
-		unsafe builtin.grow(&mut self.buf, self.buf.cap * 2)
+		let new_cap = max(self.buf.cap * 2, self.buf.cap + additional)
+		unsafe builtin.grow(&mut self.buf, new_cap)
 	} else {
 		self.buf = [:min_cap]
 	}
 }
+
+# TODO: use a polymorphic `std.cmp.max` function instead
+fn max(a: uint, b: uint) -> uint =
+	if a > b { a } else { b }
 
 let min_cap: uint = 4
