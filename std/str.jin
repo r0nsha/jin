@@ -40,8 +40,9 @@ pub fn as_mut(self: &mut StrBuf) -> &mut str =
 	)
 
 pub fn take(mut self: StrBuf) -> str = {
-	self.array.set_len(self.array.len() - 1)
-	str.from_utf8_unchecked(self.array.take())
+	let s = self.array.take()
+	unsafe s.len -= 1
+	str.from_utf8_unchecked(s)
 }
 
 pub fn push(self: &mut StrBuf, s: str) = self.push(&s)
