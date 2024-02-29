@@ -1,5 +1,5 @@
 use compiler_ast::{self as ast};
-use compiler_core::middle::{NamePat, Pat};
+use compiler_core::middle::{NamePat, Pat, Vis};
 use compiler_core::{
     db::{Adt, AdtField, AdtId, AdtKind, DefId, DefKind, FnInfo, ModuleId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -1152,6 +1152,7 @@ fn interp_let_buf(
                     id,
                     word: interp_buf_word,
                     mutability: Mutability::Mut,
+                    vis: Vis::Private,
                     ty: strbuf_ty,
                 }),
                 value: Box::new(call),

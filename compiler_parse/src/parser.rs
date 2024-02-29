@@ -99,7 +99,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_vis(&mut self) -> Vis {
-        if self.is_kw(Kw::Pub) {
+        if self.is(TokenKind::Star) {
             Vis::Public
         } else {
             Vis::Private

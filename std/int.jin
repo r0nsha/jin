@@ -2,91 +2,91 @@ use std.option.Option
 use std.slice.{?}
 use std.str.StrBuf
 
-pub let i8_min: i8 = -128
-pub let i8_max: i8 = 127
+let i8_min*: i8 = -128
+let i8_max*: i8 = 127
  
-pub let i16_min: i16 = -32_768
-pub let i16_max: i16 = 32_767
+let i16_min*: i16 = -32_768
+let i16_max*: i16 = 32_767
  
-pub let i32_min: i32 = -2_147_483_648
-pub let i32_max: i32 = 2_147_483_647
+let i32_min*: i32 = -2_147_483_648
+let i32_max*: i32 = 2_147_483_647
  
-pub let i64_min: i64 = -9_223_372_036_854_775_808
-pub let i64_max: i64 = 9_223_372_036_854_775_807
+let i64_min*: i64 = -9_223_372_036_854_775_808
+let i64_max*: i64 = 9_223_372_036_854_775_807
 
 # TODO: Consider 32bit platforms!
-pub let int_min: int = i64_min
-pub let int_max: int = i64_max
+let int_min*: int = i64_min
+let int_max*: int = i64_max
 
-pub let u8_min: u8 = 0
-pub let u8_max: u8 = 255
+let u8_min*: u8 = 0
+let u8_max*: u8 = 255
 
-pub let u16_min: u16 = 0
-pub let u16_max: u16 = 65_535
+let u16_min*: u16 = 0
+let u16_max*: u16 = 65_535
 
-pub let u32_min: u32 = 0
-pub let u32_max: u32 = 4_294_967_295
+let u32_min*: u32 = 0
+let u32_max*: u32 = 4_294_967_295
 
-pub let u64_min: u64 = 0
-pub let u64_max: u64 = 18_446_744_073_709_551_615
+let u64_min*: u64 = 0
+let u64_max*: u64 = 18_446_744_073_709_551_615
 
 # TODO: Consider 32bit platforms!
-pub let uint_min: uint = u64_min
-pub let uint_max: uint = u64_max
+let uint_min*: uint = u64_min
+let uint_max*: uint = u64_max
 
-pub fn abs(self: i8) -> i8 = if self > 0 { self } else { -self }
-pub fn abs(self: i16) -> i16 = if self > 0 { self } else { -self }
-pub fn abs(self: i32) -> i32 = if self > 0 { self } else { -self }
-pub fn abs(self: i64) -> i64 = if self > 0 { self } else { -self }
-pub fn abs(self: int) -> int = if self > 0 { self } else { -self }
+fn abs*(self: i8) -> i8 = if self > 0 { self } else { -self }
+fn abs*(self: i16) -> i16 = if self > 0 { self } else { -self }
+fn abs*(self: i32) -> i32 = if self > 0 { self } else { -self }
+fn abs*(self: i64) -> i64 = if self > 0 { self } else { -self }
+fn abs*(self: int) -> int = if self > 0 { self } else { -self }
 
-pub fn to_str(self: i8) -> str = fmt_impl(uint(self.abs()), self < 0, Format.decimal)
-pub fn to_str(self: i8, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
-pub fn fmt(self: &i8, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
+fn to_str*(self: i8) -> str = fmt_impl(uint(self.abs()), self < 0, Format.decimal)
+fn to_str*(self: i8, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
+fn fmt*(self: &i8, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
 
-pub fn to_str(self: i16) -> str = fmt_impl(uint(self.abs()), self < 0, Format.decimal)
-pub fn to_str(self: i16, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
-pub fn fmt(self: &i16, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
+fn to_str*(self: i16) -> str = fmt_impl(uint(self.abs()), self < 0, Format.decimal)
+fn to_str*(self: i16, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
+fn fmt*(self: &i16, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
 
-pub fn to_str(self: i32) -> str = fmt_impl(uint(self.abs()), self < 0, Format.decimal)
-pub fn to_str(self: i32, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
-pub fn fmt(self: &i32, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
+fn to_str*(self: i32) -> str = fmt_impl(uint(self.abs()), self < 0, Format.decimal)
+fn to_str*(self: i32, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
+fn fmt*(self: &i32, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
 
-pub fn to_str(self: i64) -> str = fmt_impl(uint(self.abs()), self < 0, Format.decimal)
-pub fn to_str(self: i64, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
-pub fn fmt(self: &i64, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
+fn to_str*(self: i64) -> str = fmt_impl(uint(self.abs()), self < 0, Format.decimal)
+fn to_str*(self: i64, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
+fn fmt*(self: &i64, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
 
-pub fn to_str(self: int) -> str = fmt_impl(uint(self.abs()), self < 0, Format.decimal)
-pub fn to_str(self: int, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
-pub fn fmt(self: &int, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
+fn to_str*(self: int) -> str = fmt_impl(uint(self.abs()), self < 0, Format.decimal)
+fn to_str*(self: int, format: Format) -> str = fmt_impl(uint(self.abs()), self < 0, format)
+fn fmt*(self: &int, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
 
-pub fn to_str(self: u8) -> str = fmt_impl(self, false, Format.decimal)
-pub fn to_str(self: u8, format: Format) -> str = fmt_impl(self, false, format)
-pub fn fmt(self: &u8, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
+fn to_str*(self: u8) -> str = fmt_impl(self, false, Format.decimal)
+fn to_str*(self: u8, format: Format) -> str = fmt_impl(self, false, format)
+fn fmt*(self: &u8, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
 
-pub fn to_str(self: u16) -> str = fmt_impl(self, false, Format.decimal)
-pub fn to_str(self: u16, format: Format) -> str = fmt_impl(self, false, format)
-pub fn fmt(self: &u16, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
+fn to_str*(self: u16) -> str = fmt_impl(self, false, Format.decimal)
+fn to_str*(self: u16, format: Format) -> str = fmt_impl(self, false, format)
+fn fmt*(self: &u16, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
 
-pub fn to_str(self: u32) -> str = fmt_impl(self, false, Format.decimal)
-pub fn to_str(self: u32, format: Format) -> str = fmt_impl(self, false, format)
-pub fn fmt(self: &u32, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
+fn to_str*(self: u32) -> str = fmt_impl(self, false, Format.decimal)
+fn to_str*(self: u32, format: Format) -> str = fmt_impl(self, false, format)
+fn fmt*(self: &u32, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
 
-pub fn to_str(self: u64) -> str = fmt_impl(self, false, Format.decimal)
-pub fn to_str(self: u64, format: Format) -> str = fmt_impl(self, false, format)
-pub fn fmt(self: &u64, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
+fn to_str*(self: u64) -> str = fmt_impl(self, false, Format.decimal)
+fn to_str*(self: u64, format: Format) -> str = fmt_impl(self, false, format)
+fn fmt*(self: &u64, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
 
-pub fn to_str(self: uint) -> str = fmt_impl(self, false, Format.decimal)
-pub fn to_str(self: uint, format: Format) -> str = fmt_impl(self, false, format)
-pub fn fmt(self: &uint, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
+fn to_str*(self: uint) -> str = fmt_impl(self, false, Format.decimal)
+fn to_str*(self: uint, format: Format) -> str = fmt_impl(self, false, format)
+fn fmt*(self: &uint, buf: &mut StrBuf) = buf.push(self.to_str(Format.decimal))
 
-pub type Format {
+type Format* {
 	binary
 	decimal
 	hex
 }
 
-pub fn base(f: Format) -> uint = match f {
+fn base*(f: Format) -> uint = match f {
 	Format.binary -> 2
 	Format.decimal -> 10
 	Format.hex -> 16

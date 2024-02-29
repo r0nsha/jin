@@ -33,7 +33,7 @@ fn build_imports_map(cx: &mut Typeck, ast: &Ast) -> ImportsMap {
 
         let entry = map.entry(module.id).or_default();
         let root_module_id = cx.db.find_module_by_source_path(&import.module_path).unwrap().id;
-        BuildImportsMap::new(cx, entry, root_module_id, module.id, import.vis).build(&import.tree);
+        BuildImportsMap::new(cx, entry, root_module_id, module.id).build(&import.tree);
     }
 
     map
@@ -44,7 +44,6 @@ struct BuildImportsMap<'a, 'db> {
     entry: &'a mut Imports,
     root_module_id: ModuleId,
     module_id: ModuleId,
-    vis: Vis,
 }
 
 impl<'a, 'db> BuildImportsMap<'a, 'db> {
@@ -53,9 +52,8 @@ impl<'a, 'db> BuildImportsMap<'a, 'db> {
         entry: &'a mut Imports,
         root_module_id: ModuleId,
         module_id: ModuleId,
-        vis: Vis,
     ) -> Self {
-        Self { cx, entry, root_module_id, module_id, vis }
+        Self { cx, entry, root_module_id, module_id }
     }
 
     fn build(&mut self, tree: &ast::ImportTree) {
@@ -74,14 +72,14 @@ impl<'a, 'db> BuildImportsMap<'a, 'db> {
                 new_path.push(*name);
                 self.build_helper(new_path, next);
             }
-            ast::ImportTree::Name(name, alias) => self.insert_name(path, *name, *alias),
-            ast::ImportTree::Glob(is_ufcs, span) => {
-                self.insert_glob(path, *is_ufcs, *span);
+            ast::ImportTree::Name(name, alias, vis) => self.insert_name(path, *name, *alias, *vis),
+            ast::ImportTree::Glob(is_ufcs, vis, span) => {
+                self.insert_glob(path, *is_ufcs, *vis, *span);
             }
         }
     }
 
-    fn insert_name(&mut self, path: Vec<Word>, name: Word, alias: Option<Word>) {
+    fn insert_name(&mut self, path: Vec<Word>, name: Word, alias: Option<Word>, vis: Vis) {
         let mut new_path = path.clone();
         new_path.push(name);
 
@@ -91,7 +89,7 @@ impl<'a, 'db> BuildImportsMap<'a, 'db> {
             path: new_path,
             alias,
             module_id: self.module_id,
-            vis: self.vis,
+            vis,
         };
 
         if let Some(prev) = self.entry.imports.insert(alias.name(), import) {
@@ -99,13 +97,13 @@ impl<'a, 'db> BuildImportsMap<'a, 'db> {
         }
     }
 
-    fn insert_glob(&mut self, path: Vec<Word>, is_ufcs: IsUfcs, span: Span) {
+    fn insert_glob(&mut self, path: Vec<Word>, is_ufcs: IsUfcs, vis: Vis, span: Span) {
         self.entry.glob_imports.push(GlobImport {
             root_module_id: self.root_module_id,
             path,
             is_ufcs,
             module_id: self.module_id,
-            vis: self.vis,
+            vis,
             span,
         });
     }

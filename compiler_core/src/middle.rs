@@ -258,6 +258,7 @@ pub struct NamePat {
     pub id: DefId,
     pub word: Word,
     pub mutability: Mutability,
+    pub vis: Vis,
     pub ty: Ty,
 }
 

@@ -1,3 +1,4 @@
+use compiler_core::middle::Vis;
 use compiler_data_structures::index_vec::Key;
 use indexmap::IndexSet;
 use ustr::{ustr, Ustr};
@@ -231,6 +232,7 @@ impl<'db> Lower<'db> {
                     id: DefId::null(),
                     word: field.name,
                     mutability: Mutability::Imm,
+                    vis: Vis::Public,
                     ty: field.ty,
                 }),
                 ty: field.ty,

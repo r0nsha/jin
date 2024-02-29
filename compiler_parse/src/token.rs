@@ -136,6 +136,7 @@ impl TokenKind {
             | TokenKind::CloseBracket
             | TokenKind::CloseCurly
             | TokenKind::Semi(_)
+            | TokenKind::Star
             | TokenKind::StrOpen
             | TokenKind::StrClose => true,
 
@@ -153,8 +154,7 @@ impl TokenKind {
                 | Kw::Imm
                 | Kw::Ref
                 | Kw::Move
-                | Kw::Unsafe
-                | Kw::Pub,
+                | Kw::Unsafe,
             )
             | TokenKind::Dot
             | TokenKind::DotDot
@@ -168,7 +168,6 @@ impl TokenKind {
             | TokenKind::EqEq
             | TokenKind::Bang
             | TokenKind::BangEq
-            | TokenKind::Star
             | TokenKind::StarEq
             | TokenKind::FwSlash
             | TokenKind::FwSlashEq
@@ -220,7 +219,6 @@ impl TokenKind {
                 | Kw::Use
                 | Kw::For
                 | Kw::Unsafe
-                | Kw::Pub
                 | Kw::As,
             )
             | TokenKind::Int(_)
@@ -375,7 +373,6 @@ pub enum Kw {
     Ref,
     Move,
     Unsafe,
-    Pub,
 }
 
 static KEYWORDS: phf::Map<&'static str, Kw> = phf_map! {
@@ -398,7 +395,6 @@ static KEYWORDS: phf::Map<&'static str, Kw> = phf_map! {
     "ref" => Kw::Ref,
     "move" => Kw::Move,
     "unsafe" => Kw::Unsafe,
-    "pub" => Kw::Pub,
 };
 
 impl<'a> TryFrom<&'a str> for Kw {
@@ -434,7 +430,6 @@ impl fmt::Display for Kw {
                 Self::Ref => "ref",
                 Self::Move => "move",
                 Self::Unsafe => "unsafe",
-                Self::Pub => "pub",
             }
         )
     }

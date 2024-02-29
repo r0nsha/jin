@@ -11,6 +11,7 @@ use compiler_core::{
 use compiler_data_structures::index_vec::Key as _;
 use ustr::ustr;
 
+use crate::parser::item::AllowVis;
 use crate::{
     bin_op_from_assign_op, errors,
     parser::{item::RequireTy, AllowOmitParens, Parser, RequireSigTy},
@@ -358,17 +359,22 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn parse_pat(&mut self) -> DiagnosticResult<Pat> {
+    pub(super) fn parse_pat(&mut self, allow_vis: AllowVis) -> DiagnosticResult<Pat> {
         let mutability = self.parse_mutability();
         let tok = self.eat_any()?;
 
         match tok.kind {
-            TokenKind::Ident(_) => Ok(Pat::Name(NamePat {
-                id: DefId::null(),
-                word: tok.word(),
-                mutability,
-                ty: TyKind::Unknown.into(),
-            })),
+            TokenKind::Ident(_) => {
+                let vis =
+                    if allow_vis == AllowVis::Yes { self.parse_vis() } else { Vis::default() };
+                Ok(Pat::Name(NamePat {
+                    id: DefId::null(),
+                    word: tok.word(),
+                    mutability,
+                    vis,
+                    ty: TyKind::Unknown.into(),
+                }))
+            }
             TokenKind::Underscore => Ok(Pat::Discard(tok.span)),
             _ => Err(errors::unexpected_token_err("a pattern", tok.kind, tok.span)),
         }
@@ -405,7 +411,7 @@ impl<'a> Parser<'a> {
 
     fn parse_stmt(&mut self) -> DiagnosticResult<Expr> {
         if self.is_kw(Kw::Let) {
-            let let_ = self.parse_let(Attrs::new(), Vis::Private, RequireTy::No)?;
+            let let_ = self.parse_let(Attrs::new(), AllowVis::No, RequireTy::No)?;
             Ok(Expr::Let(let_))
         } else {
             self.parse_expr()

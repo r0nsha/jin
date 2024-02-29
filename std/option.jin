@@ -1,32 +1,32 @@
 use std.panicking.panic
 
-pub type Option[T] {
+type Option*[T] {
 	some(value: T)
 	none
 }
 
-pub fn get[T](self: Option[T]) -> T =
+fn get*[T](self: Option[T]) -> T =
 	match self {
 		Option.some(v) -> v
 		Option.none -> panic("called `get` on a `none` value")
 	}
 
-pub fn is_some[T](self: &Option[T]) -> bool =
+fn is_some*[T](self: &Option[T]) -> bool =
 	match self {
 		Option.some(_) -> true
 		Option.none -> false
 	}
 
-pub fn is_none[T](self: &Option[T]) -> bool =
+fn is_none*[T](self: &Option[T]) -> bool =
 	!self.is_some()
 
-pub fn map[A, B](self: Option[A], f: fn(A) -> B) -> Option[B] =
+fn map*[A, B](self: Option[A], f: fn(A) -> B) -> Option[B] =
 	match self {
 		Option.some(v) -> Option.some(f(v))
 		Option.none -> Option.none
 	}
 
-pub fn map_or[A, B](self: Option[A], default: B, f: fn(A) -> B) -> B =
+fn map_or*[A, B](self: Option[A], default: B, f: fn(A) -> B) -> B =
 	match self {
 		Option.some(v) -> f(v)
 		Option.none -> default

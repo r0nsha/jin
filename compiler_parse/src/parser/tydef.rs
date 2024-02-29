@@ -7,7 +7,6 @@ use compiler_ast::{
 use compiler_core::{
     db::{StructKind, UnionKind},
     diagnostics::DiagnosticResult,
-    middle::Vis,
 };
 
 use crate::{
@@ -16,10 +15,11 @@ use crate::{
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn parse_tydef(&mut self, attrs: Attrs, vis: Vis) -> DiagnosticResult<TyDef> {
+    pub(super) fn parse_tydef(&mut self, attrs: Attrs) -> DiagnosticResult<TyDef> {
         let start = self.last_span();
 
         let ident = self.eat_ident()?;
+        let vis = self.parse_vis();
         let ty_params = self.parse_optional_ty_params()?;
         let kind = self.parse_tydef_kind()?;
 
@@ -43,8 +43,8 @@ impl<'a> Parser<'a> {
 
     fn parse_tydef_struct(&mut self, kind: StructKind) -> DiagnosticResult<TyDefKind> {
         let (fields, _) = self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
-            let vis = this.parse_vis();
             let ident = this.eat_ident()?;
+            let vis = this.parse_vis();
             this.eat(TokenKind::Colon)?;
             let ty_expr = this.parse_ty()?;
             Ok(ControlFlow::Continue(StructTyField { name: ident.word(), vis, ty_expr }))

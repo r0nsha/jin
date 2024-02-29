@@ -1,8 +1,8 @@
 @builtin("slice_grow")
-pub fn extern "jin" grow[T](slice: &mut [T], new_cap: uint)
+fn extern "jin" grow*[T](slice: &mut [T], new_cap: uint)
 
 @builtin("forget")
-pub fn extern "jin" forget[T](x: &T)
+fn extern "jin" forget*[T](x: &T)
 
 @builtin("panic")
-pub fn extern "jin" panic(msg: &str) -> never
+fn extern "jin" panic*(msg: &str) -> never
