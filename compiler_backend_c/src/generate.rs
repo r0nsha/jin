@@ -1,6 +1,7 @@
 use std::{fs::File, io::Write, iter};
 
 use camino::Utf8PathBuf;
+use compiler_core::ty::TyKind;
 use compiler_data_structures::index_vec::Key as _;
 use pretty::RcDoc as D;
 use rustc_hash::FxHashMap;
@@ -553,14 +554,24 @@ impl<'db> Generator<'db> {
 
                 arg_docs.extend(args.iter().copied().map(|a| self.value(state, a)));
 
-                let call = self.value_assign(state, *value, |this| {
-                    util::call(this.value(state, *callee), arg_docs)
-                });
+                let call = util::call(self.value(state, *callee), arg_docs);
+                let callee_ret = state.ty_of(*callee).as_fn().unwrap().ret;
+
+                let stmts = if callee_ret.is_diverging() {
+                    util::stmts([
+                        call,
+                        self.value_assign(state, *value, |this| {
+                            this.zero_value(state.ty_of(*value))
+                        }),
+                    ])
+                } else {
+                    self.value_assign(state, *value, |_| call)
+                };
 
                 if traced {
-                    self.with_stack_frame(state, call, *span)
+                    self.with_stack_frame(state, stmts, *span)
                 } else {
-                    call
+                    stmts
                 }
             }
             Inst::RtCall { value, kind, span } => {
@@ -693,6 +704,15 @@ impl<'db> Generator<'db> {
             format!("{}${}", name, value)
         } else {
             format!("v{}", value)
+        }
+    }
+
+    pub(crate) fn zero_value(&mut self, ty: Ty) -> D<'db> {
+        match ty.auto_deref().kind() {
+            TyKind::Adt(adt_id, _) if self.db[*adt_id].is_value_type() => util::struct_lit(vec![]),
+            TyKind::Slice(_) | TyKind::Str => util::struct_lit(vec![]),
+            TyKind::Unit | TyKind::Never => util::unit_value(),
+            _ => util::cast(ty.cty(self), D::text("0")),
         }
     }
 }
