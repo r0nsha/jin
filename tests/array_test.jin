@@ -49,7 +49,7 @@ fn print(array: &Array[int]) = {
 	array.as_ref().print()
 }
 
-fn print(slice: &[int]) = {
+fn print(slice: &[]int) = {
 	unsafe printf("[".ptr)
 	let mut i = 0
 	for if i < slice.len {

@@ -26,8 +26,8 @@ impl<'a> Parser<'a> {
                 TyExpr::Ref(Box::new(inner), mutability, span)
             }
             TokenKind::OpenBracket => {
-                let inner = self.parse_ty()?;
                 self.eat(TokenKind::CloseBracket)?;
+                let inner = self.parse_ty()?;
                 let span = tok.span.merge(inner.span());
                 TyExpr::Slice(Box::new(inner), span)
             }

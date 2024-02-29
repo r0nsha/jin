@@ -42,10 +42,10 @@ fn len_utf8(code: u32) -> uint =
 	4
     }
 
-fn encode_utf8*(self: char, dst: &mut [u8]) -> &mut [u8] =
+fn encode_utf8*(self: char, dst: &mut []u8) -> &mut []u8 =
     encode_utf8_raw(u32(self), dst)
 
-fn encode_utf8_raw*(code: u32, dst: &mut [u8]) -> &mut [u8] = {
+fn encode_utf8_raw*(code: u32, dst: &mut []u8) -> &mut []u8 = {
     let len = code.len_utf8()
     assert(dst.len >= len)
 

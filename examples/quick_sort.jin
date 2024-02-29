@@ -7,7 +7,7 @@ fn main() = {
     slice.print()
 }
 
-fn quick_sort(slice: &mut [int]) = {
+fn quick_sort(slice: &mut []int) = {
     let len = slice.len
 
     if len < 2 {
@@ -19,7 +19,7 @@ fn quick_sort(slice: &mut [int]) = {
     quick_sort(&mut slice.[pivot_idx + 1..len])
 }
 
-fn partition(slice: &mut [int]) -> uint = {
+fn partition(slice: &mut []int) -> uint = {
     let len = slice.len
     let pivot_idx = len / 2
     let last_idx = len - 1
@@ -41,7 +41,7 @@ fn partition(slice: &mut [int]) -> uint = {
     store_idx
 }
 
-fn print(slice: &[int]) = {
+fn print(slice: &[]int) = {
     let mut i = 0
     for if i < slice.len {
         print("\(slice.[i]) ")
