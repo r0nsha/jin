@@ -64,7 +64,7 @@ impl<'a> Parser<'a> {
             path.push(self.eat_ident()?.word());
         }
 
-        let targs = self.parse_optional_ty_args()?;
+        let targs = self.parse_optional_targs()?;
         let span = start_span.merge(self.last_span());
 
         Ok(TyExpr::Path(path, targs, span))
@@ -106,17 +106,30 @@ impl<'a> Parser<'a> {
         Ok((params, is_c_variadic))
     }
 
-    pub(super) fn parse_optional_ty_args(&mut self) -> DiagnosticResult<Option<Vec<TyExpr>>> {
-        if !self.peek_is(TokenKind::OpenBracket) {
-            return Ok(None);
+    pub(super) fn parse_targs(&mut self) -> DiagnosticResult<Vec<TyExpr>> {
+        self.parse_list(TokenKind::OpenBracket, TokenKind::CloseBracket, |this| {
+            this.parse_ty().map(ControlFlow::Continue)
+        })
+        .map(|(t, _)| t)
+    }
+
+    pub(super) fn parse_optional_targs(&mut self) -> DiagnosticResult<Option<Vec<TyExpr>>> {
+        if self.peek_is(TokenKind::OpenBracket) {
+            Ok(Some(self.parse_targs()?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub(super) fn parse_optional_expr_targs(&mut self) -> DiagnosticResult<Option<Vec<TyExpr>>> {
+        if self.is(TokenKind::Dot) {
+            if self.peek_is(TokenKind::OpenBracket) {
+                return Ok(Some(self.parse_targs()?));
+            }
+
+            self.back();
         }
 
-        let args = self
-            .parse_list_optional(TokenKind::OpenBracket, TokenKind::CloseBracket, |this| {
-                this.parse_ty().map(ControlFlow::Continue)
-            })
-            .map(|(t, _)| t)?;
-
-        Ok(Some(args))
+        Ok(None)
     }
 }

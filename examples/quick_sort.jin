@@ -15,8 +15,8 @@ fn quick_sort(slice: &mut []int) = {
     }
 
     let pivot_idx = partition(&mut slice)
-    quick_sort(&mut slice.[0..pivot_idx])
-    quick_sort(&mut slice.[pivot_idx + 1..len])
+    quick_sort(&mut slice[0..pivot_idx])
+    quick_sort(&mut slice[pivot_idx + 1..len])
 }
 
 fn partition(slice: &mut []int) -> uint = {
@@ -29,7 +29,7 @@ fn partition(slice: &mut []int) -> uint = {
     let mut store_idx = 0
     let mut i = 0
     for if i < last_idx {
-        if slice.[i] < slice.[last_idx] {
+        if slice[i] < slice[last_idx] {
             slice.swap(i, store_idx)
             store_idx += 1
         }
@@ -44,7 +44,7 @@ fn partition(slice: &mut []int) -> uint = {
 fn print(slice: &[]int) = {
     let mut i = 0
     for if i < slice.len {
-        print("\(slice.[i]) ")
+        print("\(slice[i]) ")
         i += 1
     }
     println()

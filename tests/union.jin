@@ -3,7 +3,7 @@ type Box(value: int)
 fn main() = {
 	# Value constructors
 	let a = Option.some(1)
-	let b = Option[int].some(1)
+	let b = Option.[int].some(1)
 	let c = Option.some(value: 2)
 	let d: Option[int] = Option.none
 

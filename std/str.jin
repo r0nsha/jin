@@ -31,12 +31,12 @@ fn is_empty*(self: &StrBuf) -> bool = self.len() == 0
 
 fn as_ref*(self: &StrBuf) -> &str =
 	str.from_utf8_unchecked(
-		&self.array.as_ref().[..self.array.len() - 1]
+		&self.array.as_ref()[..self.array.len() - 1]
 	)
 
 fn as_mut*(self: &mut StrBuf) -> &mut str =
 	str.from_utf8_mut_unchecked(
-		&mut self.array.as_mut().[..self.array.len() - 1]
+		&mut self.array.as_mut()[..self.array.len() - 1]
 	)
 
 fn take*(mut self: StrBuf) -> str = {
@@ -57,11 +57,11 @@ fn push*(self: &mut StrBuf, s: &str) = {
 
 	# TODO: This is a good use-case for implementing a `push([]T)` function.
 	self.array.reserve(len + 1)
-	self.array.set(self.array.len() - 1, bytes.[0])
+	self.array.set(self.array.len() - 1, bytes[0])
 
 	let mut i = 1
 	for if i < len {
-		self.array.push_unchecked(bytes.[i])
+		self.array.push_unchecked(bytes[i])
 		i += 1
 	}
 
@@ -79,7 +79,7 @@ fn push*(self: &mut StrBuf, ch: char) = {
 	self.array.reserve(ch_len + 1)
 	self.array.set_len(new_len - 1)
 
-	ch.encode_utf8(&mut self.array.as_mut().[len - 1..new_len - 1])
+	ch.encode_utf8(&mut self.array.as_mut()[len - 1..new_len - 1])
 	self.array.push(b'\0')
 }
 
