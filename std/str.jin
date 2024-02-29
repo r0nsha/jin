@@ -55,6 +55,7 @@ pub fn push(self: &mut StrBuf, s: &str) = {
 	let bytes = s.as_bytes()
 	let len = bytes.len
 
+	# TODO: This is a good use-case for implementing an `extend(&[T])` function.
 	self.array.reserve(len + 1)
 	self.array.set(self.array.len() - 1, bytes.[0])
 
@@ -72,6 +73,9 @@ pub fn push(self: &mut StrBuf, ch: char) = {
 	let ch_len = ch.len_utf8()
 	let new_len = len + ch_len 
 
+	# TODO: This is a good use-case for implementing an `extend` function. For this we need:
+	#		1. Stack allocated arrays. We then encode the char into an array of 4 elements.
+	#		2. Implement `std.array.extend([T])`
 	self.array.reserve(ch_len + 1)
 	self.array.set_len(new_len - 1)
 

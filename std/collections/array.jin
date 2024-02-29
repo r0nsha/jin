@@ -73,12 +73,14 @@ pub fn reserve[T](self: &mut Array[T], additional: uint) = {
 	}
 }
 
-fn push_unchecked[T](self: &mut Array[T], value: T) = {
+# TODO: this should be marked `unsafe`
+pub fn push_unchecked[T](self: &mut Array[T], value: T) = {
 	unsafe self.buf.len += 1
 	self.buf.[self.buf.len - 1] = value
 }
 
-fn set_len[T](self: &mut Array[T], len: uint) = {
+# TODO: this should be marked `unsafe`
+pub fn set_len[T](self: &mut Array[T], len: uint) = {
 	unsafe self.buf.len = len
 }
 

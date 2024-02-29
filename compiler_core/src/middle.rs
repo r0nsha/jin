@@ -10,8 +10,9 @@ use crate::{
     word::Word,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum Vis {
+    #[default]
     Module = 0,
     Package = 1,
     Export = 2,
