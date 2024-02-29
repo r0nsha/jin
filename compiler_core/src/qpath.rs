@@ -56,6 +56,10 @@ impl QPath {
     pub fn iter(&self) -> impl Iterator<Item = &Ustr> {
         self.0.iter()
     }
+
+    pub fn is_subpath(&self, of: &Self) -> bool {
+        self.iter().zip(of.iter()).all(|(a, b)| a == b)
+    }
 }
 
 impl Default for QPath {

@@ -302,6 +302,11 @@ impl ModuleInfo {
     pub fn span(&self) -> Span {
         Span::uniform(self.source_id, 0)
     }
+
+    pub fn is_submodule(&self, db: &Db, of: ModuleId) -> bool {
+        let of = &db[of];
+        self.package == of.package && self.qpath.is_subpath(&of.qpath)
+    }
 }
 
 #[derive(Debug, Clone)]

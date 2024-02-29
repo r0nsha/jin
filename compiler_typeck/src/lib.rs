@@ -236,7 +236,9 @@ impl<'db> Typeck<'db> {
         match vis {
             Vis::Export => true,
             Vis::Package => self.db[from_module].package == self.db[in_module].package,
-            Vis::Module => from_module == in_module,
+            Vis::Module => {
+                from_module == in_module || self.db[from_module].is_submodule(self.db, in_module)
+            }
         }
     }
 }
