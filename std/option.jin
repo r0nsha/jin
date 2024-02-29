@@ -1,13 +1,15 @@
+use std.panicking.panic
+
 pub type Option[T] {
 	some(value: T)
 	none
 }
 
-# pub fn or_panic[T](self: Option[T]) -> bool =
-# 	match self {
-# 		Option.some(v) -> v
-# 		Option.none -> panic("called `or_panic` on a `none` value")
-# 	}
+pub fn get[T](self: Option[T]) -> T =
+	match self {
+		Option.some(v) -> v
+		Option.none -> panic("called `get` on a `none` value")
+	}
 
 pub fn is_some[T](self: &Option[T]) -> bool =
 	match self {

@@ -80,7 +80,7 @@ const RcSlice = extern struct {
     }
 
     fn as_slice(self: Self) ?[]u8 {
-        return if (self.array) |a| a.data[0..self.len] else null;
+        return if (self.start) |start| start[0..self.len] else null;
     }
 };
 
@@ -133,11 +133,19 @@ const StackFrame = extern struct {
 
 export fn jinrt_init() void {}
 
-export fn jinrt_panic_at(backtrace: *Backtrace, msg: cstr, frame: StackFrame) noreturn {
+export fn jinrt_panic_raw(backtrace: *Backtrace, msg: cstr, frame: StackFrame) noreturn {
     backtrace.push(frame) catch unreachable;
     backtrace.print();
     const tid = std.Thread.getCurrentId();
     std.debug.print("Thread {} panicked: {s}\n", .{ tid, msg });
+    std.process.exit(1);
+}
+
+export fn jinrt_panic(backtrace: *Backtrace, msg: Str, frame: StackFrame) noreturn {
+    backtrace.push(frame) catch unreachable;
+    backtrace.print();
+    const tid = std.Thread.getCurrentId();
+    std.debug.print("Thread {} panicked: {s}\n", .{ tid, msg.as_slice().? });
     std.process.exit(1);
 }
 
@@ -195,7 +203,7 @@ export fn jinrt_slice_index_boundscheck(
             "index out of bounds: len is {} but index is {}",
             .{ slice.len, index },
         ) catch unreachable;
-        jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
+        jinrt_panic_raw(backtrace, @ptrCast(msg.ptr), frame);
     }
 }
 
@@ -213,7 +221,7 @@ export fn jinrt_slice_slice(
             "low bound ({}) must be lower than high bound ({})",
             .{ low, high },
         ) catch unreachable;
-        jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
+        jinrt_panic_raw(backtrace, @ptrCast(msg.ptr), frame);
     }
 
     if (high > slice.len) {
@@ -222,7 +230,7 @@ export fn jinrt_slice_slice(
             "slice out of bounds: high bound is {} but len is {}",
             .{ high, slice.len },
         ) catch unreachable;
-        jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
+        jinrt_panic_raw(backtrace, @ptrCast(msg.ptr), frame);
     }
 
     return slice.slice(elem_size, low, high);
@@ -246,7 +254,7 @@ export fn jinrt_slice_grow(
                 "cannot grow a slice as it still has {} reference(s)",
                 .{a.refcnt},
             ) catch unreachable;
-            jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
+            jinrt_panic_raw(backtrace, @ptrCast(msg.ptr), frame);
         }
     }
 
@@ -300,6 +308,6 @@ inline fn refcheck(backtrace: *Backtrace, refcnt: u32, tyname: cstr, frame: Stac
             "cannot destroy a value of type `{s}` as it still has {} reference(s)",
             .{ tyname, refcnt },
         ) catch unreachable;
-        jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
+        jinrt_panic_raw(backtrace, @ptrCast(msg.ptr), frame);
     }
 }

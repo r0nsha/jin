@@ -1183,7 +1183,7 @@ fn interp_fmt_expr(
     let span = expr.span;
     let ty = cx.normalize(expr.ty);
 
-    let fmt_word = Word::new(ustr("fmt"), expr.span);
+    let fmt_word = Word::new(ustr("fmt"), span);
     let fmt_fn = cx.lookup().query(
         env.module_id(),
         env.module_id(),
@@ -1205,7 +1205,7 @@ fn interp_fmt_expr(
             instantiation: Instantiation::default(),
         }),
         cx.def_ty(fmt_fn),
-        expr.span,
+        span,
     );
 
     let args = vec![

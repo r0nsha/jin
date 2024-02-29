@@ -915,6 +915,17 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 self.const_unit()
             }
+            Builtin::Panic => {
+                debug_assert_eq!(args.len(), 1);
+
+                let msg = args[0];
+
+                self.push_inst_with_register(expr.ty, |value| Inst::RtCall {
+                    value,
+                    kind: RtCallKind::Panic { msg },
+                    span: expr.span,
+                })
+            }
         }
     }
 

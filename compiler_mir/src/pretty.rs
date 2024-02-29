@@ -240,6 +240,9 @@ impl<'db> PrettyCx<'db> {
                         RtCallKind::SliceGrow { slice, new_cap } => {
                             vec![self.value(body, *slice), self.value(body, *new_cap)]
                         }
+                        RtCallKind::Panic { msg } => {
+                            vec![self.value(body, *msg)]
+                        }
                     },
                     D::text(",").append(D::space()),
                 ))
@@ -276,6 +279,7 @@ impl<'db> PrettyCx<'db> {
             Inst::StrLit { value, lit } => self
                 .value_assign(body, *value)
                 .append(D::text("\"").append(D::text(lit.as_str())).append(D::text("\""))),
+            Inst::Unreachable => D::text("unreachable"),
         }
     }
 

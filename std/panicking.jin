@@ -1,0 +1,17 @@
+use std.builtin
+use std.str.{?}
+
+pub fn panic() -> never = panic("explicit panic")
+pub fn panic(msg: str) -> never = panic(&msg)
+pub fn panic(msg: &str) -> never = unsafe builtin.panic(msg)
+
+pub fn todo() -> never = panic("not yet implemented")
+pub fn todo(msg: str) -> never = todo(&msg)
+pub fn todo(msg: &str) -> never = panic("not yet implemented: \(msg)")
+
+pub fn assert(cond: bool) = 
+    if !cond { panic("assertion failed") }
+
+pub fn assert(cond: bool, msg: str) = assert(cond, &msg)
+pub fn assert(cond: bool, msg: &str) = 
+    if !cond { panic("assertion failed: \(msg)") }

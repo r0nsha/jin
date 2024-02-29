@@ -25,7 +25,7 @@ impl<'db> Generator<'db> {
 
     pub fn call_panic(&self, state: &GenState<'db>, msg: &str, span: Span) -> D<'db> {
         call(
-            D::text("jinrt_panic_at"),
+            D::text("jinrt_panic_raw"),
             [D::text("backtrace"), str_lit(msg), self.create_stackframe_value(state, span)],
         )
     }

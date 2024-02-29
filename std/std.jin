@@ -5,6 +5,7 @@ pub use .collections
 pub use .int
 pub use .io
 pub use .option
+pub use .panicking
 pub use .prelude
 pub use .ptr
 pub use .result
