@@ -128,17 +128,19 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         mut candidates: Vec<&FnCandidate>,
         from_module: ModuleId,
     ) -> DiagnosticResult<Option<DefId>> {
-        if !candidates.is_empty()
-            && candidates.iter().all(|c| !self.cx.can_access_def(from_module, c.id))
-        {
+        if candidates.is_empty() {
+            return Ok(None);
+        }
+
+        candidates.retain(|c| self.cx.can_access_def(from_module, c.id));
+
+        if candidates.is_empty() {
             return Err(Diagnostic::error(format!(
                 "all functions which apply to `{}` are private",
                 query.display(self.cx.db)
             ))
             .with_label(Label::primary(query.word.span(), "no accessible function found")));
         }
-
-        candidates.retain(|c| self.cx.can_access_def(from_module, c.id));
 
         match candidates.len() {
             0 => Ok(None),

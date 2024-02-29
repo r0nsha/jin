@@ -236,7 +236,7 @@ impl<'db> Typeck<'db> {
         match vis {
             Vis::Public => true,
             Vis::Private => {
-                from_module == in_module && self.db[from_module].is_submodule(self.db, in_module)
+                from_module == in_module || self.db[from_module].is_submodule(self.db, in_module)
             }
         }
     }

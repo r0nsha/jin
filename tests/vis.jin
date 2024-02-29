@@ -2,7 +2,7 @@ use .child
 
 fn main() = {}
 
-fn a() = child.Priv()
-fn b() = child.PrivCtor()
+fn a() = child.Priv(1)
+fn b() = child.PrivCtor(1)
 
 fn x() = {}
