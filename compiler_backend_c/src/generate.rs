@@ -630,6 +630,7 @@ impl<'db> Generator<'db> {
             Inst::StrLit { value, lit } => {
                 self.value_assign(state, *value, |_| escaped_str_value(lit))
             }
+            Inst::Unreachable => util::call(D::text("_builtin_unreachable"), []),
             Inst::Destroy { .. } => unreachable!(),
         }
     }

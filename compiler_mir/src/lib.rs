@@ -444,6 +444,7 @@ pub enum Inst {
     Convert { value: ValueId, source: ValueId, target: Ty, span: Span },
     Cast { value: ValueId, source: ValueId, target: Ty, span: Span },
     StrLit { value: ValueId, lit: Ustr },
+    Unreachable,
 }
 
 #[derive(Debug, Clone, Copy)]

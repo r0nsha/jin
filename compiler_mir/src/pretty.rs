@@ -279,6 +279,7 @@ impl<'db> PrettyCx<'db> {
             Inst::StrLit { value, lit } => self
                 .value_assign(body, *value)
                 .append(D::text("\"").append(D::text(lit.as_str())).append(D::text("\""))),
+            Inst::Unreachable => D::text("unreachable"),
         }
     }
 
