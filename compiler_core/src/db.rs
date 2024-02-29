@@ -133,13 +133,13 @@ impl Db {
         self.modules.iter().find(|m| m.source_id == id)
     }
 
-    pub fn find_module_by_path(&self, path: &Utf8Path) -> Option<&ModuleInfo> {
+    pub fn find_module_by_source_path(&self, path: &Utf8Path) -> Option<&ModuleInfo> {
         self.modules
             .iter()
             .find(|m| matches!(self.sources.get(m.source_id), Some(s) if s.path() == path))
     }
 
-    pub fn find_module_by_qpath<'a>(
+    pub fn find_module_by_path<'a>(
         &self,
         package: &str,
         path: impl IntoIterator<Item = &'a str>,
