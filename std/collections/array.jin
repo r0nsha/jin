@@ -1,7 +1,7 @@
 use std.builtin
 use std.option.Option
 
-pub type Array[T](pub(module) buf: [T])
+pub type Array[T](buf: [T])
 
 pub fn Array.new[T]() -> Array[T] = Array([])
 

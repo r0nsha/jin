@@ -43,7 +43,7 @@ impl<'a> Parser<'a> {
 
     fn parse_tydef_struct(&mut self, kind: StructKind) -> DiagnosticResult<TyDefKind> {
         let (fields, _) = self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
-            let vis = this.parse_vis()?.unwrap_or_default();
+            let vis = this.parse_vis();
             let ident = this.eat_ident()?;
             this.eat(TokenKind::Colon)?;
             let ty_expr = this.parse_ty()?;

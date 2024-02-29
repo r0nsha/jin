@@ -170,7 +170,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         self.insert_glob_import(
             in_module,
             res_module_id,
-            ns::GlobImport { is_ufcs: IsUfcs::Yes, vis: Vis::Module },
+            ns::GlobImport { is_ufcs: IsUfcs::Yes, vis: Vis::Private },
         );
 
         self.resolved.entry(in_module).or_default().insert(imp.alias.name(), resolved);
@@ -524,6 +524,6 @@ pub(crate) fn insert_prelude(cx: &mut Typeck) {
         // Don't insert the prelude for modules which already imported it
         env.globs
             .entry(prelude_module_id)
-            .or_insert(ns::GlobImport { is_ufcs: IsUfcs::No, vis: Vis::Module });
+            .or_insert(ns::GlobImport { is_ufcs: IsUfcs::No, vis: Vis::Private });
     }
 }

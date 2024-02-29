@@ -121,7 +121,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
     ) -> DefId {
         let qpath = env.scope_path(self.cx.db).child(name.name());
         let scope =
-            ScopeInfo { module_id: env.module_id(), level: env.scope_level(), vis: Vis::Module };
+            ScopeInfo { module_id: env.module_id(), level: env.scope_level(), vis: Vis::Private };
         let id = Def::alloc(self.cx.db, qpath, scope, kind, mutability, name.span());
         self.cx.def_to_ty.insert(id, ty);
         id

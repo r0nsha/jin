@@ -1,0 +1,10 @@
+use vis
+
+type Priv(num: int)
+pub type PrivCtor(num: int)
+
+fn foo() = {
+	vis.x()
+	let s = Struct(1)
+	let x = s.num
+}

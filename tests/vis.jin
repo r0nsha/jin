@@ -1,0 +1,8 @@
+use .child
+
+fn main() = {}
+
+fn a() = child.Priv()
+fn b() = child.PrivCtor()
+
+fn x() = {}

@@ -608,7 +608,7 @@ impl StructKind {
 
 impl StructDef {
     pub fn new(id: AdtId, fields: Vec<AdtField>, kind: StructKind, ctor_ty: Ty) -> Self {
-        Self { id, fields, kind, ctor_ty, ctor_vis: Vis::Module }
+        Self { id, fields, kind, ctor_ty, ctor_vis: Vis::Private }
     }
 
     pub fn field_by_name(&self, name: &str) -> Option<&AdtField> {
@@ -629,7 +629,7 @@ impl StructDef {
     }
 
     pub fn fill_ctor_vis(&mut self) {
-        self.ctor_vis = self.fields.iter().map(|f| f.vis).min().unwrap_or(Vis::Export);
+        self.ctor_vis = self.fields.iter().map(|f| f.vis).min().unwrap_or(Vis::Public);
     }
 
     pub fn is_infinitely_sized(&self, db: &Db) -> Option<&AdtField> {

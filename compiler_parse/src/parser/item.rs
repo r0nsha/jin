@@ -21,7 +21,7 @@ use crate::{
 impl<'a> Parser<'a> {
     pub(super) fn parse_item(&mut self) -> DiagnosticResult<Item> {
         let attrs = self.parse_attrs()?;
-        let vis = self.parse_vis()?.unwrap_or_default();
+        let vis = self.parse_vis();
 
         if self.is_kw(Kw::Fn) {
             return self.parse_fn_item(attrs, vis);

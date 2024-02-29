@@ -1,4 +1,4 @@
-pub(module) fn extern "c" printf(fmt: *u8, ..) -> i32
+fn extern "c" printf(fmt: *u8, ..) -> i32
 
 pub fn add() = {
 	println("there's nothing to add...\n")
