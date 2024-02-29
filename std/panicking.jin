@@ -8,3 +8,9 @@ pub fn panic(msg: &str) -> never = unsafe builtin.panic(msg)
 pub fn todo() -> never = panic("not yet implemented")
 pub fn todo(msg: str) -> never = todo(&msg)
 pub fn todo(msg: &str) -> never = panic("not yet implemented: \(msg)")
+
+pub fn assert(cond: bool) -> never = 
+    if !cond { panic("assertion failed") }
+pub fn assert(cond: bool, msg: str) -> never = assert(cond, &msg)
+pub fn assert(cond: bool, msg: &str) = 
+    if !cond { panic("assertion failed: \(msg)") }
