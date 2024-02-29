@@ -5,8 +5,9 @@ mod token;
 
 use camino::{Utf8Path, Utf8PathBuf};
 use compiler_ast::{Ast, Module};
+use compiler_core::db::ModuleId;
 use compiler_core::{
-    db::{Db, ModuleInfo},
+    db::Db,
     diagnostics::DiagnosticResult,
     middle::{BinOp, CmpOp},
     span::SourceId,
@@ -35,44 +36,50 @@ pub fn parse(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Ast> {
 }
 
 fn parse_package(db: &mut Db, ast: &mut Ast, package: Ustr) {
-    parse_module(db, package, ast, db.package(package).main_source_id);
+    parse_module(db, package, ast, db.package(package).main_source_id, None);
 }
 
-fn parse_module(db: &mut Db, package: Ustr, ast: &mut Ast, source_id: SourceId) {
-    match parse_module_inner(db, package, source_id) {
+fn parse_module(
+    db: &mut Db,
+    package: Ustr,
+    ast: &mut Ast,
+    source_id: SourceId,
+    parent: Option<ModuleId>,
+) {
+    fn inner(
+        db: &mut Db,
+        package: Ustr,
+        source_id: SourceId,
+        parent: Option<ModuleId>,
+    ) -> DiagnosticResult<(Module, FxHashSet<Utf8PathBuf>)> {
+        let (mut module, paths) = {
+            let source = db.sources.get(source_id).unwrap();
+            let tokens = lexer::tokenize(source)?;
+            parser::parse(db, package, source, tokens)?
+        };
+
+        module.id =
+            db.add_module(package, module.source, module.name.clone(), module.is_main(), parent);
+
+        Ok((module, paths))
+    }
+
+    match inner(db, package, source_id, parent) {
         Ok((module, imported_module_paths)) => {
+            let id = module.id;
             ast.modules.push(module);
 
             for path in imported_module_paths {
-                parse_module_from_path(db, path, ast);
+                if db.sources.find_by_path(&path).is_some() {
+                    continue;
+                }
+
+                let package = db.find_package_by_path(&path).expect("to be part of a package").name;
+                let source_id = db.sources.load_file(path).expect("import path to exist");
+                parse_module(db, package, ast, source_id, Some(id));
             }
         }
         Err(diag) => db.diagnostics.add(diag),
-    }
-}
-
-fn parse_module_inner(
-    db: &mut Db,
-    package: Ustr,
-    source_id: SourceId,
-) -> DiagnosticResult<(Module, FxHashSet<Utf8PathBuf>)> {
-    let (mut module, paths) = {
-        let source = db.sources.get(source_id).unwrap();
-        let tokens = lexer::tokenize(source)?;
-        parser::parse(db, package, source, tokens)?
-    };
-
-    module.id =
-        ModuleInfo::alloc(db, package, module.source, module.name.clone(), module.is_main());
-
-    Ok((module, paths))
-}
-
-fn parse_module_from_path(db: &mut Db, path: Utf8PathBuf, ast: &mut Ast) {
-    if db.sources.find_by_path(&path).is_none() {
-        let package = db.find_package_by_path(&path).expect("to be part of a package").name;
-        let source_id = db.sources.load_file(path).expect("import path to exist");
-        parse_module(db, package, ast, source_id);
     }
 }
 

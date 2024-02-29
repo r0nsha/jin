@@ -11,6 +11,7 @@ use compiler_data_structures::{
     once::Once,
 };
 use path_absolutize::Absolutize;
+use petgraph::graphmap::DiGraphMap;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
@@ -33,6 +34,7 @@ pub struct Db {
     pub sources: Sources,
     pub packages: FxHashMap<Ustr, Package>,
     pub modules: IndexVec<ModuleId, ModuleInfo>,
+    pub module_graph: DiGraphMap<ModuleId, ()>,
     pub defs: IndexVec<DefId, Def>,
     pub adts: IndexVec<AdtId, Adt>,
     pub variants: IndexVec<VariantId, Variant>,
@@ -58,6 +60,7 @@ impl Db {
             sources: Sources::new(),
             packages: FxHashMap::default(),
             modules: IndexVec::new(),
+            module_graph: DiGraphMap::new(),
             defs: IndexVec::new(),
             adts: IndexVec::new(),
             variants: IndexVec::new(),
@@ -127,6 +130,36 @@ impl Db {
     #[track_caller]
     pub fn main_module(&self) -> &ModuleInfo {
         &self.modules[self.main_module.unwrap()]
+    }
+
+    pub fn add_module(
+        &mut self,
+        package: Ustr,
+        source_id: SourceId,
+        qpath: QPath,
+        is_main: bool,
+        parent: Option<ModuleId>,
+    ) -> ModuleId {
+        let id = self.modules.push_with_key(|id| ModuleInfo {
+            id,
+            package,
+            source_id,
+            path: qpath.join(),
+            qpath,
+            is_main,
+        });
+
+        self.module_graph.add_node(id);
+
+        if let Some(parent) = parent {
+            self.module_graph.add_edge(parent, id, ());
+        }
+
+        if is_main {
+            self.main_module.set(id);
+        }
+
+        id
     }
 
     pub fn find_module_by_source_id(&self, id: SourceId) -> Option<&ModuleInfo> {
@@ -276,36 +309,13 @@ pub struct ModuleInfo {
 }
 
 impl ModuleInfo {
-    pub fn alloc(
-        db: &mut Db,
-        package: Ustr,
-        source_id: SourceId,
-        qpath: QPath,
-        is_main: bool,
-    ) -> ModuleId {
-        let id = db.modules.push_with_key(|id| Self {
-            id,
-            package,
-            source_id,
-            path: qpath.join(),
-            qpath,
-            is_main,
-        });
-
-        if is_main {
-            db.main_module.set(id);
-        }
-
-        id
-    }
-
     pub fn span(&self) -> Span {
         Span::uniform(self.source_id, 0)
     }
 
     pub fn is_submodule(&self, db: &Db, of: ModuleId) -> bool {
-        let of = &db[of];
-        self.package == of.package && self.qpath.is_subpath(&of.qpath)
+        self.package == db[of].package
+            && petgraph::algo::has_path_connecting(&db.module_graph, of, self.id, None)
     }
 }
 
