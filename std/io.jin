@@ -4,11 +4,11 @@ fn extern "c" write(fd: i32, buf: *u8, count: uint) -> int
 
 let stdout: i32 = 1
 
-pub fn print(msg: &str) =
+fn print*(msg: &str) =
 	unsafe write(stdout, msg.ptr, msg.len)
 
-pub fn print(msg: str) = print(&msg)
+fn print*(msg: str) = print(&msg)
 
-pub fn println() = print("\n")
-pub fn println(msg: &str) = print("\(msg)\n")
-pub fn println(msg: str) = println(&msg)
+fn println*() = print("\n")
+fn println*(msg: &str) = print("\(msg)\n")
+fn println*(msg: str) = println(&msg)

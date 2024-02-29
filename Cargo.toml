@@ -25,6 +25,7 @@ typed-index-collections = "3.1.0"
 itertools = "0.12.0"
 path-absolutize = "3.1.0"
 phf = { version = "0.11.2", features = ["macros"] }
+petgraph = "0.6.4"
 
 [workspace.lints.clippy]
 correctness = "warn"

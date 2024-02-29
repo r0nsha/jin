@@ -7,23 +7,16 @@ use compiler_core::{
 };
 use compiler_data_structures::index_vec::Key as _;
 use graph_cycles::Cycles;
+use petgraph::graphmap::DiGraphMap;
 use petgraph::{stable_graph::NodeIndex, Graph};
-use rustc_hash::FxHashMap;
 
 pub fn cyclic_globals(db: &mut Db, hir: &Hir) {
-    let mut cx = CyclicGlobals {
-        db,
-        indices: FxHashMap::default(),
-        graph: Graph::new(),
-        curr_id: DefId::null(),
-    };
-    cx.run(hir);
+    CyclicGlobals { db, graph: DiGraphMap::new(), curr_id: DefId::null() }.run(hir);
 }
 
 struct CyclicGlobals<'db> {
     db: &'db mut Db,
-    indices: FxHashMap<DefId, NodeIndex>,
-    graph: Graph<DefId, Use>,
+    graph: DiGraphMap<DefId, Use>,
     curr_id: DefId,
 }
 
@@ -31,12 +24,11 @@ struct CyclicGlobals<'db> {
 struct Use(Span);
 
 impl CyclicGlobals<'_> {
-    fn run(&mut self, hir: &Hir) {
+    fn run(mut self, hir: &Hir) {
         for let_ in &hir.lets {
             match &let_.pat {
                 Pat::Name(name) => {
-                    let ix = self.graph.add_node(name.id);
-                    self.indices.insert(name.id, ix);
+                    self.graph.add_node(name.id);
                 }
                 Pat::Discard(_) => (),
             }
@@ -52,7 +44,7 @@ impl CyclicGlobals<'_> {
             }
         }
 
-        self.graph.visit_all_cycles(|g, cycle| match cycle {
+        self.graph.into_graph().visit_all_cycles(|g, cycle| match cycle {
             &[ix] => {
                 let id = g[ix];
                 let use_ = g.edges_connecting(ix, ix).next().unwrap().weight();
@@ -107,22 +99,12 @@ impl CyclicGlobals<'_> {
         let msg = format!("{use_num}. `{used}` used by `{by}`...");
         Label::secondary(use_span, msg)
     }
-
-    #[track_caller]
-    fn curr_ix(&self) -> NodeIndex {
-        self.indices[&self.curr_id]
-    }
-
-    #[track_caller]
-    fn ix(&self, id: DefId) -> NodeIndex {
-        self.indices[&id]
-    }
 }
 
 impl Visitor for CyclicGlobals<'_> {
     fn visit_name(&mut self, expr: &Expr, name: &Name) {
         if let DefKind::Global = self.db[name.id].kind.as_ref() {
-            self.graph.add_edge(self.curr_ix(), self.ix(name.id), Use(expr.span));
+            self.graph.add_edge(self.curr_id, name.id, Use(expr.span));
         }
     }
 }

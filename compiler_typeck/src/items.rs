@@ -53,7 +53,7 @@ fn define_let(
 ) {
     attrs::validate(cx, &let_.attrs, attrs::Placement::Let);
     let unknown = cx.db.types.unknown;
-    let pat = cx.define().global_pat(module_id, &let_.pat, let_.vis, unknown);
+    let pat = cx.define().global_pat(module_id, &let_.pat, unknown);
     cx.res_map.item_to_pat.insert(item_id, pat);
 }
 

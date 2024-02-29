@@ -12,4 +12,4 @@ fn main() = {
 	#print_int(1) # Error!
 }
 
-pub fn get_hello_world() -> &str = "Hello from bar!\n"
+fn get_hello_world*() -> &str = "Hello from bar!\n"

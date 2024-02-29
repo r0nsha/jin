@@ -121,17 +121,22 @@ impl<'db, 'cx> Define<'db, 'cx> {
     ) -> DefId {
         let qpath = env.scope_path(self.cx.db).child(name.name());
         let scope =
-            ScopeInfo { module_id: env.module_id(), level: env.scope_level(), vis: Vis::Module };
+            ScopeInfo { module_id: env.module_id(), level: env.scope_level(), vis: Vis::Private };
         let id = Def::alloc(self.cx.db, qpath, scope, kind, mutability, name.span());
         self.cx.def_to_ty.insert(id, ty);
         id
     }
 
-    pub(crate) fn global_pat(&mut self, module_id: ModuleId, pat: &Pat, vis: Vis, ty: Ty) -> Pat {
+    pub(crate) fn global_pat(&mut self, module_id: ModuleId, pat: &Pat, ty: Ty) -> Pat {
         match pat {
             Pat::Name(name) => {
-                let id =
-                    self.new_global(module_id, vis, DefKind::Global, name.word, name.mutability);
+                let id = self.new_global(
+                    module_id,
+                    name.vis,
+                    DefKind::Global,
+                    name.word,
+                    name.mutability,
+                );
                 Pat::Name(NamePat { id, ty, ..name.clone() })
             }
             Pat::Discard(span) => Pat::Discard(*span),

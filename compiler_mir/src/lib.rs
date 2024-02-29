@@ -514,6 +514,14 @@ impl ValueKind {
     pub fn is_register(&self) -> bool {
         matches!(self, Self::Register(..))
     }
+
+    /// Returns `true` if the value kind is [`Const`].
+    ///
+    /// [`Const`]: ValueKind::Const
+    #[must_use]
+    pub fn is_const(&self) -> bool {
+        matches!(self, Self::Const(..))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

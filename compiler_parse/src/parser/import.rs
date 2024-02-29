@@ -5,7 +5,7 @@ use compiler_ast::{Attrs, ExternImport, Import, ImportTree};
 use compiler_core::{
     db::ExternLib,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
-    middle::{IsUfcs, Vis},
+    middle::IsUfcs,
     span::{Span, Spanned},
     word::Word,
 };
@@ -18,12 +18,7 @@ use crate::{
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn parse_import(
-        &mut self,
-        attrs: &Attrs,
-        vis: Vis,
-        start: Span,
-    ) -> DiagnosticResult<Import> {
+    pub(super) fn parse_import(&mut self, attrs: &Attrs, start: Span) -> DiagnosticResult<Import> {
         let is_submodule = self.is(TokenKind::Dot);
         let root = self.eat_ident()?.word();
 
@@ -33,13 +28,7 @@ impl<'a> Parser<'a> {
 
         let tree = self.parse_import_tree_name(root)?;
 
-        Ok(Import {
-            attrs: attrs.clone(),
-            vis,
-            module_path,
-            tree,
-            span: start.merge(self.last_span()),
-        })
+        Ok(Import { attrs: attrs.clone(), module_path, tree, span: start.merge(self.last_span()) })
     }
 
     fn parse_import_tree_name(&mut self, name: Word) -> DiagnosticResult<ImportTree> {
@@ -55,9 +44,11 @@ impl<'a> Parser<'a> {
             Ok(ImportTree::Path(name, Box::new(next)))
         } else if self.is_kw(Kw::As) {
             let alias = self.eat_ident()?.word();
-            Ok(ImportTree::Name(name, Some(alias)))
+            let vis = self.parse_vis();
+            Ok(ImportTree::Name(name, Some(alias), vis))
         } else {
-            Ok(ImportTree::Name(name, None))
+            let vis = self.parse_vis();
+            Ok(ImportTree::Name(name, None, vis))
         }
     }
 
@@ -70,9 +61,11 @@ impl<'a> Parser<'a> {
 
     fn parse_import_group_tree(&mut self) -> DiagnosticResult<ImportTree> {
         if self.is(TokenKind::Star) {
-            Ok(ImportTree::Glob(IsUfcs::No, self.last_span()))
+            let vis = self.parse_vis();
+            Ok(ImportTree::Glob(IsUfcs::No, vis, self.last_span()))
         } else if self.is(TokenKind::QuestionMark) {
-            Ok(ImportTree::Glob(IsUfcs::Yes, self.last_span()))
+            let vis = self.parse_vis();
+            Ok(ImportTree::Glob(IsUfcs::Yes, vis, self.last_span()))
         } else if self.is_ident() {
             self.parse_import_tree_name(self.last_token().word())
         } else {

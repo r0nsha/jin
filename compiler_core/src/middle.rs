@@ -10,11 +10,11 @@ use crate::{
     word::Word,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum Vis {
-    Module = 0,
-    Package = 1,
-    Export = 2,
+    #[default]
+    Private = 0,
+    Public = 1,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -258,6 +258,7 @@ pub struct NamePat {
     pub id: DefId,
     pub word: Word,
     pub mutability: Mutability,
+    pub vis: Vis,
     pub ty: Ty,
 }
 

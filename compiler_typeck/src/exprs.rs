@@ -1,5 +1,5 @@
 use compiler_ast::{self as ast};
-use compiler_core::middle::{NamePat, Pat};
+use compiler_core::middle::{NamePat, Pat, Vis};
 use compiler_core::{
     db::{Adt, AdtField, AdtId, AdtKind, DefId, DefKind, FnInfo, ModuleId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -1060,7 +1060,7 @@ fn check_str_interp(
     span: Span,
 ) -> DiagnosticResult<hir::Expr> {
     let env_module = env.module_id();
-    let str_module = cx.db.find_module_by_qpath("std", ["str"]).expect("std.str to exist").id;
+    let str_module = cx.db.find_module_by_path("std", ["str"]).expect("std.str to exist").id;
 
     let strbuf_def_id = cx
         .lookup()
@@ -1152,6 +1152,7 @@ fn interp_let_buf(
                     id,
                     word: interp_buf_word,
                     mutability: Mutability::Mut,
+                    vis: Vis::Private,
                     ty: strbuf_ty,
                 }),
                 value: Box::new(call),

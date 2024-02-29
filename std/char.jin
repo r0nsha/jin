@@ -5,7 +5,7 @@ use std.{
     str.{?},
 }
 
-pub fn char.from_digit(num: u32, radix: u32) -> Option[char] = {
+fn char.from_digit*(num: u32, radix: u32) -> Option[char] = {
     assert(radix <= 36, "radix is too high (maximum 36)")
 
     if num < radix {
@@ -21,11 +21,6 @@ pub fn char.from_digit(num: u32, radix: u32) -> Option[char] = {
 }
 
 # The low-level UTF8 implementation was taken from rust's `core::char` module
-pub fn len_utf8(self: char) -> uint = len_utf8(u32(self))
-
-pub fn encode_utf8(self: char, dst: &mut [u8]) -> &mut [u8] =
-    encode_utf8_raw(u32(self), dst)
-
 let tag_cont: u8 = 0b1000_0000;
 let tag_two_b: u8 = 0b1100_0000;
 let tag_three_b: u8 = 0b1110_0000;
@@ -33,6 +28,8 @@ let tag_four_b: u8 = 0b1111_0000;
 let max_one_b: u32 = 0x80;
 let max_two_b: u32 = 0x800;
 let max_three_b: u32 = 0x10000;
+
+fn len_utf8*(self: char) -> uint = len_utf8(u32(self))
 
 fn len_utf8(code: u32) -> uint =
     if code < max_one_b {
@@ -45,7 +42,10 @@ fn len_utf8(code: u32) -> uint =
 	4
     }
 
-fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] = {
+fn encode_utf8*(self: char, dst: &mut [u8]) -> &mut [u8] =
+    encode_utf8_raw(u32(self), dst)
+
+fn encode_utf8_raw*(code: u32, dst: &mut [u8]) -> &mut [u8] = {
     let len = code.len_utf8()
     assert(dst.len >= len)
 

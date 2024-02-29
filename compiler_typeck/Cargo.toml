@@ -6,7 +6,6 @@ edition = "2021"
 [dependencies]
 owo-colors = "3.5.0"
 ptree = "0.4.0"
-petgraph = "0.6.4"
 graph-cycles = "0.1.0"
 compiler_core = { path = "../compiler_core" }
 compiler_ast = { path = "../compiler_ast" }
@@ -18,6 +17,7 @@ rustc-hash = { workspace = true }
 camino = { workspace = true }
 itertools = { workspace = true }
 ena = { workspace = true }
+petgraph = { workspace = true }
 
 [lints]
 workspace = true

@@ -66,7 +66,7 @@ impl BuiltinTys {
         let scope_info = ScopeInfo {
             module_id: db.main_module.unwrap(),
             level: ScopeLevel::Global,
-            vis: Vis::Export,
+            vis: Vis::Public,
         };
 
         let id = Def::alloc(

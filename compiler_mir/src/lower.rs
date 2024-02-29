@@ -1,3 +1,4 @@
+use compiler_core::middle::Vis;
 use compiler_data_structures::index_vec::Key;
 use indexmap::IndexSet;
 use ustr::{ustr, Ustr};
@@ -231,6 +232,7 @@ impl<'db> Lower<'db> {
                     id: DefId::null(),
                     word: field.name,
                     mutability: Mutability::Imm,
+                    vis: Vis::Public,
                     ty: field.ty,
                 }),
                 ty: field.ty,
@@ -367,17 +369,22 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let start_block = self.body.create_block("start");
                 self.position_at(start_block);
 
-                let value = self.lower_input_expr(&let_.value);
+                let result = self.lower_input_expr(&let_.value);
                 self.exit_scope();
 
                 self.body.cleanup();
 
-                let kind = if self.body.blocks.is_empty() && self.body.values().len() == 1 {
-                    let value = self.body.values.swap_remove(ValueId(0));
-                    let ValueKind::Const(value) = value.kind else { unreachable!() };
-                    GlobalKind::Const(value)
+                let is_const = self.body.blocks.is_empty()
+                    && self.body.values().len() == 1
+                    && self.body.value(result).kind.is_const();
+
+                let kind = if is_const {
+                    let ValueKind::Const(result) = self.body.values.swap_remove(result).kind else {
+                        unreachable!()
+                    };
+                    GlobalKind::Const(result)
                 } else {
-                    GlobalKind::Static(StaticGlobal { body: self.body, result: value })
+                    GlobalKind::Static(StaticGlobal { body: self.body, result })
                 };
 
                 let id = self.cx.mir.globals.insert_with_key(|id| Global {

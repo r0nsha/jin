@@ -98,28 +98,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn parse_vis(&mut self) -> DiagnosticResult<Option<Vis>> {
-        if !self.is_kw(Kw::Pub) {
-            return Ok(None);
-        }
-
-        if !self.is(TokenKind::OpenParen) {
-            return Ok(Some(Vis::Export));
-        }
-
-        let vis = if self.is_weak_kw("export") {
-            Vis::Export
-        } else if self.is_weak_kw("package") {
-            Vis::Package
-        } else if self.is_weak_kw("module") {
-            Vis::Module
+    pub(super) fn parse_vis(&mut self) -> Vis {
+        if self.is(TokenKind::Star) {
+            Vis::Public
         } else {
-            return Err(self.unexpected_token("export, package or module"));
-        };
-
-        self.eat(TokenKind::CloseParen)?;
-
-        Ok(Some(vis))
+            Vis::Private
+        }
     }
 
     fn parse_optional_ty_params(&mut self) -> DiagnosticResult<Vec<TyParam>> {
@@ -277,15 +261,10 @@ impl<'a> Parser<'a> {
         self.is(TokenKind::empty_ident())
     }
 
+    #[allow(unused)]
     #[inline]
     pub(super) fn is_weak_kw(&mut self, kw: &str) -> bool {
         self.is_predicate(|_, tok| matches!(tok.kind, TokenKind::Ident(id) if id == kw))
-    }
-
-    #[allow(unused)]
-    #[inline]
-    pub(super) fn is_specific_ident(&mut self, s: &str) -> bool {
-        self.is_predicate(|_, tok| matches!(tok.kind, TokenKind::Ident(ident) if ident == s))
     }
 
     #[inline]

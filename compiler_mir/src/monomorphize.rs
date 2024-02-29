@@ -1,5 +1,6 @@
 use std::{collections::VecDeque, mem};
 
+use compiler_core::middle::Vis;
 use compiler_data_structures::index_vec::Key;
 use rustc_hash::FxHashSet;
 use ustr::{ustr, Ustr};
@@ -726,6 +727,7 @@ fn create_destroy_sig(
             id: DefId::null(),
             word: Word::new(ustr("self"), Span::unknown()),
             mutability: Mutability::Imm,
+            vis: Vis::Public,
             ty,
         }),
         ty,

@@ -335,6 +335,7 @@ dependencies = [
  "internment",
  "owo-colors",
  "path-absolutize",
+ "petgraph",
  "ptree",
  "rustc-hash",
  "ustr",

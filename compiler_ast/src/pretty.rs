@@ -359,14 +359,14 @@ impl PrettyPrint for ImportTree {
                 cx.builder.add_empty_child(name.to_string());
                 next.pretty_print(cx);
             }
-            ImportTree::Name(name, alias) => {
+            ImportTree::Name(name, alias, _) => {
                 cx.builder.add_empty_child(format!(
                     "{}{}",
                     name,
                     if let Some(alias) = alias { format!(" as {alias}") } else { String::new() }
                 ));
             }
-            ImportTree::Glob(is_ufcs, _) => {
+            ImportTree::Glob(is_ufcs, _, _) => {
                 cx.builder
                     .add_empty_child(if *is_ufcs == IsUfcs::Yes { "?" } else { "*" }.to_string());
             }

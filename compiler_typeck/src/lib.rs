@@ -234,9 +234,10 @@ impl<'db> Typeck<'db> {
     #[inline]
     pub(crate) fn can_access(&self, from_module: ModuleId, in_module: ModuleId, vis: Vis) -> bool {
         match vis {
-            Vis::Export => true,
-            Vis::Package => self.db[from_module].package == self.db[in_module].package,
-            Vis::Module => from_module == in_module,
+            Vis::Public => true,
+            Vis::Private => {
+                from_module == in_module || self.db[from_module].is_submodule(self.db, in_module)
+            }
         }
     }
 }

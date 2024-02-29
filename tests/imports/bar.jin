@@ -1,12 +1,12 @@
 use imports as root
-pub use .baz
+use .baz*
 
 fn extern "c" printf(fmt: *u8, ..) -> i32
 
-pub fn hello() = {
+fn hello*() = {
 	unsafe printf(root.get_hello_world().ptr)
 }
 
-pub fn goodbye() = {
+fn goodbye*() = {
 	unsafe printf("Goodbye...\n".ptr)
 }
