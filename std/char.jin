@@ -1,17 +1,20 @@
-use std.option.Option
+use std.{
+    int.{?},
+    option.Option,
+    panicking.assert,
+    str.{?},
+}
 
 pub fn char.from_digit(num: u32, radix: u32) -> Option[char] = {
-	if radix > 36 {
-		# TODO: panic: "radix {radix} is too high (maximum 36)"
-    }
+    assert(radix <= 36, "radix is too high (maximum 36)")
 
     if num < radix {
-        let num = u8(num)
-		Option.some(char(if num < 10 {
-			b'0' + num
-		} else {
-			b'a' + num - 10
-		}))
+	let num = u8(num)
+	Option.some(char(if num < 10 {
+	    b'0' + num
+	} else {
+	    b'a' + num - 10
+	}))
     } else {
         Option.none
     }
@@ -21,7 +24,7 @@ pub fn char.from_digit(num: u32, radix: u32) -> Option[char] = {
 pub fn len_utf8(self: char) -> uint = len_utf8(u32(self))
 
 pub fn encode_utf8(self: char, dst: &mut [u8]) -> &mut [u8] =
-	encode_utf8_raw(u32(self), dst)
+    encode_utf8_raw(u32(self), dst)
 
 let tag_cont: u8 = 0b1000_0000;
 let tag_two_b: u8 = 0b1100_0000;
@@ -32,39 +35,36 @@ let max_two_b: u32 = 0x800;
 let max_three_b: u32 = 0x10000;
 
 fn len_utf8(code: u32) -> uint =
-	if code < max_one_b {
-		1
-	} else if code < max_two_b {
-		2
-	} else if code < max_three_b {
-		3
-	} else {
-		4
-	}
+    if code < max_one_b {
+	1
+    } else if code < max_two_b {
+	2
+    } else if code < max_three_b {
+	3
+    } else {
+	4
+    }
 
 fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] = {
-	let len = code.len_utf8()
+    let len = code.len_utf8()
+    assert(dst.len >= len)
 
-	if dst.len < len {
-		# TODO: panic
-	}
+    if len == 1 {
+	dst.[0] = u8(code)
+    } else if len == 2 {
+	dst.[0] = u8(code >> 6 & 0x1f) | tag_two_b
+	dst.[1] = u8(code & 0x3f) | tag_cont
+    } else if len == 3 {
+	dst.[0] = u8(code >> 12 & 0x0f) | tag_three_b
+	dst.[1] = u8(code >> 6 & 0x3f) | tag_cont
+	dst.[2] = u8(code & 0x3f) | tag_cont
+    } else {
+	# len == 4
+	dst.[0] = u8(code >> 18 & 0x07) | tag_four_b
+	dst.[1] = u8(code >> 12 & 0x3f) | tag_cont
+	dst.[2] = u8(code >> 6 & 0x3f) | tag_cont
+	dst.[3] = u8(code & 0x3f) | tag_cont
+    }
 
-	if len == 1 {
-		dst.[0] = u8(code)
-	} else if len == 2 {
-		dst.[0] = u8(code >> 6 & 0x1f) | tag_two_b
-		dst.[1] = u8(code & 0x3f) | tag_cont
-	} else if len == 3 {
-		dst.[0] = u8(code >> 12 & 0x0f) | tag_three_b
-		dst.[1] = u8(code >> 6 & 0x3f) | tag_cont
-		dst.[2] = u8(code & 0x3f) | tag_cont
-	} else {
-		# len == 4
-		dst.[0] = u8(code >> 18 & 0x07) | tag_four_b
-		dst.[1] = u8(code >> 12 & 0x3f) | tag_cont
-		dst.[2] = u8(code >> 6 & 0x3f) | tag_cont
-		dst.[3] = u8(code & 0x3f) | tag_cont
-	}
-
-	&mut dst.[..len]
+    &mut dst.[..len]
 }

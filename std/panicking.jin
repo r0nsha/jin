@@ -9,8 +9,9 @@ pub fn todo() -> never = panic("not yet implemented")
 pub fn todo(msg: str) -> never = todo(&msg)
 pub fn todo(msg: &str) -> never = panic("not yet implemented: \(msg)")
 
-pub fn assert(cond: bool) -> never = 
+pub fn assert(cond: bool) = 
     if !cond { panic("assertion failed") }
-pub fn assert(cond: bool, msg: str) -> never = assert(cond, &msg)
+
+pub fn assert(cond: bool, msg: str) = assert(cond, &msg)
 pub fn assert(cond: bool, msg: &str) = 
     if !cond { panic("assertion failed: \(msg)") }
