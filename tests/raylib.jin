@@ -1,7 +1,7 @@
 use .basic_window
 use .input_keys
 use .following_eyes
-pub(package) use .bindings
+use .bindings
 
 fn main() = {
 	# basic_window.run()

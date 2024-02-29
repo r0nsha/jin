@@ -5,7 +5,7 @@ fn extern "c" atan2f(y: f32, x: f32) -> f32
 fn extern "c" cosf(arg: f32) -> f32
 fn extern "c" sinf(arg: f32) -> f32
 
-pub fn run() = unsafe {
+fn run*() = unsafe {
 	let screen_width = 800
 	let screen_height = 450
 

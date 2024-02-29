@@ -1,37 +1,37 @@
 use extern "raylib"
 use extern "m"
 
-pub fn extern "c" InitWindow(width: i32, height: i32, title: *u8)
-pub fn extern "c" CloseWindow()
-pub fn extern "c" WindowShouldClose() -> bool
-pub fn extern "c" SetTargetFPS(fps: i32)
-pub fn extern "c" BeginDrawing()
-pub fn extern "c" EndDrawing()
-pub fn extern "c" ClearBackground(color: Color)
-pub fn extern "c" DrawCircle(center_x: i32, center_y: i32, radius: f32, color: Color)
-pub fn extern "c" DrawCircleV(center: Vector2, radius: f32, color: Color)
-pub fn extern "c" DrawRectangle(pos_x: i32, pos_y: i32, width: i32, height: i32, color: Color)
-pub fn extern "c" DrawFPS(pos_x: i32, pos_y: i32)
-pub fn extern "c" DrawText(text: *u8, pos_x: i32, pos_y: i32, font_size: i32, tint: Color)
+fn extern "c" InitWindow*(width: i32, height: i32, title: *u8)
+fn extern "c" CloseWindow*()
+fn extern "c" WindowShouldClose*() -> bool
+fn extern "c" SetTargetFPS*(fps: i32)
+fn extern "c" BeginDrawing*()
+fn extern "c" EndDrawing*()
+fn extern "c" ClearBackground*(color: Color)
+fn extern "c" DrawCircle*(center_x: i32, center_y: i32, radius: f32, color: Color)
+fn extern "c" DrawCircleV*(center: Vector2, radius: f32, color: Color)
+fn extern "c" DrawRectangle*(pos_x: i32, pos_y: i32, width: i32, height: i32, color: Color)
+fn extern "c" DrawFPS*(pos_x: i32, pos_y: i32)
+fn extern "c" DrawText*(text: *u8, pos_x: i32, pos_y: i32, font_size: i32, tint: Color)
 
-pub type Color extern(pub r: u8, pub g: u8, pub b: u8, pub a: u8)
+type Color* extern(r*: u8, g*: u8, b*: u8, a*: u8)
 
-pub let RAYWHITE: Color = Color(245, 245, 245, 255)
-pub let LIGHTGRAY: Color = Color(200, 200, 200, 255)
-pub let DARKGRAY: Color = Color(80, 80, 80, 255)
-pub let BLACK: Color = Color(0, 0, 0, 255)
-pub let MAROON: Color = Color(190, 33, 55, 255)
-pub let BROWN: Color = Color(127, 106, 79, 255)
-pub let DARKGREEN: Color = Color(0, 117, 44, 255)
+let RAYWHITE*: Color = Color(245, 245, 245, 255)
+let LIGHTGRAY*: Color = Color(200, 200, 200, 255)
+let DARKGRAY*: Color = Color(80, 80, 80, 255)
+let BLACK*: Color = Color(0, 0, 0, 255)
+let MAROON*: Color = Color(190, 33, 55, 255)
+let BROWN*: Color = Color(127, 106, 79, 255)
+let DARKGREEN*: Color = Color(0, 117, 44, 255)
 
-pub type Vector2 extern(pub x: f32, pub y: f32)
+type Vector2* extern(x*: f32, y*: f32)
 
-pub fn extern "c" GetMousePosition() -> Vector2
-pub fn extern "c" IsKeyDown(key: i32) -> bool
+fn extern "c" GetMousePosition*() -> Vector2
+fn extern "c" IsKeyDown*(key: i32) -> bool
 
-pub let KEY_RIGHT: i32 = 262
-pub let KEY_LEFT: i32 = 263
-pub let KEY_DOWN: i32 = 264
-pub let KEY_UP: i32 = 265
+let KEY_RIGHT*: i32 = 262
+let KEY_LEFT*: i32 = 263
+let KEY_DOWN*: i32 = 264
+let KEY_UP*: i32 = 265
 
-pub fn extern "c" CheckCollisionPointCircle(point: Vector2, center: Vector2, radius: f32) -> bool
+fn extern "c" CheckCollisionPointCircle*(point: Vector2, center: Vector2, radius: f32) -> bool

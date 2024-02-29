@@ -1,5 +1,5 @@
 fn extern "c" printf(fmt: *u8, ..) -> i32
 
-pub fn yup() = {
+fn yup*() = {
 	unsafe printf("yup for baz :)\n".ptr)
 }

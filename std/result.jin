@@ -1,4 +1,4 @@
-pub type Result[T, E] {
+type Result*[T, E] {
 	ok(value: T)
 	err(error: E)
 }

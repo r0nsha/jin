@@ -1,53 +1,53 @@
 use std.char.{encode_utf8_raw, ?}
 use std.collections.Array
 
-pub fn str.from_utf8_unchecked(bytes: [u8]) -> str =
+fn str.from_utf8_unchecked*(bytes: [u8]) -> str =
 	unsafe as[_](bytes)
 
-pub fn str.from_utf8_unchecked(bytes: &[u8]) -> &str =
+fn str.from_utf8_unchecked*(bytes: &[u8]) -> &str =
 	unsafe as[_](bytes)
 
-pub fn str.from_utf8_mut_unchecked(bytes: &mut [u8]) -> &mut str =
+fn str.from_utf8_mut_unchecked*(bytes: &mut [u8]) -> &mut str =
 	unsafe as[_](bytes)
 
-pub fn as_bytes(self: &str) -> &[u8] = 
+fn as_bytes*(self: &str) -> &[u8] = 
 	unsafe as[_](self)
 
-pub fn as_bytes_mut(self: &mut str) -> &mut [u8] = 
+fn as_bytes_mut*(self: &mut str) -> &mut [u8] = 
 	unsafe as[_](self)
 
-pub fn fmt(self: &str, buf: &mut StrBuf) = buf.push(self)
+fn fmt*(self: &str, buf: &mut StrBuf) = buf.push(self)
 
-pub type StrBuf(array: Array[u8])
+type StrBuf*(array: Array[u8])
 
-pub fn StrBuf.new() -> StrBuf = StrBuf.with_cap(1)
+fn StrBuf.new*() -> StrBuf = StrBuf.with_cap(1)
 
-pub fn StrBuf.with_cap(cap: uint) -> StrBuf =
+fn StrBuf.with_cap*(cap: uint) -> StrBuf =
 	StrBuf(array_with_nul_byte(cap))
 
-pub fn len(self: &StrBuf) -> uint = self.array.len() - 1
-pub fn cap(self: &StrBuf) -> uint = self.array.cap()
-pub fn is_empty(self: &StrBuf) -> bool = self.len() == 0
+fn len*(self: &StrBuf) -> uint = self.array.len() - 1
+fn cap*(self: &StrBuf) -> uint = self.array.cap()
+fn is_empty*(self: &StrBuf) -> bool = self.len() == 0
 
-pub fn as_ref(self: &StrBuf) -> &str =
+fn as_ref*(self: &StrBuf) -> &str =
 	str.from_utf8_unchecked(
 		&self.array.as_ref().[..self.array.len() - 1]
 	)
 
-pub fn as_mut(self: &mut StrBuf) -> &mut str =
+fn as_mut*(self: &mut StrBuf) -> &mut str =
 	str.from_utf8_mut_unchecked(
 		&mut self.array.as_mut().[..self.array.len() - 1]
 	)
 
-pub fn take(mut self: StrBuf) -> str = {
+fn take*(mut self: StrBuf) -> str = {
 	let s = self.array.take()
 	unsafe s.len -= 1
 	str.from_utf8_unchecked(s)
 }
 
-pub fn push(self: &mut StrBuf, s: str) = self.push(&s)
+fn push*(self: &mut StrBuf, s: str) = self.push(&s)
 
-pub fn push(self: &mut StrBuf, s: &str) = {
+fn push*(self: &mut StrBuf, s: &str) = {
 	if s.len == 0 {
 		return
 	}
@@ -68,7 +68,7 @@ pub fn push(self: &mut StrBuf, s: &str) = {
 	self.array.push(b'\0')
 }
 
-pub fn push(self: &mut StrBuf, ch: char) = {
+fn push*(self: &mut StrBuf, ch: char) = {
 	let len = self.array.len()
 	let ch_len = ch.len_utf8()
 	let new_len = len + ch_len 
@@ -83,7 +83,7 @@ pub fn push(self: &mut StrBuf, ch: char) = {
 	self.array.push(b'\0')
 }
 
-pub fn clear(self: &mut StrBuf) = {
+fn clear*(self: &mut StrBuf) = {
 	self.array = array_with_nul_byte(self.array.cap())
 }
 
