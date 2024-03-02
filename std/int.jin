@@ -1,5 +1,5 @@
 use std.option.Option
-use std.slice.{?}
+use std.slice.(?)
 use std.str.StrBuf
 
 let i8_min*: i8 = -128

@@ -1,12 +1,12 @@
 use std*
-use std.bool.{?*}
-use std.char.{?*}
-use std.collections.{**}
-use std.option.{Option*, ?*}
-use std.result.{Result*, ?*}
-use std.int.{?*}
-use std.io.{print*, println*}
-use std.panicking.{assert*, panic*, todo*}
-use std.ptr.{?*}
-use std.slice.{?*}
-use std.str.{StrBuf*, ?*}
+use std.bool.(?*)
+use std.char.(?*)
+use std.collections.(**)
+use std.option.(Option*, ?*)
+use std.result.(Result*, ?*)
+use std.int.(?*)
+use std.io.(print*, println*)
+use std.panicking.(assert*, panic*, todo*)
+use std.ptr.(?*)
+use std.slice.(?*)
+use std.str.(StrBuf*, ?*)

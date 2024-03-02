@@ -1,9 +1,9 @@
-use std.{
-    int.{?},
+use std.(
+    int.(?),
     option.Option,
     panicking.assert,
-    str.{?},
-}
+    str.(?),
+)
 
 fn char.from_digit*(num: u32, radix: u32) -> Option[char] = {
     assert(radix <= 36, "radix is too high (maximum 36)")

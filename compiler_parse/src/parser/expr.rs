@@ -133,7 +133,7 @@ impl<'a> Parser<'a> {
                 self.back();
                 self.parse_block()?
             }
-            TokenKind::OpenBracket => self.parse_slice_lit()?,
+            TokenKind::OpenBrack => self.parse_slice_lit()?,
             TokenKind::Kw(Kw::Unsafe) => {
                 let expr = self.parse_expr()?;
                 let span = tok.span.merge(expr.span());
@@ -191,9 +191,9 @@ impl<'a> Parser<'a> {
     fn parse_cast(&mut self) -> DiagnosticResult<Expr> {
         let start = self.last_span();
 
-        self.eat(TokenKind::OpenBracket)?;
+        self.eat(TokenKind::OpenBrack)?;
         let target = self.parse_ty()?;
-        self.eat(TokenKind::CloseBracket)?;
+        self.eat(TokenKind::CloseBrack)?;
 
         self.eat(TokenKind::OpenParen)?;
         let expr = self.parse_expr()?;
@@ -207,7 +207,7 @@ impl<'a> Parser<'a> {
         while let Some(tok) = self.token() {
             expr = match tok.kind {
                 TokenKind::OpenParen => self.parse_call(expr)?,
-                TokenKind::OpenBracket => {
+                TokenKind::OpenBrack => {
                     self.next();
                     self.parse_index(expr)?
                 }
@@ -316,7 +316,7 @@ impl<'a> Parser<'a> {
             return self.parse_slice_high_helper(expr, Some(Box::new(index)));
         }
 
-        self.eat(TokenKind::CloseBracket)?;
+        self.eat(TokenKind::CloseBrack)?;
         let span = expr.span().merge(self.last_span());
         Ok(Expr::Index { expr: Box::new(expr), index: Box::new(index), span })
     }
@@ -326,13 +326,13 @@ impl<'a> Parser<'a> {
         expr: Expr,
         low: Option<Box<Expr>>,
     ) -> DiagnosticResult<Expr> {
-        let high = if self.peek_is(TokenKind::CloseBracket) {
+        let high = if self.peek_is(TokenKind::CloseBrack) {
             None
         } else {
             Some(Box::new(self.parse_expr()?))
         };
 
-        self.eat(TokenKind::CloseBracket)?;
+        self.eat(TokenKind::CloseBrack)?;
         let span = expr.span().merge(self.last_span());
         Ok(Expr::Slice { expr: Box::new(expr), low, high, span })
     }
@@ -393,14 +393,14 @@ impl<'a> Parser<'a> {
 
         if self.is(TokenKind::Colon) {
             let cap = Box::new(self.parse_expr()?);
-            self.eat(TokenKind::CloseBracket)?;
+            self.eat(TokenKind::CloseBrack)?;
             return Ok(Expr::SliceLitCap { cap, span: start.merge(self.last_span()) });
         }
 
         self.back();
 
         let (exprs, span) =
-            self.parse_list(TokenKind::OpenBracket, TokenKind::CloseBracket, |this| {
+            self.parse_list(TokenKind::OpenBrack, TokenKind::CloseBrack, |this| {
                 this.parse_expr().map(ControlFlow::Continue)
             })?;
 

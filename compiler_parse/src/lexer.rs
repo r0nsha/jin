@@ -122,8 +122,8 @@ impl<'s> Lexer<'s> {
                     }
                     '(' => self.open_paren(),
                     ')' => self.close_paren(),
-                    '[' => TokenKind::OpenBracket,
-                    ']' => TokenKind::CloseBracket,
+                    '[' => TokenKind::OpenBrack,
+                    ']' => TokenKind::CloseBrack,
                     '{' => TokenKind::OpenCurly,
                     '}' => TokenKind::CloseCurly,
                     ',' => TokenKind::Comma,

@@ -25,8 +25,8 @@ impl<'a> Parser<'a> {
                 let span = tok.span.merge(inner.span());
                 TyExpr::Ref(Box::new(inner), mutability, span)
             }
-            TokenKind::OpenBracket => {
-                self.eat(TokenKind::CloseBracket)?;
+            TokenKind::OpenBrack => {
+                self.eat(TokenKind::CloseBrack)?;
                 let inner = self.parse_ty()?;
                 let span = tok.span.merge(inner.span());
                 TyExpr::Slice(Box::new(inner), span)
@@ -107,14 +107,14 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_targs(&mut self) -> DiagnosticResult<Vec<TyExpr>> {
-        self.parse_list(TokenKind::OpenBracket, TokenKind::CloseBracket, |this| {
+        self.parse_list(TokenKind::OpenBrack, TokenKind::CloseBrack, |this| {
             this.parse_ty().map(ControlFlow::Continue)
         })
         .map(|(t, _)| t)
     }
 
     pub(super) fn parse_optional_targs(&mut self) -> DiagnosticResult<Option<Vec<TyExpr>>> {
-        if self.peek_is(TokenKind::OpenBracket) {
+        if self.peek_is(TokenKind::OpenBrack) {
             Ok(Some(self.parse_targs()?))
         } else {
             Ok(None)
@@ -123,7 +123,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn parse_optional_expr_targs(&mut self) -> DiagnosticResult<Option<Vec<TyExpr>>> {
         if self.is(TokenKind::Dot) {
-            if self.peek_is(TokenKind::OpenBracket) {
+            if self.peek_is(TokenKind::OpenBrack) {
                 return Ok(Some(self.parse_targs()?));
             }
 

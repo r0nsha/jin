@@ -1,4 +1,4 @@
-use raylib.bindings.{*}
+use raylib.bindings.(*)
 
 fn extern "c" printf(fmt: *u8, ..) -> i32
 fn extern "c" atan2f(y: f32, x: f32) -> f32

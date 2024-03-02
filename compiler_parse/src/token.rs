@@ -57,8 +57,8 @@ pub enum TokenKind {
     // Delimiters
     OpenParen,
     CloseParen,
-    OpenBracket,
-    CloseBracket,
+    OpenBrack,
+    CloseBrack,
     OpenCurly,
     CloseCurly,
 
@@ -133,7 +133,7 @@ impl TokenKind {
             | TokenKind::Underscore
             | TokenKind::QuestionMark
             | TokenKind::CloseParen
-            | TokenKind::CloseBracket
+            | TokenKind::CloseBrack
             | TokenKind::CloseCurly
             | TokenKind::Semi(_)
             | TokenKind::Star
@@ -162,7 +162,7 @@ impl TokenKind {
             | TokenKind::Arrow
             | TokenKind::Comma
             | TokenKind::OpenParen
-            | TokenKind::OpenBracket
+            | TokenKind::OpenBrack
             | TokenKind::OpenCurly
             | TokenKind::Eq
             | TokenKind::EqEq
@@ -229,7 +229,7 @@ impl TokenKind {
             | TokenKind::Underscore
             | TokenKind::Semi(_)
             | TokenKind::OpenParen
-            | TokenKind::OpenBracket
+            | TokenKind::OpenBrack
             | TokenKind::OpenCurly
             | TokenKind::CloseCurly
             | TokenKind::Bang
@@ -241,7 +241,7 @@ impl TokenKind {
 
             TokenKind::QuestionMark
             | TokenKind::CloseParen
-            | TokenKind::CloseBracket
+            | TokenKind::CloseBrack
             | TokenKind::Kw(Kw::Else | Kw::Mut | Kw::Imm | Kw::Ref | Kw::Move)
             | TokenKind::Dot
             | TokenKind::DotDot
@@ -288,8 +288,8 @@ impl fmt::Display for TokenKind {
         match self {
             Self::OpenParen => f.write_char('('),
             Self::CloseParen => f.write_char(')'),
-            Self::OpenBracket => f.write_char('['),
-            Self::CloseBracket => f.write_char(']'),
+            Self::OpenBrack => f.write_char('['),
+            Self::CloseBrack => f.write_char(']'),
             Self::OpenCurly => f.write_char('{'),
             Self::CloseCurly => f.write_char('}'),
             Self::Comma => f.write_char(','),
