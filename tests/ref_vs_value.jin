@@ -25,7 +25,7 @@ fn mutate(r: &mut Ref) = {
 }
 
 fn print(r: &Ref) = {
-	println("Ref(field: \(r.field))")
+	println("Ref(field: {r.field})")
 }
 
 type Ext extern(field: int)
@@ -46,6 +46,6 @@ fn mutate(mut ext: Ext) = {
 }
 
 fn print(ext: Ext) = {
-	println("Ext(field: \(ext.field))")
+	println("Ext(field: {ext.field})")
 }
 

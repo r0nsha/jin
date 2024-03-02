@@ -18,18 +18,18 @@ fn main() = {
 	let o = Option.some(Box(4))
 
 	let mut b = Box(1)
-	println("before match: Box(\(b.value))")
+	println("before match: Box({b.value})")
 
 	match o {
 		Option.some(Box(value: 5)) -> println("some(Box(5))")
 		Option.some(x) -> {
-			println("some(\(x.value))")
+			println("some({x.value})")
 			b = x
 		}
 		Option.none -> println("none")
 	}
 
-	println("after match: Box(\(b.value))")
+	println("after match: Box({b.value})")
 
 	if Option.some(-1).map_or(false, is_negative) {
 		println("o is negative")

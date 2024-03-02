@@ -5,11 +5,11 @@ fn add*() = {
 }
 
 fn add*(a: int, b: int) = {
-	println("add ints: \(a + b)")
+	println("add ints: {a + b}")
 }
 
 fn add*(a: int, b: int, c: int) = {
-	println("add 3 ints: \(a + b + c)")
+	println("add 3 ints: {a + b + c}")
 }
 
 fn add*(a: f32, b: f32) = {

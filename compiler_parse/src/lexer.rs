@@ -19,8 +19,8 @@ struct Lexer<'s> {
     pos: u32,
     encountered_nl: bool,
     modes: Vec<Mode>,
-    parens: usize,
-    parens_stack: Vec<usize>,
+    curlies: usize,
+    curly_stack: Vec<usize>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -38,8 +38,8 @@ impl<'s> Lexer<'s> {
             pos: 0,
             encountered_nl: false,
             modes: vec![],
-            parens: 0,
-            parens_stack: vec![],
+            curlies: 0,
+            curly_stack: vec![],
         }
     }
 
@@ -120,12 +120,12 @@ impl<'s> Lexer<'s> {
                         self.eat_comment();
                         return self.eat_token();
                     }
-                    '(' => self.open_paren(),
-                    ')' => self.close_paren(),
+                    '(' => TokenKind::OpenParen,
+                    ')' => TokenKind::CloseParen,
                     '[' => TokenKind::OpenBrack,
                     ']' => TokenKind::CloseBrack,
-                    '{' => TokenKind::OpenCurly,
-                    '}' => TokenKind::CloseCurly,
+                    '{' => self.open_curly(),
+                    '}' => self.close_curly(),
                     ',' => TokenKind::Comma,
                     '.' => {
                         if self.eat('.') {
@@ -259,20 +259,20 @@ impl<'s> Lexer<'s> {
         }
     }
 
-    fn open_paren(&mut self) -> TokenKind {
-        self.parens += 1;
-        TokenKind::OpenParen
+    fn open_curly(&mut self) -> TokenKind {
+        self.curlies += 1;
+        TokenKind::OpenCurly
     }
 
-    fn close_paren(&mut self) -> TokenKind {
-        self.parens = self.parens.saturating_sub(1);
+    fn close_curly(&mut self) -> TokenKind {
+        self.curlies = self.curlies.saturating_sub(1);
 
-        if self.parens_stack.last().copied() == Some(self.parens) {
-            self.parens_stack.pop();
+        if self.curly_stack.last().copied() == Some(self.curlies) {
+            self.curly_stack.pop();
             self.modes.pop();
             TokenKind::StrExprClose
         } else {
-            TokenKind::CloseParen
+            TokenKind::CloseCurly
         }
     }
 
@@ -285,10 +285,15 @@ impl<'s> Lexer<'s> {
                 self.modes.pop();
                 Ok(Some(Token { kind: TokenKind::StrClose, span: self.create_span(start) }))
             }
-            Some('\\') if self.peek_offset(1) == Some('(') => {
+            Some('{') => {
                 self.next();
-                self.next();
-                Ok(Some(self.eat_str_expr_open()))
+                self.modes.push(Mode::Default);
+                self.curly_stack.push(self.curlies);
+                self.curlies += 1;
+                Ok(Some(Token {
+                    kind: TokenKind::StrExprOpen,
+                    span: self.create_span(self.pos - 2),
+                }))
             }
             Some(_) => Ok(Some(self.eat_str_text(start)?)),
             None => Ok(None),
@@ -448,16 +453,12 @@ impl<'s> Lexer<'s> {
 
         loop {
             match self.peek() {
+                Some('"') => break,
                 Some('\\') => {
-                    if self.peek_offset(1) == Some('(') {
-                        break;
-                    }
-
                     self.next();
                     let ch = self.eat_unescaped_char()? as u8;
                     buf.push(ch);
                 }
-                Some('"') => break,
                 Some(ch) => {
                     self.next();
                     buf.push(ch as u8)
@@ -476,13 +477,6 @@ impl<'s> Lexer<'s> {
         // so it remains utf8-encoded.
         let s = unsafe { String::from_utf8_unchecked(buf) };
         Ok(Token { kind: TokenKind::StrText(ustr(&s)), span: self.create_span(start) })
-    }
-
-    fn eat_str_expr_open(&mut self) -> Token {
-        self.modes.push(Mode::Default);
-        self.parens_stack.push(self.parens);
-        self.parens += 1;
-        Token { kind: TokenKind::StrExprOpen, span: self.create_span(self.pos - 2) }
     }
 
     fn eat_unescaped_char(&mut self) -> DiagnosticResult<char> {
@@ -567,5 +561,6 @@ static UNESCAPES: phf::Map<char, char> = phf_map! {
     'r' => '\r',
     't' => '\t',
     '\\' => '\\',
+    '{' => '{',
     '0' => '\0',
 };

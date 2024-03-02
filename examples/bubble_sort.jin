@@ -31,7 +31,7 @@ fn bubble_sort(slice: &mut []int) = {
 fn print(slice: &[]int) = {
     let mut i = 0
     for if i < slice.len {
-        print("\(slice[i]) ")
+        print("{slice[i]} ")
         i += 1
     }
     println()

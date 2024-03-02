@@ -10,5 +10,5 @@ fn print*(msg: &str) =
 fn print*(msg: str) = print(&msg)
 
 fn println*() = print("\n")
-fn println*(msg: &str) = print("\(msg)\n")
+fn println*(msg: &str) = print("{msg}\n")
 fn println*(msg: str) = println(&msg)

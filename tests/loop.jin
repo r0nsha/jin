@@ -6,7 +6,7 @@ fn main() = {
 
 	let mut i = 0
 	for if i <= 10 {
-		println("For loop: \(i)")
+		println("For loop: {i}")
 		i += 1
 	}
 }

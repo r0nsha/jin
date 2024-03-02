@@ -35,7 +35,7 @@ fn print(self: &LinkedList[int]) = {
         match curr {
             Option.some(v) -> {
                 curr = &v.next
-                print("\(v.data)")
+                print("{v.data}")
                 if curr.is_some() {
                     print(", ")
                 }

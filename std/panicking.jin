@@ -7,11 +7,11 @@ fn panic*(msg: &str) -> never = unsafe builtin.panic(msg)
 
 fn todo*() -> never = panic("not yet implemented")
 fn todo*(msg: str) -> never = todo(&msg)
-fn todo*(msg: &str) -> never = panic("not yet implemented: \(msg)")
+fn todo*(msg: &str) -> never = panic("not yet implemented: {msg}")
 
 fn assert*(cond: bool) = 
     if !cond { panic("assertion failed") }
 
 fn assert*(cond: bool, msg: str) = assert(cond, &msg)
 fn assert*(cond: bool, msg: &str) = 
-    if !cond { panic("assertion failed: \(msg)") }
+    if !cond { panic("assertion failed: {msg}") }
