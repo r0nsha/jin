@@ -453,7 +453,7 @@ impl<'s> Lexer<'s> {
 
         loop {
             match self.peek() {
-                Some('"') => break,
+                Some('"' | '{') => break,
                 Some('\\') => {
                     self.next();
                     let ch = self.eat_unescaped_char()? as u8;
