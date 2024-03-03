@@ -9,8 +9,8 @@ fn main() = {
 	print(&Box(3.0).value) # matches print(f32) 
 	print(&Box(42)) # matches print(&Box[int])
 	print(&Box(6.9)) # matches print(&Box[T])
-	print(&Box.[int](5)) # matches print(&Box[int]) 
-	print(&inner.Inner.[int](30)) # matches print(&inner.Inner[int])
+	print(&Box[int](5)) # matches print(&Box[int]) 
+	print(&inner.Inner[int](30)) # matches print(&inner.Inner[int])
 }
 
 fn print(value: int) = {

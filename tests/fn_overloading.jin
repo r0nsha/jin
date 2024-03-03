@@ -24,7 +24,7 @@ fn main() = {
 
 	unsafe printf("Calls with named arguments:\n".ptr)
 	named(x: 1) # picks `fn named(x: int)`
-	named.[int](x: 1) # picks `fn named[a](x: a)`
+	named[int](x: 1) # picks `fn named[a](x: a)`
 	named(1, 2) # picks `fn named(x: int, y: int)`
 	named(y: 1, x: 2) # picks `fn named(x: int, y: int)`
 	named(z: 1) # picks `fn named(z: int)`
@@ -37,7 +37,7 @@ fn main() = {
 		.add(3)
 	unsafe printf("\n".ptr)
 
-	child.poly.[int](1) # picking a module function with type application
+	child.poly[int](1) # picking a module function with type application
 }
 
 fn add_one(x: int) -> int = {

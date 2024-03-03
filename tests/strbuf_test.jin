@@ -24,7 +24,7 @@ fn main() = {
 	let s = b.as_ref()
 	let mut i = 0
 	for if i < s.len {
-		unsafe printf("%x ".ptr, s[i])
+		unsafe printf("%x ".ptr, s.[i])
 		i += 1
 	}
 	unsafe printf("\n".ptr)

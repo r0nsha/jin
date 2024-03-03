@@ -12,7 +12,7 @@ fn binary_search(haystack: &[]int, needle: int) -> Option[uint] = {
 
     for if upper >= lower {
         let mid = {upper + lower} / 2
-        let elem = haystack[mid]
+        let elem = haystack.[mid]
 
         if elem == needle {
             return Option.some(mid)

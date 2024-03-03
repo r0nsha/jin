@@ -7,15 +7,15 @@ fn main() = {
 	# Indexing
 	s.print_at(1)
 	s.print_at(10)
-	# s[1] = 42 # Error: &str is immutable
+	# s.[1] = 42 # Error: &str is immutable
 
 	# Slicing
-	println(&s[..])
-	println(&s[1..])
-	println(&s[..4])
-	println(&s[3..10])
+	println(&s.[..])
+	println(&s.[1..])
+	println(&s.[..4])
+	println(&s.[3..10])
 }
 
 fn print_at(s: &str, at: uint) = {
-	unsafe printf("s[%d] = %c\n".ptr, at, s[at])
+	unsafe printf("s.[%d] = %c\n".ptr, at, s.[at])
 }

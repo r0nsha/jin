@@ -142,7 +142,7 @@ impl<'a> Parser<'a> {
             TokenKind::Kw(Kw::True) => Expr::BoolLit { value: true, span: tok.span },
             TokenKind::Kw(Kw::False) => Expr::BoolLit { value: false, span: tok.span },
             TokenKind::Ident(..) => {
-                let targs = self.parse_optional_expr_targs()?;
+                let targs = self.parse_optional_targs()?;
                 Expr::Name { word: tok.word(), targs, span: tok.span }
             }
             TokenKind::Int(value) => Expr::IntLit { value: value as u128, span: tok.span },
@@ -207,13 +207,14 @@ impl<'a> Parser<'a> {
         while let Some(tok) = self.token() {
             expr = match tok.kind {
                 TokenKind::OpenParen => self.parse_call(expr)?,
-                TokenKind::OpenBrack => {
-                    self.next();
-                    self.parse_index(expr)?
-                }
                 TokenKind::Dot => {
                     self.next();
-                    self.parse_field(expr)?
+
+                    if self.is(TokenKind::OpenBrack) {
+                        self.parse_index(expr)?
+                    } else {
+                        self.parse_field(expr)?
+                    }
                 }
                 TokenKind::Eq => {
                     self.next();
@@ -345,12 +346,13 @@ impl<'a> Parser<'a> {
         }
 
         let name = self.eat_ident()?.word();
-        let targs = self.parse_optional_expr_targs()?;
 
-        if targs.is_some() || self.peek_is(TokenKind::OpenParen) {
+        let ty_args = self.parse_optional_targs()?;
+
+        if ty_args.is_some() || self.peek_is(TokenKind::OpenParen) {
             let (args, args_span) = self.parse_call_args()?;
             let span = expr.span().merge(args_span);
-            Ok(Expr::MethodCall { expr: Box::new(expr), method: name, targs, args, span })
+            Ok(Expr::MethodCall { expr: Box::new(expr), method: name, targs: ty_args, args, span })
         } else {
             let span = expr.span().merge(name.span());
             Ok(Expr::Field { expr: Box::new(expr), field: name, span })

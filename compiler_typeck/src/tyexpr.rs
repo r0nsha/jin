@@ -135,7 +135,7 @@ fn check_path(
                 }
                 _ => Err(Diagnostic::error(format!(
                     "expected a type, found value of type `{}`",
-                    cx.normalize(cx.def_ty(id)).display(cx.db)
+                    cx.def_ty(id).display(cx.db)
                 ))
                 .with_label(Label::primary(span, "expected a type"))),
             }

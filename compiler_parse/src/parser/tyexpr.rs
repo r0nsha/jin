@@ -120,16 +120,4 @@ impl<'a> Parser<'a> {
             Ok(None)
         }
     }
-
-    pub(super) fn parse_optional_expr_targs(&mut self) -> DiagnosticResult<Option<Vec<TyExpr>>> {
-        if self.is(TokenKind::Dot) {
-            if self.peek_is(TokenKind::OpenBrack) {
-                return Ok(Some(self.parse_targs()?));
-            }
-
-            self.back();
-        }
-
-        Ok(None)
-    }
 }

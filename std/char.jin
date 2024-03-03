@@ -50,21 +50,21 @@ fn encode_utf8_raw*(code: u32, dst: &mut []u8) -> &mut []u8 = {
     assert(dst.len >= len)
 
     if len == 1 {
-	dst[0] = u8(code)
+	dst.[0] = u8(code)
     } else if len == 2 {
-	dst[0] = u8(code >> 6 & 0x1f) | tag_two_b
-	dst[1] = u8(code & 0x3f) | tag_cont
+	dst.[0] = u8(code >> 6 & 0x1f) | tag_two_b
+	dst.[1] = u8(code & 0x3f) | tag_cont
     } else if len == 3 {
-	dst[0] = u8(code >> 12 & 0x0f) | tag_three_b
-	dst[1] = u8(code >> 6 & 0x3f) | tag_cont
-	dst[2] = u8(code & 0x3f) | tag_cont
+	dst.[0] = u8(code >> 12 & 0x0f) | tag_three_b
+	dst.[1] = u8(code >> 6 & 0x3f) | tag_cont
+	dst.[2] = u8(code & 0x3f) | tag_cont
     } else {
 	# len == 4
-	dst[0] = u8(code >> 18 & 0x07) | tag_four_b
-	dst[1] = u8(code >> 12 & 0x3f) | tag_cont
-	dst[2] = u8(code >> 6 & 0x3f) | tag_cont
-	dst[3] = u8(code & 0x3f) | tag_cont
+	dst.[0] = u8(code >> 18 & 0x07) | tag_four_b
+	dst.[1] = u8(code >> 12 & 0x3f) | tag_cont
+	dst.[2] = u8(code >> 6 & 0x3f) | tag_cont
+	dst.[3] = u8(code & 0x3f) | tag_cont
     }
 
-    &mut dst[..len]
+    &mut dst.[..len]
 }

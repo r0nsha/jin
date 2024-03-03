@@ -35,7 +35,7 @@ fn take*[T](self: Array[T]) -> []T = self.buf
 
 fn get*[T](self: &Array[T], index: uint) -> Option[&T] = {
 	if index < self.buf.len {
-		Option.some(&self.buf[index])
+		Option.some(&self.buf.[index])
 	} else {
 		Option.none
 	}
@@ -43,7 +43,7 @@ fn get*[T](self: &Array[T], index: uint) -> Option[&T] = {
 
 fn set*[T](self: &mut Array[T], index: uint, value: T) -> Option[T] = {
 	if index < self.buf.len {
-		Option.some(self.buf[index] := value)
+		Option.some(self.buf.[index] := value)
 	} else {
 		Option.none
 	}
@@ -76,7 +76,7 @@ fn reserve*[T](self: &mut Array[T], additional: uint) = {
 # TODO: this should be marked `unsafe`
 fn push_unchecked*[T](self: &mut Array[T], value: T) = {
 	unsafe self.buf.len += 1
-	self.buf[self.buf.len - 1] = value
+	self.buf.[self.buf.len - 1] = value
 }
 
 # TODO: this should be marked `unsafe`
