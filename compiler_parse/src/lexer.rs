@@ -116,10 +116,6 @@ impl<'s> Lexer<'s> {
                         TokenKind::StrOpen
                     }
                     '\'' => self.eat_char(CharKind::Char, start + 1)?,
-                    '#' => {
-                        self.eat_comment();
-                        return self.eat_token();
-                    }
                     '(' => TokenKind::OpenParen,
                     ')' => TokenKind::CloseParen,
                     '[' => TokenKind::OpenBrack,
@@ -166,6 +162,11 @@ impl<'s> Lexer<'s> {
                         }
                     }
                     '/' => {
+                        if self.eat('/') {
+                            self.eat_comment();
+                            return self.eat_token();
+                        }
+
                         if self.eat('=') {
                             TokenKind::FwSlashEq
                         } else {

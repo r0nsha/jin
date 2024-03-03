@@ -20,7 +20,7 @@ fn char.from_digit*(num: u32, radix: u32) -> Option[char] = {
     }
 }
 
-# The low-level UTF8 implementation was taken from rust's `core::char` module
+// The low-level UTF8 implementation was taken from rust's `core::char` module
 let tag_cont: u8 = 0b1000_0000;
 let tag_two_b: u8 = 0b1100_0000;
 let tag_three_b: u8 = 0b1110_0000;
@@ -59,7 +59,7 @@ fn encode_utf8_raw*(code: u32, dst: &mut []u8) -> &mut []u8 = {
 	dst.[1] = u8(code >> 6 & 0x3f) | tag_cont
 	dst.[2] = u8(code & 0x3f) | tag_cont
     } else {
-	# len == 4
+	// len == 4
 	dst.[0] = u8(code >> 18 & 0x07) | tag_four_b
 	dst.[1] = u8(code >> 12 & 0x3f) | tag_cont
 	dst.[2] = u8(code >> 6 & 0x3f) | tag_cont

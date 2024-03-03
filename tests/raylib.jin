@@ -4,7 +4,7 @@ use .following_eyes
 use .bindings
 
 fn main() = {
-	# basic_window.run()
-	# input_keys.run()
-	# following_eyes.run()
+	// basic_window.run()
+	// input_keys.run()
+	// following_eyes.run()
 }

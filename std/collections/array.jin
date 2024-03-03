@@ -20,7 +20,7 @@ fn Array.new*[T](len: uint, f: fn(uint) -> T) -> Array[T] = {
 fn Array.from*[T](slice: []T) -> Array[T] = Array(slice)
 
 fn Array.with_cap*[T](cap: uint) -> Array[T] = {
-	# TODO: use a polymorphic `std.cmp.max` function for this	
+	// TODO: use a polymorphic `std.cmp.max` function for this	
 	let c = if cap > min_cap { cap } else { min_cap }
 	Array([:c])
 }
@@ -73,19 +73,19 @@ fn reserve*[T](self: &mut Array[T], additional: uint) = {
 	}
 }
 
-# TODO: this should be marked `unsafe`
+// TODO: this should be marked `unsafe`
 fn push_unchecked*[T](self: &mut Array[T], value: T) = {
 	unsafe self.buf.len += 1
 	self.buf.[self.buf.len - 1] = value
 }
 
-# TODO: this should be marked `unsafe`
+// TODO: this should be marked `unsafe`
 fn set_len*[T](self: &mut Array[T], len: uint) = {
 	unsafe self.buf.len = len
 }
 
 fn needs_to_grow[T](self: &Array[T], additional: uint) -> bool =
-	# TODO: this is prone to overflow, we should implement checked arithmetic
+	// TODO: this is prone to overflow, we should implement checked arithmetic
 	self.buf.len + additional > self.buf.cap
 
 
@@ -98,7 +98,7 @@ fn grow[T](self: &mut Array[T], additional: uint) = {
 	}
 }
 
-# TODO: use a polymorphic `std.cmp.max` function instead
+// TODO: use a polymorphic `std.cmp.max` function instead
 fn max(a: uint, b: uint) -> uint =
 	if a > b { a } else { b }
 

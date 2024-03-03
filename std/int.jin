@@ -14,7 +14,7 @@ let i32_max*: i32 = 2_147_483_647
 let i64_min*: i64 = -9_223_372_036_854_775_808
 let i64_max*: i64 = 9_223_372_036_854_775_807
 
-# TODO: Consider 32bit platforms!
+// TODO: Consider 32bit platforms!
 let int_min*: int = i64_min
 let int_max*: int = i64_max
 
@@ -30,7 +30,7 @@ let u32_max*: u32 = 4_294_967_295
 let u64_min*: u64 = 0
 let u64_max*: u64 = 18_446_744_073_709_551_615
 
-# TODO: Consider 32bit platforms!
+// TODO: Consider 32bit platforms!
 let uint_min*: uint = u64_min
 let uint_max*: uint = u64_max
 
@@ -92,14 +92,14 @@ fn base*(f: Format) -> uint = match f {
 	Format.hex -> 16
 }
 
-# TODO: We can avoid this allocation if we add stack allocated arrays to the language,
-# and stack allocate an uninitialized [u8; 22] instead of using a StrBuf
+// TODO: We can avoid this allocation if we add stack allocated arrays to the language,
+// and stack allocate an uninitialized [u8; 22] instead of using a StrBuf
 fn fmt_impl(mut num: uint, is_neg: bool, format: Format) -> str = {
 	let base = format.base()
 	let mut buf = StrBuf.with_cap(22)
 
-	# TODO: We should be able to use an early return here,
-	# but the ownership check dictates that `buf` is `MaybeMoved`, hence it can't be used afterwards.
+	// TODO: We should be able to use an early return here,
+	// but the ownership check dictates that `buf` is `MaybeMoved`, hence it can't be used afterwards.
 	if num == 0 {
 		buf.push('0')	
 	} else {

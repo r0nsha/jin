@@ -5,12 +5,12 @@ fn extern "c" printf(fmt: *u8, ..) -> i32
 
 fn main() = {
 	unsafe printf("Function overload matching:\n".ptr)
-	add(int(1), int(1)) # exact int
-	add(1, 1) # untyped int matching
-	add(8, 13, 9) # matching different arg count
-	add(f32(1.0), f32(2.5)) # exact f32
-	add(1.0, 2.5) # untyped float matching
-	add(5, 2.25) # mixed parameter type matching
+	add(int(1), int(1)) // exact int
+	add(1, 1) // untyped int matching
+	add(8, 13, 9) // matching different arg count
+	add(f32(1.0), f32(2.5)) // exact f32
+	add(1.0, 2.5) // untyped float matching
+	add(5, 2.25) // mixed parameter type matching
 	unsafe printf("\n".ptr)
 
 	unsafe printf("Same calls in UFCS style\n".ptr)
@@ -23,11 +23,11 @@ fn main() = {
 	unsafe printf("\n".ptr)
 
 	unsafe printf("Calls with named arguments:\n".ptr)
-	named(x: 1) # picks `fn named(x: int)`
-	named[int](x: 1) # picks `fn named[a](x: a)`
-	named(1, 2) # picks `fn named(x: int, y: int)`
-	named(y: 1, x: 2) # picks `fn named(x: int, y: int)`
-	named(z: 1) # picks `fn named(z: int)`
+	named(x: 1) // picks `fn named(x: int)`
+	named[int](x: 1) // picks `fn named[a](x: a)`
+	named(1, 2) // picks `fn named(x: int, y: int)`
+	named(y: 1, x: 2) // picks `fn named(x: int, y: int)`
+	named(z: 1) // picks `fn named(z: int)`
 	unsafe printf("\n".ptr)
 
 	unsafe printf("Chaining add calls with a print at the end:\n".ptr)
@@ -37,7 +37,7 @@ fn main() = {
 		.add(3)
 	unsafe printf("\n".ptr)
 
-	child.poly[int](1) # picking a module function with type application
+	child.poly[int](1) // picking a module function with type application
 }
 
 fn add_one(x: int) -> int = {

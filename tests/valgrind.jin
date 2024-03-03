@@ -6,23 +6,23 @@ type Duo(n1: Num, n2: Num)
 type WrapperDuo(w1: Wrapper, w2: Wrapper)
 
 fn main() = {
-	# Destroy temporary values
+	// Destroy temporary values
 	Num(1)
 	Wrapper(Num(1))
 
-	# Destroy named values
+	// Destroy named values
 	let n = Num(1) 
 	let w = Wrapper(Num(1))
 
-	# Moving into specialized functions
-	destroy_poly(Num(1)) # Should be destroyed at `destroy_poly`
-	destroy_poly(1) # Shouldn't be destroyed at `destroy_poly`
+	// Moving into specialized functions
+	destroy_poly(Num(1)) // Should be destroyed at `destroy_poly`
+	destroy_poly(1) // Shouldn't be destroyed at `destroy_poly`
 
-	# Destroy on assignment
+	// Destroy on assignment
 	let mut n = Num(1)
 	n = Num(2)
 
-	# Destroy in for & break
+	// Destroy in for & break
 	let mut i: uint = 10
 	for {
 		let n = Num(1)
@@ -35,25 +35,25 @@ fn main() = {
 		}
 	}
 
-	let cond = Wrapper(Num(1)) # Conditionally destroy value
+	let cond = Wrapper(Num(1)) // Conditionally destroy value
 	if false {
 		let x = cond
 	}
 
-	let duo = Duo(Num(1), Num(2)) # Partial move destroy (only a & c should be destroyed)
-	let copy = duo.n1.field # Ok (copy type)
+	let duo = Duo(Num(1), Num(2)) // Partial move destroy (only a & c should be destroyed)
+	let copy = duo.n1.field // Ok (copy type)
 	let a = duo.n1
-	let b = duo.n2 # Ok (n1 was moved)
-	#let c = duo.n1 # Error!
+	let b = duo.n2 // Ok (n1 was moved)
+	//let c = duo.n1 // Error!
 
-	let d2 = Duo(Num(1), Num(2)) # Partial & conditional move destroy
+	let d2 = Duo(Num(1), Num(2)) // Partial & conditional move destroy
 	if true {
 		let d2n1 = d2.n1
 	} else {
 		let d2n2 = d2.n2
 	}
 
-	let wd = WrapperDuo(Wrapper(Num(1)), Wrapper(Num(2))) # Partial & conditional move destroy (nested structure)
+	let wd = WrapperDuo(Wrapper(Num(1)), Wrapper(Num(2))) // Partial & conditional move destroy (nested structure)
 	if true {
 		let wd1 = wd.w1
 	} else {

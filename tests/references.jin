@@ -7,9 +7,9 @@ type Bag(a: Box, b: Box)
 
 fn main() = {
 	let mut box = Box(1)
-	box.print() # Coerced to &Box
-	box.set(42) # Coerced to &mut Box
-	box.print() # box.value == 42
+	box.print() // Coerced to &Box
+	box.set(42) // Coerced to &mut Box
+	box.print() // box.value == 42
 
 	let ref_ = Ref(&box)
 	print(ref_.box)

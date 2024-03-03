@@ -4,12 +4,12 @@ fn main() = {
 	let mut s = "Hello World"
 	println(s)
 	
-	# Indexing
+	// Indexing
 	s.print_at(1)
 	s.print_at(10)
-	# s.[1] = 42 # Error: &str is immutable
+	// s.[1] = 42 // Error: &str is immutable
 
-	# Slicing
+	// Slicing
 	println(&s.[..])
 	println(&s.[1..])
 	println(&s.[..4])

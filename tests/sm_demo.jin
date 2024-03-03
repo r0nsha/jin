@@ -54,9 +54,9 @@ fn if_expr() = {
 }
 
 fn variables() -> int = {
-	let x = 7 # Inferred to `int`
-	let y: int = 3 # Explicit type annotation
-	let x = 39  # Variables can be shadowed
+	let x = 7 // Inferred to `int`
+	let y: int = 3 // Explicit type annotation
+	let x = 39  // Variables can be shadowed
 	x + y
 }
 
@@ -65,11 +65,11 @@ fn id[T](x: T) -> T = {
 }
 
 fn polymorphism() = {
-	# Inferred type arguments
+	// Inferred type arguments
 	id(42)
 	id(true)
 
-	# Explicit type arguments
+	// Explicit type arguments
 	id[int](111)
 	id[bool](false)
 }
