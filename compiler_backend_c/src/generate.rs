@@ -653,7 +653,7 @@ impl<'db> Generator<'db> {
             ValueKind::Register(name) => Self::register_name(value.id, *name),
             ValueKind::Local(id) => state
                 .local_names
-                .insert_unique(*id, ustr(&ident_str(self.db[*id].name.as_str())))
+                .insert_unique(*id, ustr(&mangle::ident(self.db[*id].name.as_str())))
                 .to_string(),
             kind => unreachable!("{kind:?}"),
         };
@@ -694,7 +694,7 @@ impl<'db> Generator<'db> {
 
     fn register_name(value: ValueId, name: Option<Ustr>) -> String {
         if let Some(name) = name {
-            format!("{}${}", ident_str(&name), value)
+            format!("{}${}", mangle::ident(&name), value)
         } else {
             format!("v{}", value)
         }
@@ -751,12 +751,12 @@ impl<'a> VariableDoc<'a> {
 }
 
 fn global_init_fn_name(glob: &Global) -> String {
-    format!("{}_init", ident_str(&glob.name))
+    format!("{}_init", mangle::ident(&glob.name))
 }
 
 fn param_name(pat: &Pat, index: usize) -> String {
     match pat {
-        Pat::Name(name) => format!("{}$p{}", ident_str(name.word.as_str()), index),
+        Pat::Name(name) => format!("{}$p{}", mangle::ident(name.word.as_str()), index),
         Pat::Discard(_) => format!("${index}"),
     }
 }
@@ -766,9 +766,5 @@ pub fn variant_name(name: Word, id: VariantId) -> String {
 }
 
 pub fn ident<'a>(s: &str) -> D<'a> {
-    D::text(ident_str(s))
-}
-
-pub fn ident_str(s: &str) -> String {
-    s.replace('-', "_")
+    D::text(mangle::ident(s))
 }

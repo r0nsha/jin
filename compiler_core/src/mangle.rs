@@ -18,7 +18,7 @@ pub fn fn_name(db: &Db, fun: &hir::Fn) -> String {
         hasher.write(ty_name(db, param.ty).as_bytes());
     }
 
-    ident(format!("{}${:x}", def.name, hasher.finish()))
+    ident(&format!("{}${:x}", def.name, hasher.finish()))
 }
 
 pub fn ty_name(db: &Db, t: Ty) -> String {
@@ -68,10 +68,10 @@ pub fn adt_name(db: &Db, adt: &Adt, targs: &[Ty]) -> String {
         hasher.write(ty_name(db, ty).as_bytes());
     }
 
-    ident(format!("{}${:x}", def.name, hasher.finish()))
+    ident(&format!("{}${:x}", def.name, hasher.finish()))
 }
 
-pub fn ident(s: String) -> String {
+pub fn ident(s: &str) -> String {
     let mut new = String::with_capacity(s.len());
 
     for ch in s.chars() {
