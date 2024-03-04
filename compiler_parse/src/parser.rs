@@ -42,7 +42,7 @@ pub fn parse(
     let is_main = db.is_main_package(package) && is_package_root;
     let module = parser.parse(source.id(), name, is_main)?;
 
-    Ok((module, parser.imported_module_paths))
+    Ok((module, parser.submodule_paths))
 }
 
 #[derive(Debug)]
@@ -52,7 +52,7 @@ pub(super) struct Parser<'a> {
     pub(super) tokens: Vec<Token>,
     pub(super) is_package_root: bool,
     pub(super) pos: usize,
-    pub(super) imported_module_paths: FxHashSet<Utf8PathBuf>,
+    pub(super) submodule_paths: FxHashSet<Utf8PathBuf>,
 }
 
 impl<'a> Parser<'a> {
@@ -63,7 +63,7 @@ impl<'a> Parser<'a> {
             tokens,
             is_package_root,
             pos: 0,
-            imported_module_paths: FxHashSet::default(),
+            submodule_paths: FxHashSet::default(),
         }
     }
 

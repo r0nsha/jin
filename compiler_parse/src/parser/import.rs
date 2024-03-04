@@ -23,7 +23,7 @@ impl<'a> Parser<'a> {
         let root = self.eat_ident()?.word();
 
         let module_path = self.search_submodule(root)?;
-        self.imported_module_paths.insert(module_path.clone());
+        self.submodule_paths.insert(module_path.clone());
 
         let alias = if self.is_kw(Kw::As) { Some(self.eat_ident()?.word()) } else { None };
         let vis = self.parse_vis();
