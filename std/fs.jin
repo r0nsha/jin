@@ -10,7 +10,8 @@ fn open*(path: &str, options: OpenOptions) -> io.Result[File] = {
     let pathname = unsafe as[_](path.as-bytes().ptr)
     let mode = unsafe as[_](options.to-str().ptr)
     let fd = unsafe fopen(pathname, mode)
-    File(fd)
+    println("{fd}")
+    Result.Ok(File(fd))
 }
 
 type RawFd = int

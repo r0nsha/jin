@@ -13,7 +13,7 @@ fn println*() = print("\n")
 fn println*(msg: &str) = print("{msg}\n")
 fn println*(msg: str) = println(&msg)
 
-type Result*[T] = Result[T, Error]
+type Result*[T] = std.result.Result[T, Error]
 
 type Error* {
 	PermissionDenied
@@ -34,4 +34,14 @@ fn Error.from-os-error*(code: i32) -> Error =
 		17 -> Error.AlreadyExists
 		22 -> Error.InvalidArgument
 		code -> Error.Other(code)
+	}
+
+fn fmt*(self: &Error, buf: &mut StrBuf) =
+	match self {
+		Error.PermissionDenied -> buf.push("Permission denied")
+		Error.NotFound -> buf.push("Not found")
+		Error.Interrupted -> buf.push("Interrupted")
+		Error.AlreadyExists -> buf.push("Already exists")
+		Error.InvalidArgument -> buf.push("Invalid argument")
+		Error.Other(code) -> buf.push("Other({code})")
 	}

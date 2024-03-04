@@ -5,7 +5,12 @@ import std.(
 
 fn main() = {
     let file = std.fs.open(
-        "/home/ron/file.txt", 
+        "/home/ron/file.txtt", 
         OpenOptions.new().read(true)
     )
+
+    match file {
+        Result.Ok(file) -> {}
+        Result.Err(err) -> println("Error: {err}")
+    }
 }
