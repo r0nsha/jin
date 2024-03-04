@@ -5,7 +5,7 @@ import std.(
 
 fn main() = {
     let file = std.fs.open(
-        "/home/ron/file.txtt", 
+        "/home/ron/file.txt", 
         OpenOptions.new().read(true)
     )
 

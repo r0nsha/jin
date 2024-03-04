@@ -12,3 +12,9 @@ type c-ulong* = u64
 
 type c-longlong* = i64
 type c-ulonglong* = u64
+
+type c-size-t* = uint
+type c-ssize-t* = int
+
+fn extern "c" fopen*(pathname: *c-char, mode: *c-char) -> c-int
+fn extern "c" write*(fd: c-int, buf: *c-char, count: c-size-t) -> c-int

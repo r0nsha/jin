@@ -1,9 +1,7 @@
 import std.(
-    c.(c-char),
+    c.(c-int, fopen),
     io
 )
-
-fn extern "c" fopen(pathname: *c-char, mode: *c-char) -> RawFd
 
 // TODO: Result
 fn open*(path: &str, options: OpenOptions) -> io.Result[File] = {
@@ -14,7 +12,7 @@ fn open*(path: &str, options: OpenOptions) -> io.Result[File] = {
     Result.Ok(File(fd))
 }
 
-type RawFd = int
+type RawFd = c-int
 
 type File*(fd: RawFd)
 

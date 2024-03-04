@@ -1,11 +1,10 @@
+import std.c.write
 import std.str.(?)
-
-fn extern "c" write(fd: i32, buf: *u8, count: uint) -> int
 
 let stdout: i32 = 1
 
 fn print*(msg: &str) =
-	unsafe write(stdout, msg.ptr, msg.len)
+	unsafe write(stdout, as[_](msg.ptr), msg.len)
 
 fn print*(msg: str) = print(&msg)
 
