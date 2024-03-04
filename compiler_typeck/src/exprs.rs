@@ -260,16 +260,19 @@ pub(crate) fn check_expr(
             let expr = check_expr(cx, env, expr, expected_ty)?;
 
             let mut is_ufcs = IsUfcs::No;
+
             let lookup_in_module = match cx.normalize(expr.ty).kind() {
                 TyKind::Module(in_module) => *in_module,
                 TyKind::Type(ty) => {
                     // This is probably a union variant
+                    let query_args = map_call_args_for_query(cx, &args);
+                    let query = FnQuery::new(*method, targs.as_deref(), &query_args, IsUfcs::No);
                     let (callee, _) = check_query_in_ty(
                         cx,
                         env,
                         *ty,
                         *span,
-                        &Query::Name(*method),
+                        &Query::Fn(query),
                         targs.as_deref(),
                         expr.span,
                     )?;
