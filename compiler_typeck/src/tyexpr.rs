@@ -148,7 +148,10 @@ fn check_path(
                         span,
                     )?;
 
-                    instantiate_ty_alias(cx, env.module_id(), id, targs.as_deref(), allow_hole)
+                    let ty = check_ty_alias(cx, env.module_id(), id, allow_hole)?;
+                    let instantiation =
+                        cx.ty_aliases[&id].instantiation(&targs.unwrap_or_default());
+                    Ok(instantiation.fold(ty))
                 }
                 _ => Err(Diagnostic::error(format!(
                     "expected a type, found value of type `{}`",
@@ -218,15 +221,14 @@ pub(crate) fn check_optional_targs_exact(
     Ok(targs)
 }
 
-pub(crate) fn instantiate_ty_alias(
+pub(crate) fn check_ty_alias(
     cx: &mut Typeck,
     module_id: ModuleId,
     id: DefId,
-    targs: Option<&[Ty]>,
     allow_hole: AllowTyHole,
 ) -> DiagnosticResult<Ty> {
-    let ty = if let Some(ty) = cx.ty_aliases[&id].ty {
-        ty
+    if let Some(ty) = cx.ty_aliases[&id].ty {
+        Ok(ty)
     } else {
         let mut env = Env::new(module_id);
 
@@ -237,11 +239,8 @@ pub(crate) fn instantiate_ty_alias(
 
             let tyexpr = cx.ty_aliases[&id].tyexpr.clone();
             self::check(cx, env, &tyexpr, allow_hole)
-        })?
-    };
-
-    let instantiation = cx.ty_aliases[&id].instantiation(targs.unwrap_or_default());
-    Ok(instantiation.fold(ty))
+        })
+    }
 }
 
 create_bool_enum!(AllowTyHole);

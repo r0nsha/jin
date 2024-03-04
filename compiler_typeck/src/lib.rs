@@ -20,17 +20,14 @@ mod unify;
 use std::cell::RefCell;
 
 use compiler_ast::{self as ast, Ast};
-use compiler_core::middle::{TyExpr, TyParam};
-use compiler_core::ty::Instantiation;
 use compiler_core::{
     counter::Counter,
     db::{AdtId, Db, DefId, ModuleId},
     diagnostics::DiagnosticResult,
-    hir,
-    hir::Hir,
-    middle::{Pat, Vis},
+    hir::{self, Hir},
+    middle::{Pat, TyExpr, TyParam, Vis},
     span::Span,
-    ty::{FloatVar, InferTy, IntVar, Ty, TyKind, TyVar},
+    ty::{FloatVar, InferTy, Instantiation, IntVar, Ty, TyKind, TyVar},
 };
 use ena::unify::{InPlace, InPlaceUnificationTable, Snapshot};
 use rustc_hash::FxHashMap;
