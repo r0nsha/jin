@@ -78,7 +78,7 @@ pub fn ident(s: String) -> String {
         match ch {
             '-' => new.push('_'),
             ch if ch.is_alphanumeric() => new.push(ch),
-            ch => write!(new, "${:x}", ch as i32).unwrap(),
+            ch => write!(new, "${}", ch as i32).unwrap(),
         }
     }
 
