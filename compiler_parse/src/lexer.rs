@@ -304,7 +304,7 @@ impl<'s> Lexer<'s> {
 
     fn eat_ident(&mut self, start: u32) -> TokenKind {
         while let Some(ch) = self.peek() {
-            if ch.is_ascii_alphanumeric() || ch == '_' || ch == '-' {
+            if ch.is_ascii_alphanumeric() || ch == '-' {
                 self.next();
             } else {
                 let s = self.range(start);
