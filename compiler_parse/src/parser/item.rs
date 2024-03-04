@@ -48,7 +48,7 @@ impl<'a> Parser<'a> {
             return self.parse_mod(&attrs).map(Item::Import);
         }
 
-        if self.is_kw(Kw::Use) {
+        if self.is_kw(Kw::Import) {
             return self.parse_import(&attrs).map(Item::Import);
         }
 

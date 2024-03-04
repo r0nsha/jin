@@ -1,4 +1,4 @@
-use std.str.StrBuf
+import std.str.StrBuf
 
 fn fmt*(self: &bool, buf: &mut StrBuf) =
     buf.push(if self { "true" } else { "false "})

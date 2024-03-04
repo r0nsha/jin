@@ -1,4 +1,4 @@
-use raylib.bindings.(*)
+import raylib.bindings.(*)
 
 fn run*() = unsafe {
 	let screen-width = 800

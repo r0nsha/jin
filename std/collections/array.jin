@@ -1,5 +1,5 @@
-use std.builtin
-use std.option.Option
+import std.builtin
+import std.option.Option
 
 type Array*[T](buf: []T)
 

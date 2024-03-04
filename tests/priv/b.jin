@@ -1,1 +1,1 @@
-use priv.c.val*
+import priv.c.val*

@@ -1,5 +1,5 @@
-use std.char.(encode-utf8-raw, ?)
-use std.collections.Array
+import std.char.(encode-utf8-raw, ?)
+import std.collections.Array
 
 fn str.from-utf8-unchecked*(bytes: []u8) -> str =
 	unsafe as[_](bytes)

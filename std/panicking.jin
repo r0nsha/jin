@@ -1,5 +1,5 @@
-use std.builtin
-use std.str.(?)
+import std.builtin
+import std.str.(?)
 
 fn panic*() -> never = panic("explicit panic")
 fn panic*(msg: str) -> never = panic(&msg)

@@ -149,7 +149,7 @@ impl TokenKind {
                 | Kw::Else
                 | Kw::Match
                 | Kw::Mod
-                | Kw::Use
+                | Kw::Import
                 | Kw::For
                 | Kw::Mut
                 | Kw::Imm
@@ -218,7 +218,7 @@ impl TokenKind {
                 | Kw::If
                 | Kw::Match
                 | Kw::Mod
-                | Kw::Use
+                | Kw::Import
                 | Kw::For
                 | Kw::Unsafe
                 | Kw::As,
@@ -368,7 +368,7 @@ pub enum Kw {
     False,
     As,
     Mod,
-    Use,
+    Import,
     For,
     Break,
     Mut,
@@ -391,7 +391,7 @@ static KEYWORDS: phf::Map<&'static str, Kw> = phf_map! {
     "false" => Kw::False,
     "as" => Kw::As,
     "mod" => Kw::Mod,
-    "use" => Kw::Use,
+    "import" => Kw::Import,
     "for" => Kw::For,
     "break" => Kw::Break,
     "mut" => Kw::Mut,
@@ -424,7 +424,7 @@ impl fmt::Display for Kw {
             Self::False => "false",
             Self::As => "as",
             Self::Mod => "mod",
-            Self::Use => "use",
+            Self::Import => "import",
             Self::For => "for",
             Self::Break => "break",
             Self::Mut => "mut",

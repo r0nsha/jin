@@ -1,4 +1,4 @@
-use std.builtin
+import std.builtin
 
 fn extern "c" printf(fmt: *u8, ..) -> i32
 

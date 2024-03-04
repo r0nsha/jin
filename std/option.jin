@@ -1,4 +1,4 @@
-use std.panicking.panic
+import std.panicking.panic
 
 type Option*[T] {
 	Some(value: T)

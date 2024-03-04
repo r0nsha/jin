@@ -1,9 +1,9 @@
 mod bar
 mod ufcs
 
-use imports.bar.baz.yup
-use imports.bar.(*)
-use imports.ufcs.(?)
+import imports.bar.baz.yup
+import imports.bar.(*)
+import imports.ufcs.(?)
 
 fn main() = {
 	hello()

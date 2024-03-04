@@ -1,3 +1,3 @@
 mod array
 
-use std.collections.array.(Array*, ?*)
+import std.collections.array.(Array*, ?*)

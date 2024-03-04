@@ -1,5 +1,5 @@
 mod a
 
-use glob-imports.a.(*)
+import glob-imports.a.(*)
 
 fn main() = hello()

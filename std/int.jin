@@ -1,6 +1,6 @@
-use std.option.Option
-use std.slice.(?)
-use std.str.StrBuf
+import std.option.Option
+import std.slice.(?)
+import std.str.StrBuf
 
 let i8-min*: i8 = -128
 let i8-max*: i8 = 127
