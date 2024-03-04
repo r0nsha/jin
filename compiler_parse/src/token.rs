@@ -148,6 +148,7 @@ impl TokenKind {
                 | Kw::If
                 | Kw::Else
                 | Kw::Match
+                | Kw::Mod
                 | Kw::Use
                 | Kw::For
                 | Kw::Mut
@@ -216,6 +217,7 @@ impl TokenKind {
                 | Kw::Extern
                 | Kw::If
                 | Kw::Match
+                | Kw::Mod
                 | Kw::Use
                 | Kw::For
                 | Kw::Unsafe
@@ -365,6 +367,7 @@ pub enum Kw {
     True,
     False,
     As,
+    Mod,
     Use,
     For,
     Break,
@@ -387,6 +390,7 @@ static KEYWORDS: phf::Map<&'static str, Kw> = phf_map! {
     "true" => Kw::True,
     "false" => Kw::False,
     "as" => Kw::As,
+    "mod" => Kw::Mod,
     "use" => Kw::Use,
     "for" => Kw::For,
     "break" => Kw::Break,
@@ -407,30 +411,27 @@ impl<'a> TryFrom<&'a str> for Kw {
 
 impl fmt::Display for Kw {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "`{}`",
-            match self {
-                Self::Return => "return",
-                Self::If => "if",
-                Self::Else => "else",
-                Self::Match => "match",
-                Self::Fn => "fn",
-                Self::Let => "let",
-                Self::Type => "type",
-                Self::Extern => "extern",
-                Self::True => "true",
-                Self::False => "false",
-                Self::As => "as",
-                Self::Use => "use",
-                Self::For => "for",
-                Self::Break => "break",
-                Self::Mut => "mut",
-                Self::Imm => "imm",
-                Self::Ref => "ref",
-                Self::Move => "move",
-                Self::Unsafe => "unsafe",
-            }
-        )
+        f.write_str(match self {
+            Self::Return => "return",
+            Self::If => "if",
+            Self::Else => "else",
+            Self::Match => "match",
+            Self::Fn => "fn",
+            Self::Let => "let",
+            Self::Type => "type",
+            Self::Extern => "extern",
+            Self::True => "true",
+            Self::False => "false",
+            Self::As => "as",
+            Self::Mod => "mod",
+            Self::Use => "use",
+            Self::For => "for",
+            Self::Break => "break",
+            Self::Mut => "mut",
+            Self::Imm => "imm",
+            Self::Ref => "ref",
+            Self::Move => "move",
+            Self::Unsafe => "unsafe",
+        })
     }
 }

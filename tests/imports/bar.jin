@@ -1,5 +1,6 @@
+mod baz*
+
 use imports as root
-use .baz*
 
 fn extern "c" printf(fmt: *u8, ..) -> i32
 

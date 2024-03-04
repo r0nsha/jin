@@ -18,7 +18,22 @@ use crate::{
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn parse_import(&mut self, attrs: &Attrs, start: Span) -> DiagnosticResult<Import> {
+    pub(super) fn parse_mod(&mut self, attrs: &Attrs) -> DiagnosticResult<Import> {
+        let start = self.last_span();
+        let root = self.eat_ident()?.word();
+
+        let module_path = self.search_submodule(root)?;
+        self.imported_module_paths.insert(module_path.clone());
+
+        let alias = if self.is_kw(Kw::As) { Some(self.eat_ident()?.word()) } else { None };
+        let vis = self.parse_vis();
+        let tree = ImportTree::Name(root, alias, vis);
+
+        Ok(Import { attrs: attrs.clone(), module_path, tree, span: start.merge(self.last_span()) })
+    }
+
+    pub(super) fn parse_import(&mut self, attrs: &Attrs) -> DiagnosticResult<Import> {
+        let start = self.last_span();
         let is_submodule = self.is(TokenKind::Dot);
         let root = self.eat_ident()?.word();
 

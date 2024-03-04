@@ -1,4 +1,4 @@
-use .inner
+mod inner
 
 fn extern "c" printf(fmt: *u8, ..) -> i32
 

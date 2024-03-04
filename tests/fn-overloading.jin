@@ -1,5 +1,6 @@
-use .child
-use .child.(*)
+mod child
+
+use fn-overloading.child.(*)
 
 fn extern "c" printf(fmt: *u8, ..) -> i32
 

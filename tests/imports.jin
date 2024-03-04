@@ -1,6 +1,9 @@
-use .bar.baz.yup
-use .bar.(*)
-use .ufcs.(?)
+mod bar
+mod ufcs
+
+use imports.bar.baz.yup
+use imports.bar.(*)
+use imports.ufcs.(?)
 
 fn main() = {
 	hello()

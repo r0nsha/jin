@@ -38,14 +38,18 @@ impl<'a> Parser<'a> {
             return self.parse_tydef(attrs).map(Item::Type);
         }
 
-        if self.is_kw(Kw::Use) {
+        if self.is_kw(Kw::Mod) {
             let start = self.last_span();
 
             if self.is_kw(Kw::Extern) {
                 return self.parse_extern_import(&attrs, start).map(Item::ExternImport);
             }
 
-            return self.parse_import(&attrs, start).map(Item::Import);
+            return self.parse_mod(&attrs).map(Item::Import);
+        }
+
+        if self.is_kw(Kw::Use) {
+            return self.parse_import(&attrs).map(Item::Import);
         }
 
         if !attrs.is_empty() {

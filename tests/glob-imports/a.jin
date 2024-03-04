@@ -1,1 +1,3 @@
-use .b.(**)
+mod b
+
+use glob-imports.a.b.(**)

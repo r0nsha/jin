@@ -1,5 +1,5 @@
-use extern "raylib"
-use extern "m"
+mod extern "raylib"
+mod extern "m"
 
 fn extern "c" InitWindow*(width: i32, height: i32, title: *u8)
 fn extern "c" CloseWindow*()

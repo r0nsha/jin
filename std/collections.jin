@@ -1,1 +1,3 @@
-use .array.(Array*, ?*)
+mod array
+
+use std.collections.array.(Array*, ?*)

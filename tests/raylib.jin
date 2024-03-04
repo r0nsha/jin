@@ -1,7 +1,7 @@
-use .basic-window
-use .input-keys
-use .following-eyes
-use .bindings
+mod basic-window
+mod input-keys
+mod following-eyes
+mod bindings
 
 fn main() = {
 	// basic-window.run()

@@ -1,6 +1,7 @@
-use .b
-use .c
-use .b.val as vb
-use .c.val as vc
+mod b
+mod c
+
+use priv.b.val as vb
+use priv.c.val as vc
 
 fn main() = {}
