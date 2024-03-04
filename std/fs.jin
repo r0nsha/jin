@@ -1,0 +1,9 @@
+import std.c.(c-char)
+
+fn extern "c" fopen(pathname: *c-char, mode: *c-char) -> RawFd
+
+type RawFd = *()
+
+fn open*(path: &str) = {
+
+}
