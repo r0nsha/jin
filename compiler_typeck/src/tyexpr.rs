@@ -1,3 +1,4 @@
+use compiler_core::db::{DefId, ModuleId};
 use compiler_core::{
     db::DefKind,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -7,11 +8,13 @@ use compiler_core::{
     word::Word,
 };
 use compiler_helpers::create_bool_enum;
+use ustr::Ustr;
 
+use crate::ns::ScopeKind;
 use crate::{errors, lookup::PathLookup, ns::Env, Typeck};
 
 pub(crate) fn check(
-    cx: &Typeck,
+    cx: &mut Typeck,
     env: &Env,
     ty: &TyExpr,
     allow_hole: AllowTyHole,
@@ -96,7 +99,7 @@ pub(crate) fn check(
 }
 
 fn check_path(
-    cx: &Typeck,
+    cx: &mut Typeck,
     env: &Env,
     path: &[Word],
     targs: Option<&[TyExpr]>,
@@ -122,16 +125,33 @@ fn check_path(
                     }
                 }
                 &DefKind::Adt(adt_id) => {
-                    let targs = check_optional_targs(cx, env, targs, allow_hole)?;
-
                     let ty_params = &cx.db[adt_id].ty_params;
-                    let targs_len = targs.as_ref().map_or(0, Vec::len);
+                    let targs = check_optional_targs_exact(
+                        cx,
+                        env,
+                        cx.db[adt_id].name.name(),
+                        targs,
+                        ty_params.len(),
+                        allow_hole,
+                        span,
+                    )?;
+                    Ok(Ty::new(TyKind::Adt(adt_id, targs.unwrap_or_default())))
+                }
+                DefKind::Global if cx.ty_aliases.contains_key(&id) => {
+                    let targs = check_optional_targs_exact(
+                        cx,
+                        env,
+                        cx.db[id].name,
+                        targs,
+                        cx.ty_aliases[&id].ty_params.len(),
+                        allow_hole,
+                        span,
+                    )?;
 
-                    if targs_len == ty_params.len() {
-                        Ok(Ty::new(TyKind::Adt(adt_id, targs.unwrap_or_default())))
-                    } else {
-                        Err(errors::adt_ty_arg_mismatch(cx.db, adt_id, targs_len, span))
-                    }
+                    let ty = check_ty_alias(cx, env.module_id(), id, allow_hole)?;
+                    let instantiation =
+                        cx.ty_aliases[&id].instantiation(&targs.unwrap_or_default());
+                    Ok(instantiation.fold(ty))
                 }
                 _ => Err(Diagnostic::error(format!(
                     "expected a type, found value of type `{}`",
@@ -153,7 +173,7 @@ fn check_path(
 }
 
 pub(crate) fn check_optional(
-    cx: &Typeck,
+    cx: &mut Typeck,
     env: &Env,
     ty: Option<&TyExpr>,
     allow_hole: AllowTyHole,
@@ -166,7 +186,7 @@ pub(crate) fn check_optional(
 }
 
 pub(crate) fn check_optional_targs(
-    cx: &Typeck,
+    cx: &mut Typeck,
     env: &Env,
     targs: Option<&[TyExpr]>,
     allow_hole: AllowTyHole,
@@ -179,6 +199,47 @@ pub(crate) fn check_optional_targs(
         Ok(Some(new_targs))
     } else {
         Ok(None)
+    }
+}
+
+pub(crate) fn check_optional_targs_exact(
+    cx: &mut Typeck,
+    env: &Env,
+    ty_name: Ustr,
+    targs: Option<&[TyExpr]>,
+    ty_params_len: usize,
+    allow_hole: AllowTyHole,
+    span: Span,
+) -> DiagnosticResult<Option<Vec<Ty>>> {
+    let targs = check_optional_targs(cx, env, targs, allow_hole)?;
+    let targs_len = targs.as_ref().map_or(0, Vec::len);
+
+    if targs_len != ty_params_len {
+        return Err(errors::adt_ty_arg_mismatch(&ty_name, targs_len, ty_params_len, span));
+    }
+
+    Ok(targs)
+}
+
+pub(crate) fn check_ty_alias(
+    cx: &mut Typeck,
+    module_id: ModuleId,
+    id: DefId,
+    allow_hole: AllowTyHole,
+) -> DiagnosticResult<Ty> {
+    if let Some(ty) = cx.ty_aliases[&id].ty {
+        Ok(ty)
+    } else {
+        let mut env = Env::new(module_id);
+
+        env.with_anon_scope(ScopeKind::TyDef, |env| {
+            for tp in &cx.ty_aliases[&id].ty_params {
+                env.insert(tp.word.name(), tp.id);
+            }
+
+            let tyexpr = cx.ty_aliases[&id].tyexpr.clone();
+            self::check(cx, env, &tyexpr, allow_hole)
+        })
     }
 }
 

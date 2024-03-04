@@ -15,6 +15,7 @@ use compiler_core::{
 use compiler_data_structures::index_vec::{IndexVecExt as _, Key as _};
 use ustr::ustr;
 
+use crate::TyAlias;
 use crate::{
     attrs, errors, exprs, fns,
     lookup::{FnCandidate, Query},
@@ -138,39 +139,57 @@ fn define_tydef(
     item_id: ast::GlobalItemId,
     tydef: &ast::TyDef,
 ) {
+    attrs::validate(
+        cx,
+        &tydef.attrs,
+        match &tydef.kind {
+            ast::TyDefKind::Struct(_) => attrs::Placement::Struct,
+            ast::TyDefKind::Union(_) => attrs::Placement::Union,
+            ast::TyDefKind::Alias(_) => attrs::Placement::TyAlias,
+        },
+    );
+
     let mut env = Env::new(module_id);
 
-    let adt_id = env.with_anon_scope(ScopeKind::TyDef, |env| {
-        let adt_id = match &tydef.kind {
+    env.with_anon_scope(ScopeKind::TyDef, |env| {
+        match &tydef.kind {
             ast::TyDefKind::Struct(struct_def) => {
-                attrs::validate(cx, &tydef.attrs, attrs::Placement::Struct);
                 let unknown = cx.db.types.unknown;
-                cx.define().adt(module_id, tydef, |id| {
+                let adt_id = cx.define().adt(module_id, tydef, |id| {
                     AdtKind::Struct(StructDef::new(
                         id,
                         vec![],
                         struct_def.kind,
                         unknown, // Will be filled later
                     ))
-                })
+                });
+                check_adt_ty_params(cx, env, tydef, adt_id);
+                cx.res_map.item_to_adt.insert(item_id, adt_id);
             }
             ast::TyDefKind::Union(union_def) => {
-                attrs::validate(cx, &tydef.attrs, attrs::Placement::Union);
                 let adt_id = cx
                     .define()
                     .adt(module_id, tydef, |id| AdtKind::Union(UnionDef::new(id, union_def.kind)));
                 let variants = define_variants(cx, union_def, adt_id);
                 cx.db[adt_id].as_union_mut().unwrap().variants = variants;
-                adt_id
+                check_adt_ty_params(cx, env, tydef, adt_id);
+                cx.res_map.item_to_adt.insert(item_id, adt_id);
             }
-        };
+            ast::TyDefKind::Alias(alias) => {
+                let def_id = cx.define().new_global(
+                    module_id,
+                    tydef.vis,
+                    DefKind::Global,
+                    tydef.word,
+                    Mutability::Imm,
+                );
 
-        check_adt_ty_params(cx, env, tydef, adt_id);
-
-        adt_id
+                let ty_params = types::define_ty_params(cx, env, &tydef.ty_params);
+                cx.ty_aliases
+                    .insert(def_id, TyAlias { tyexpr: alias.ty.clone(), ty: None, ty_params });
+            }
+        }
     });
-
-    cx.res_map.item_to_adt.insert(item_id, adt_id);
 }
 
 fn define_variants(

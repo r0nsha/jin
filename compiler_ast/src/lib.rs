@@ -340,6 +340,7 @@ pub struct TyDef {
 pub enum TyDefKind {
     Struct(StructTyDef),
     Union(UnionTyDef),
+    Alias(AliasTyDef),
 }
 
 #[derive(Debug, Clone)]
@@ -371,6 +372,11 @@ pub struct UnionVariant {
 pub struct UnionVariantField {
     pub name: Word,
     pub ty_expr: TyExpr,
+}
+
+#[derive(Debug, Clone)]
+pub struct AliasTyDef {
+    pub ty: TyExpr,
 }
 
 #[derive(Debug, Clone)]

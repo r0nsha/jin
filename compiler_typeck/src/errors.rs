@@ -135,17 +135,19 @@ pub fn ty_arg_mismatch(expected: usize, found: usize, span: Span) -> Diagnostic 
         ))
 }
 
-pub fn adt_ty_arg_mismatch(db: &Db, adt_id: AdtId, targ_len: usize, span: Span) -> Diagnostic {
-    let adt = &db[adt_id];
-    let expected = adt.ty_params.len();
-
+pub fn adt_ty_arg_mismatch(
+    ty_name: &str,
+    targ_len: usize,
+    ty_param_len: usize,
+    span: Span,
+) -> Diagnostic {
     Diagnostic::error(format!(
         "type `{}` expects {} type argument(s), but {} were supplied",
-        adt.name, expected, targ_len
+        ty_name, ty_param_len, targ_len
     ))
     .with_label(Label::primary(
         span,
-        format!("expected {expected} type arguments, found {targ_len}"),
+        format!("expected {ty_param_len} type arguments, found {targ_len}"),
     ))
 }
 

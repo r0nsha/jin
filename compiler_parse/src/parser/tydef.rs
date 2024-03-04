@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use compiler_ast::{
-    Attrs, StructTyDef, StructTyField, TyDef, TyDefKind, UnionTyDef, UnionVariant,
+    AliasTyDef, Attrs, StructTyDef, StructTyField, TyDef, TyDefKind, UnionTyDef, UnionVariant,
     UnionVariantField,
 };
 use compiler_core::{
@@ -36,8 +36,10 @@ impl<'a> Parser<'a> {
             self.parse_tydef_union(UnionKind::Value)
         } else if self.is_kw(Kw::Ref) {
             self.parse_tydef_union(UnionKind::Ref)
+        } else if self.is(TokenKind::Eq) {
+            self.parse_tydef_alias()
         } else {
-            Err(self.unexpected_token("(, {, `ref` or `value`"))
+            Err(self.unexpected_token("(, {, `ref` or `extern`"))
         }
     }
 
@@ -81,5 +83,10 @@ impl<'a> Parser<'a> {
         };
 
         Ok(UnionVariant { name: ident.word(), fields })
+    }
+
+    fn parse_tydef_alias(&mut self) -> DiagnosticResult<TyDefKind> {
+        let ty = self.parse_ty()?;
+        Ok(TyDefKind::Alias(AliasTyDef { ty }))
     }
 }

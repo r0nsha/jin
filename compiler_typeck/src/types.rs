@@ -33,18 +33,31 @@ fn check_tydef(
     tydef: &ast::TyDef,
 ) -> DiagnosticResult<()> {
     let mut env = Env::new(module_id);
-    let adt_id = cx.res_map.item_to_adt.remove(&item_id).expect("to be defined");
 
     env.with_anon_scope(ScopeKind::TyDef, |env| -> DiagnosticResult<()> {
-        for tp in &cx.db[adt_id].ty_params {
-            env.insert(tp.word.name(), tp.id);
-        }
-
         match &tydef.kind {
-            ast::TyDefKind::Struct(struct_def) => check_struct(cx, env, adt_id, struct_def),
-            ast::TyDefKind::Union(union_def) => check_union(cx, env, adt_id, union_def),
+            ast::TyDefKind::Struct(struct_def) => {
+                let adt_id = check_adt_prologue(cx, env, item_id);
+                check_struct(cx, env, adt_id, struct_def)
+            }
+            ast::TyDefKind::Union(union_def) => {
+                let adt_id = check_adt_prologue(cx, env, item_id);
+                check_union(cx, env, adt_id, union_def)
+            }
+            ast::TyDefKind::Alias(_) => {
+                // Aliases are checked during tyexpr::check
+                Ok(())
+            }
         }
     })
+}
+
+fn check_adt_prologue(cx: &mut Typeck<'_>, env: &mut Env, item_id: ast::GlobalItemId) -> AdtId {
+    let adt_id = cx.res_map.item_to_adt.remove(&item_id).expect("to be defined");
+    for tp in &cx.db[adt_id].ty_params {
+        env.insert(tp.word.name(), tp.id);
+    }
+    adt_id
 }
 
 fn check_struct(
