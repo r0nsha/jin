@@ -1,4 +1,3 @@
-use compiler_core::middle::TyParam;
 use compiler_core::{
     db::DefKind,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -134,22 +133,29 @@ fn check_path(
                         allow_hole,
                         span,
                     )?;
-
                     Ok(Ty::new(TyKind::Adt(adt_id, targs.unwrap_or_default())))
                 }
                 DefKind::Global if cx.ty_aliases.contains_key(&id) => {
-                    let alias = &cx.ty_aliases[&id];
-                    let ty_params = &alias.ty_params;
+                    let ty = if let Some(ty) = cx.ty_aliases[&id].ty {
+                        ty
+                    } else {
+                        let tyexpr = cx.ty_aliases[&id].tyexpr.clone();
+                        self::check(cx, env, &tyexpr, allow_hole)?
+                    };
+
                     let targs = check_optional_targs_exact(
                         cx,
                         env,
                         cx.db[id].name,
                         targs,
-                        ty_params.len(),
+                        cx.ty_aliases[&id].ty_params.len(),
                         allow_hole,
                         span,
                     )?;
-                    todo!()
+
+                    let instantiation =
+                        cx.ty_aliases[&id].instantiation(&targs.unwrap_or_default());
+                    Ok(instantiation.fold(ty))
                 }
                 _ => Err(Diagnostic::error(format!(
                     "expected a type, found value of type `{}`",
