@@ -2,8 +2,33 @@ import std.c.(c-char)
 
 fn extern "c" fopen(pathname: *c-char, mode: *c-char) -> RawFd
 
-type RawFd = *()
+type RawFd = int
 
+// TODO: OpenOptions
 fn open*(path: &str) = {
-
+    let fd = fopen(path.as_bytes().ptr, "r".ptr)
 }
+
+type OpenOptions*(
+    read: bool,
+    write: bool,
+    append: bool,
+)
+
+fn OpenOptions.new*() -> OpenOptions =
+    OpenOptions(read: false, write: false, append: false)
+
+fn read*(mut self: OpenOptions, value: bool) -> OpenOptions = {
+    self.read = value
+    self
+}
+
+fn write*(mut self: OpenOptions, value: bool) -> OpenOptions = {
+    self.write = value
+    self
+}
+
+fn append*(mut self: OpenOptions, value: bool) -> OpenOptions = {
+    self.append = value
+    self
+}    

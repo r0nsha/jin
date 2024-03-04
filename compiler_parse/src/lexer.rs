@@ -97,7 +97,7 @@ impl<'s> Lexer<'s> {
         match self.bump() {
             Some(ch) => {
                 let kind = match ch {
-                    ch if ch.is_ascii_alphabetic() => {
+                    ch if ch.is_ascii_alphabetic() || ch == '_' => {
                         if ch == 'b' && self.eat('\'') {
                             self.eat_char(CharKind::Byte, start + 2)?
                         } else {
@@ -112,7 +112,6 @@ impl<'s> Lexer<'s> {
                         return self.eat_token();
                     }
                     '`' => self.eat_raw_ident()?,
-                    '_' => TokenKind::Underscore,
                     '"' => {
                         self.modes.push(Mode::Str);
                         TokenKind::StrOpen
@@ -317,7 +316,7 @@ impl<'s> Lexer<'s> {
                         "a hyphen followed by a digit",
                     )));
                 }
-                'a'..='z' | 'A'..='Z' | '0'..='9' => {
+                'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => {
                     last_hyphen = false;
                     self.next();
                 }
@@ -336,7 +335,12 @@ impl<'s> Lexer<'s> {
         }
 
         let s = self.range(start);
-        Ok(Kw::try_from(s).map(TokenKind::Kw).unwrap_or_else(|s| TokenKind::Ident(ustr(s))))
+
+        if s == "_" {
+            Ok(TokenKind::Underscore)
+        } else {
+            Ok(Kw::try_from(s).map(TokenKind::Kw).unwrap_or_else(|s| TokenKind::Ident(ustr(s))))
+        }
     }
 
     fn eat_number(&mut self, start: u32) -> TokenKind {
