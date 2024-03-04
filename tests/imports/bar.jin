@@ -4,7 +4,7 @@ use .baz*
 fn extern "c" printf(fmt: *u8, ..) -> i32
 
 fn hello*() = {
-	unsafe printf(root.get_hello_world().ptr)
+	unsafe printf(root.get-hello-world().ptr)
 }
 
 fn goodbye*() = {

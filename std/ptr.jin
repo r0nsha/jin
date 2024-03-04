@@ -1,2 +1,2 @@
 fn null*[T]() -> *T = unsafe as[_](0)
-fn is_null*[T](self: *T) -> bool = unsafe uint(self) == 0
+fn is-null*[T](self: *T) -> bool = unsafe uint(self) == 0

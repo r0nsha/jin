@@ -5,8 +5,8 @@ fn main() = {
 	println(s)
 	
 	// Indexing
-	s.print_at(1)
-	s.print_at(10)
+	s.print-at(1)
+	s.print-at(10)
 	// s.[1] = 42 // Error: &str is immutable
 
 	// Slicing
@@ -16,6 +16,6 @@ fn main() = {
 	println(&s.[3..10])
 }
 
-fn print_at(s: &str, at: uint) = {
+fn print-at(s: &str, at: uint) = {
 	unsafe printf("s.[%d] = %c\n".ptr, at, s.[at])
 }

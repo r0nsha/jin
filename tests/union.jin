@@ -31,11 +31,11 @@ fn main() = {
 
 	println("after match: Box({b.value})")
 
-	if Option.some(-1).map_or(false, is_negative) {
+	if Option.some(-1).map-or(false, is-negative) {
 		println("o is negative")
 	} else {
 		println("o is not negative")
 	}
 }
 
-fn is_negative(x: int) -> bool = x < 0
+fn is-negative(x: int) -> bool = x < 0

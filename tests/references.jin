@@ -15,17 +15,17 @@ fn main() = {
 	print(ref_.box)
 
 	let mut bag = Bag(Box(2), Box(3)).copy().copy()
-	let ref_a = &mut bag.a
-	let ref_b = &bag.b
-	let ref_a = ref_a
-	let ref_b = ref_b
+	let ref-a = &mut bag.a
+	let ref-b = &bag.b
+	let ref-a = ref-a
+	let ref-b = ref-b
 
-	let ref_bag = &bag
-	let a = &ref_bag.a
-	let b = &ref_bag.b
+	let ref-bag = &bag
+	let a = &ref-bag.a
+	let b = &ref-bag.b
 
-	print(ref_a)
-	print(ref_b)
+	print(ref-a)
+	print(ref-b)
 
 	let mut box = Box(1)
 	let mut rmut = Mut(&mut box)

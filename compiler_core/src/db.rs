@@ -849,7 +849,7 @@ impl<'a> TryFrom<&'a str> for Builtin {
 
     fn try_from(value: &'a str) -> Result<Self, Self::Error> {
         match value {
-            "slice_grow" => Ok(Self::SliceGrow),
+            "slice-grow" => Ok(Self::SliceGrow),
             "forget" => Ok(Self::Forget),
             "panic" => Ok(Self::Panic),
             _ => Err(()),

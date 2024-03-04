@@ -1,5 +1,5 @@
-@builtin("slice_grow")
-fn extern "jin" grow*[T](slice: &mut []T, new_cap: uint)
+@builtin("slice-grow")
+fn extern "jin" grow*[T](slice: &mut []T, new-cap: uint)
 
 @builtin("forget")
 fn extern "jin" forget*[T](x: &T)

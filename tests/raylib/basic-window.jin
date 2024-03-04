@@ -1,10 +1,10 @@
 use raylib.bindings.(*)
 
 fn run*() = unsafe {
-	let screen_width = 800
-	let screen_height = 450
+	let screen-width = 800
+	let screen-height = 450
 
-	InitWindow(screen_width, screen_height, "raylib - basic window".ptr)
+	InitWindow(screen-width, screen-height, "raylib - basic window".ptr)
 	SetTargetFPS(60)
 
 	for if !WindowShouldClose() {

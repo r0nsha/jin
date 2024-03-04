@@ -13,16 +13,16 @@ type Node[T](
 
 fn Node.new[T](data: T) -> Node[T] = Node(prev: Option.none, data: data, next: Option.none)
 
-fn push_front[T](self: &mut LinkedList[T], data: T) = {
+fn push-front[T](self: &mut LinkedList[T], data: T) = {
     let mut node = Node.new(data)
-    let node_mut = &mut node
+    let node-mut = &mut node
 
     match self.head := Option.some(node) {
-        Option.some(old_head) -> {
-            old_head.prev = Option.some(node_mut)
-            node_mut.next = Option.some(old_head)
+        Option.some(old-head) -> {
+            old-head.prev = Option.some(node-mut)
+            node-mut.next = Option.some(old-head)
         }
-        Option.none -> self.tail = Option.some(node_mut)
+        Option.none -> self.tail = Option.some(node-mut)
     }
 }
 
@@ -36,7 +36,7 @@ fn print(self: &LinkedList[int]) = {
             Option.some(v) -> {
                 curr = &v.next
                 print("{v.data}")
-                if curr.is_some() {
+                if curr.is-some() {
                     print(", ")
                 }
             }
@@ -49,8 +49,8 @@ fn print(self: &LinkedList[int]) = {
 
 fn main() = {
     let mut list = LinkedList.new()
-    list.push_front(3) 
-    list.push_front(2) 
-    list.push_front(1) 
+    list.push-front(3) 
+    list.push-front(2) 
+    list.push-front(1) 
     list.print() 
 }

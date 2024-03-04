@@ -4,22 +4,22 @@ type Num(field: int)
 type Wrapper(num: Num)
 
 fn main() = {
-	use_after_move()	
-	// use_after_move_scoped()	
-	// move_out_of_global()
-	// move_into_for()
+	use-after-move()	
+	// use-after-move-scoped()	
+	// move-out-of-global()
+	// move-into-for()
 	// copy()
-	// assign_not_moved()
-	// destroy_discarded_values(Num(1))
+	// assign-not-moved()
+	// destroy-discarded-values(Num(1))
 }
 
-fn use_after_move() = {
+fn use-after-move() = {
 	let n = Num(1)	
 	let x = n
 	//let y = n // Error!
 }	
 
-fn use_after_move_scoped() = {
+fn use-after-move-scoped() = {
 	let n = Num(1)	
 	let x = n
 	if false {
@@ -27,15 +27,15 @@ fn use_after_move_scoped() = {
 	}
 }	
 
-let global_int: int = 1
-let global_num: Num = Num(1)
+let global-int: int = 1
+let global-num: Num = Num(1)
 
-fn move_out_of_global() = {
-	let x = global_int // Ok
-	//let y = global_num // Error!
+fn move-out-of-global() = {
+	let x = global-int // Ok
+	//let y = global-num // Error!
 }
 
-fn move_into_for() = {
+fn move-into-for() = {
 	let mut n = Num(1)
 
 	for if n.field < 10 {
@@ -58,7 +58,7 @@ fn copy() = {
 	let b = w.num.field // Ok
 }
 
-fn assign_not_moved() = {
+fn assign-not-moved() = {
 	//let mut num = Num(1)
 	//num.field = 1
 
@@ -87,6 +87,6 @@ fn assign_not_moved() = {
 	}
 }
 
-fn destroy_discarded_values(_: Num) = {
+fn destroy-discarded-values(_: Num) = {
 	let _ = Num(2)
 }

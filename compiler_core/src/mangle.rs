@@ -17,7 +17,7 @@ pub fn mangle_fn_name(db: &Db, fun: &hir::Fn) -> String {
         hasher.write(mangle_ty_name(db, param.ty).as_bytes());
     }
 
-    finish_mangle(format!("{}${:x}", def.name, hasher.finish()))
+    mangle_hyphens(format!("{}${:x}", def.name, hasher.finish()))
 }
 
 pub fn mangle_ty_name(db: &Db, ty: Ty) -> String {
@@ -67,10 +67,10 @@ pub fn mangle_adt(db: &Db, adt: &Adt, targs: &[Ty]) -> String {
         hasher.write(mangle_ty_name(db, ty).as_bytes());
     }
 
-    finish_mangle(format!("{}${:x}", def.name, hasher.finish()))
+    mangle_hyphens(format!("{}${:x}", def.name, hasher.finish()))
 }
 
 #[inline]
-fn finish_mangle(s: String) -> String {
+fn mangle_hyphens(s: String) -> String {
     s.replace('-', "_")
 }

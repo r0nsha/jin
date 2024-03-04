@@ -1,21 +1,21 @@
 fn main() = {
-	int_types()
+	int-types()
 	unary()
 	arithmetic()
 	cmp()
-	if_expr()
+	if-expr()
 	variables()
 	polymorphism()
-	named_args()
-	global_vars()
+	named-args()
+	global-vars()
 }
 
-fn int_types() = {
+fn int-types() = {
 	let id: i8 = 126
 	let promoted = i64(id) + 5555
 	let demoted_1 = i32(promoted)
 	let demoted_2 = i16(demoted_1 - 4000)
-	let int_to_uint = uint(int(663151))
+	let int-to-uint = uint(int(663151))
 }
 
 fn unary() = {
@@ -44,7 +44,7 @@ fn cmp() = {
 	264 >= 71
 }
 
-fn if_expr() = {
+fn if-expr() = {
 	let cond = true
 	let result = if cond {
 		69
@@ -74,18 +74,18 @@ fn polymorphism() = {
 	id[bool](false)
 }
 
-fn add_named(first: int, second: int) -> int = {
+fn add-named(first: int, second: int) -> int = {
 	first + second
 }
 
-fn named_args() = {
-	add_named(first: 1, second: 2)
-	add_named(second: 2, first: 1)
-	add_named(1, second: 2)
+fn named-args() = {
+	add-named(first: 1, second: 2)
+	add-named(second: 2, first: 1)
+	add-named(1, second: 2)
 }
 
-let global_answer: int = 42
+let global-answer: int = 42
 
-fn global_vars() = {
-	let answer = global_answer
+fn global-vars() = {
+	let answer = global-answer
 }

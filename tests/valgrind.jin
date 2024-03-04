@@ -15,8 +15,8 @@ fn main() = {
 	let w = Wrapper(Num(1))
 
 	// Moving into specialized functions
-	destroy_poly(Num(1)) // Should be destroyed at `destroy_poly`
-	destroy_poly(1) // Shouldn't be destroyed at `destroy_poly`
+	destroy-poly(Num(1)) // Should be destroyed at `destroy-poly`
+	destroy-poly(1) // Shouldn't be destroyed at `destroy-poly`
 
 	// Destroy on assignment
 	let mut n = Num(1)
@@ -61,4 +61,4 @@ fn main() = {
 	}
 }
 
-fn destroy_poly[T](arg: T) = {}
+fn destroy-poly[T](arg: T) = {}

@@ -2,12 +2,12 @@ fn main() = {
     let mut slice = [1, 3, 42, 487, 5, 66, 4055, 33]
     print("Before: ")
     slice.print()
-    bubble_sort(&mut slice)
+    bubble-sort(&mut slice)
     print("After: ")
     slice.print()
 }
 
-fn bubble_sort(slice: &mut []int) = {
+fn bubble-sort(slice: &mut []int) = {
     let mut n = slice.len
     let mut swapped = true
 
