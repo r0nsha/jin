@@ -101,7 +101,7 @@ impl<'s> Lexer<'s> {
                         if ch == 'b' && self.eat('\'') {
                             self.eat_char(CharKind::Byte, start + 2)?
                         } else {
-                            self.eat_ident(start)
+                            self.eat_ident(start)?
                         }
                     }
                     ch if ch.is_ascii_digit() => self.eat_number(start),
@@ -302,19 +302,34 @@ impl<'s> Lexer<'s> {
         }
     }
 
-    fn eat_ident(&mut self, start: u32) -> TokenKind {
+    fn eat_ident(&mut self, start: u32) -> DiagnosticResult<TokenKind> {
+        let mut last_hyphen = false;
+
         while let Some(ch) = self.peek() {
-            if ch.is_ascii_alphanumeric() || ch == '-' {
-                self.next();
-            } else {
-                let s = self.range(start);
-                return Kw::try_from(s)
-                    .map(TokenKind::Kw)
-                    .unwrap_or_else(|s| TokenKind::Ident(ustr(s)));
+            match ch {
+                '0'..='9' if last_hyphen => {
+                    return Err(Diagnostic::error(
+                        "to avoid confusion with the `-` operator, a digit cannot follow a hyphen",
+                    )
+                    .with_label(Label::primary(
+                        self.create_span_range(self.pos - 1, self.pos + 1),
+                        "a hyphen followed by a digit",
+                    )))
+                }
+                'a'..='z' | 'A'..='Z' | '0'..='9' => {
+                    last_hyphen = false;
+                    self.next();
+                }
+                '-' => {
+                    last_hyphen = true;
+                    self.next();
+                }
+                _ => break,
             }
         }
 
-        unreachable!()
+        let s = self.range(start);
+        Ok(Kw::try_from(s).map(TokenKind::Kw).unwrap_or_else(|s| TokenKind::Ident(ustr(s))))
     }
 
     fn eat_number(&mut self, start: u32) -> TokenKind {
