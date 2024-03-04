@@ -1,15 +1,15 @@
 fn main() = {
 	println("Reference semantics:")
-	ref_type()
+	ref-type()
 	println()
 
 	println("Value semantics (extern):")
-	ext_type()
+	ext-type()
 }
 
 type Ref(field: int)
 
-fn ref_type() = {
+fn ref-type() = {
 	let mut r = Ref(1)
 	print(&r) // should be 1
 
@@ -30,7 +30,7 @@ fn print(r: &Ref) = {
 
 type Ext extern(field: int)
 
-fn ext_type() = {
+fn ext-type() = {
 	let mut ext = Ext(1)
 	print(ext) // should be 1
 

@@ -1,0 +1,25 @@
+use raylib.bindings.(*)
+
+fn run*() = unsafe {
+	let screen-width = 800
+	let screen-height = 450
+
+	InitWindow(screen-width, screen-height, "raylib - input keys".ptr)
+	SetTargetFPS(60)
+
+	let mut ball-position = Vector2(f32(screen-width / 2), f32(screen-height / 2))
+
+	for if !WindowShouldClose() {
+		if IsKeyDown(KEY-RIGHT) { ball-position.x += 2.0 }
+		if IsKeyDown(KEY-LEFT) { ball-position.x -= 2.0 }
+		if IsKeyDown(KEY-UP) { ball-position.y -= 2.0 }
+		if IsKeyDown(KEY-DOWN) { ball-position.y += 2.0 }
+		BeginDrawing()
+		ClearBackground(RAYWHITE)
+		DrawText("move the ball with arrow keys".ptr, 10, 10, 20, DARKGRAY)
+		DrawCircleV(ball-position, 50.0, MAROON)
+		EndDrawing()
+	}
+
+	CloseWindow()
+}

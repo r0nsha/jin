@@ -5,65 +5,65 @@ use std.(
     str.(?),
 )
 
-fn char.from_digit*(num: u32, radix: u32) -> Option[char] = {
+fn char.from-digit*(num: u32, radix: u32) -> Option[char] = {
     assert(radix <= 36, "radix is too high (maximum 36)")
 
     if num < radix {
 	let num = u8(num)
-	Option.some(char(if num < 10 {
+	Option.Some(char(if num < 10 {
 	    b'0' + num
 	} else {
 	    b'a' + num - 10
 	}))
     } else {
-        Option.none
+        Option.None
     }
 }
 
 // The low-level UTF8 implementation was taken from rust's `core::char` module
-let tag_cont: u8 = 0b1000_0000;
-let tag_two_b: u8 = 0b1100_0000;
-let tag_three_b: u8 = 0b1110_0000;
-let tag_four_b: u8 = 0b1111_0000;
-let max_one_b: u32 = 0x80;
-let max_two_b: u32 = 0x800;
-let max_three_b: u32 = 0x10000;
+let tag-cont: u8 = 0b1000_0000;
+let tag-two-b: u8 = 0b1100_0000;
+let tag-three-b: u8 = 0b1110_0000;
+let tag-four-b: u8 = 0b1111_0000;
+let max-one-b: u32 = 0x80;
+let max-two-b: u32 = 0x800;
+let max-three-b: u32 = 0x10000;
 
-fn len_utf8*(self: char) -> uint = len_utf8(u32(self))
+fn len-utf8*(self: char) -> uint = len-utf8(u32(self))
 
-fn len_utf8(code: u32) -> uint =
-    if code < max_one_b {
+fn len-utf8(code: u32) -> uint =
+    if code < max-one-b {
 	1
-    } else if code < max_two_b {
+    } else if code < max-two-b {
 	2
-    } else if code < max_three_b {
+    } else if code < max-three-b {
 	3
     } else {
 	4
     }
 
-fn encode_utf8*(self: char, dst: &mut []u8) -> &mut []u8 =
-    encode_utf8_raw(u32(self), dst)
+fn encode-utf8*(self: char, dst: &mut []u8) -> &mut []u8 =
+    encode-utf8-raw(u32(self), dst)
 
-fn encode_utf8_raw*(code: u32, dst: &mut []u8) -> &mut []u8 = {
-    let len = code.len_utf8()
+fn encode-utf8-raw*(code: u32, dst: &mut []u8) -> &mut []u8 = {
+    let len = code.len-utf8()
     assert(dst.len >= len)
 
     if len == 1 {
 	dst.[0] = u8(code)
     } else if len == 2 {
-	dst.[0] = u8(code >> 6 & 0x1f) | tag_two_b
-	dst.[1] = u8(code & 0x3f) | tag_cont
+	dst.[0] = u8(code >> 6 & 0x1f) | tag-two-b
+	dst.[1] = u8(code & 0x3f) | tag-cont
     } else if len == 3 {
-	dst.[0] = u8(code >> 12 & 0x0f) | tag_three_b
-	dst.[1] = u8(code >> 6 & 0x3f) | tag_cont
-	dst.[2] = u8(code & 0x3f) | tag_cont
+	dst.[0] = u8(code >> 12 & 0x0f) | tag-three-b
+	dst.[1] = u8(code >> 6 & 0x3f) | tag-cont
+	dst.[2] = u8(code & 0x3f) | tag-cont
     } else {
 	// len == 4
-	dst.[0] = u8(code >> 18 & 0x07) | tag_four_b
-	dst.[1] = u8(code >> 12 & 0x3f) | tag_cont
-	dst.[2] = u8(code >> 6 & 0x3f) | tag_cont
-	dst.[3] = u8(code & 0x3f) | tag_cont
+	dst.[0] = u8(code >> 18 & 0x07) | tag-four-b
+	dst.[1] = u8(code >> 12 & 0x3f) | tag-cont
+	dst.[2] = u8(code >> 6 & 0x3f) | tag-cont
+	dst.[3] = u8(code & 0x3f) | tag-cont
     }
 
     &mut dst.[..len]

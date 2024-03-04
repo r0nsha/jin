@@ -119,7 +119,7 @@ impl<'db> Generator<'db> {
             let glob = &self.mir.globals[id];
             stmt(|| {
                 assign(
-                    D::text(glob.name.as_str()),
+                    ident(glob.name.as_str()),
                     D::text(global_init_fn_name(glob)).append(D::text("()")),
                 )
             })
@@ -129,8 +129,7 @@ impl<'db> Generator<'db> {
         statements.push(stmt(|| D::text("jinrt_backtrace *backtrace = jinrt_backtrace_new()")));
 
         // Call entry point
-        statements
-            .push(stmt(|| util::call(D::text(main_fn_name.as_str()), [D::text("backtrace")])));
+        statements.push(stmt(|| util::call(ident(main_fn_name.as_str()), [D::text("backtrace")])));
 
         // Free backtrace
         statements.push(stmt(|| D::text("jinrt_backtrace_free(backtrace)")));
@@ -155,7 +154,7 @@ impl<'db> Generator<'db> {
 
     pub fn define_globals(&mut self) {
         for glob in self.mir.globals.values() {
-            let name_doc = D::text(glob.name.as_str());
+            let name_doc = ident(glob.name.as_str());
 
             match &glob.kind {
                 GlobalKind::Const(value) => {
@@ -186,11 +185,9 @@ impl<'db> Generator<'db> {
                         .chain(iter::once(return_stmt))
                         .collect();
 
-                    let init_fn_doc = D::text("FORCE_INLINE")
-                        .append(D::space())
+                    let init_fn_doc = D::text("FORCE_INLINE ")
                         .append(glob.ty.cdecl(self, D::text(global_init_fn_name(glob))))
-                        .append(D::text("()"))
-                        .append(D::space())
+                        .append(D::text("() "))
                         .append(block_(
                             || {
                                 D::intersperse(block_docs, D::hardline().append(D::hardline()))
@@ -389,13 +386,12 @@ impl<'db> Generator<'db> {
             param.ty.cdecl(self, D::text(name))
         }));
 
-        let sig_doc =
-            fn_ty.ret.cdecl(self, D::text(sig.mangled_name.as_str())).append(util::group(
-                D::intersperse(params, D::text(",").append(D::space()))
-                    .nest(2)
-                    .group()
-                    .append(if fn_ty.is_c_variadic() { D::text(", ...") } else { D::nil() }),
-            ));
+        let sig_doc = fn_ty.ret.cdecl(self, ident(sig.mangled_name.as_str())).append(util::group(
+            D::intersperse(params, D::text(",").append(D::space()))
+                .nest(2)
+                .group()
+                .append(if fn_ty.is_c_variadic() { D::text(", ...") } else { D::nil() }),
+        ));
 
         let mut attr_docs = vec![];
 
@@ -425,8 +421,7 @@ impl<'db> Generator<'db> {
         let mut state = GenState::new(sig.display_name, &fun.body);
 
         for (idx, param) in sig.params.iter().enumerate() {
-            let name = param_name(&param.pat, idx);
-            state.param_names.push(ustr(&name));
+            state.param_names.push(ustr(&param_name(&param.pat, idx)));
         }
 
         let block_docs: Vec<D> =
@@ -656,9 +651,10 @@ impl<'db> Generator<'db> {
 
         let name = match &value.kind {
             ValueKind::Register(name) => Self::register_name(value.id, *name),
-            ValueKind::Local(id) => {
-                state.local_names.insert_unique(*id, self.db[*id].name).to_string()
-            }
+            ValueKind::Local(id) => state
+                .local_names
+                .insert_unique(*id, ustr(&ident_str(self.db[*id].name.as_str())))
+                .to_string(),
             kind => unreachable!("{kind:?}"),
         };
 
@@ -687,11 +683,8 @@ impl<'db> Generator<'db> {
             ValueKind::Register(name) => D::text(Self::register_name(id, *name)),
             ValueKind::Param(_, idx) => D::text(state.param_names[*idx].as_str()),
             ValueKind::Local(id) => D::text(state.local_names.get(*id).unwrap().as_str()),
-            ValueKind::Global(id) => D::text(self.mir.globals[*id].name.as_str()),
-            ValueKind::Fn(id) => {
-                let sig = &self.mir.fn_sigs[*id];
-                D::text(sig.mangled_name.as_str())
-            }
+            ValueKind::Global(id) => ident(self.mir.globals[*id].name.as_str()),
+            ValueKind::Fn(id) => ident(self.mir.fn_sigs[*id].mangled_name.as_str()),
             ValueKind::Const(value) => codegen_const_value(value),
             ValueKind::Field(value, field) => self.field(state, *value, field),
             ValueKind::Variant(value, id) => self.variant_field(state, *value, *id),
@@ -701,7 +694,7 @@ impl<'db> Generator<'db> {
 
     fn register_name(value: ValueId, name: Option<Ustr>) -> String {
         if let Some(name) = name {
-            format!("{}${}", name, value)
+            format!("{}${}", ident_str(&name), value)
         } else {
             format!("v{}", value)
         }
@@ -758,16 +751,24 @@ impl<'a> VariableDoc<'a> {
 }
 
 fn global_init_fn_name(glob: &Global) -> String {
-    format!("{}_init", glob.name.as_str())
+    format!("{}_init", ident_str(&glob.name))
 }
 
 fn param_name(pat: &Pat, index: usize) -> String {
     match pat {
-        Pat::Name(name) => format!("{}$p{}", name.word, index),
+        Pat::Name(name) => format!("{}$p{}", ident_str(name.word.as_str()), index),
         Pat::Discard(_) => format!("${index}"),
     }
 }
 
 pub fn variant_name(name: Word, id: VariantId) -> String {
     format!("{}${}", name, id.data())
+}
+
+pub fn ident<'a>(s: &str) -> D<'a> {
+    D::text(ident_str(s))
+}
+
+pub fn ident_str(s: &str) -> String {
+    s.replace('-', "_")
 }

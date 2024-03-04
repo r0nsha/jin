@@ -14,9 +14,9 @@ fn main() = {
 
 	array.print()
 
-	array.print_at(0)
-	array.print_at(3)
-	array.print_at(8)
+	array.print-at(0)
+	array.print-at(3)
+	array.print-at(8)
 
 	println("\nArray take:")
 	let slice = array.take()
@@ -27,8 +27,8 @@ fn main() = {
 	array.print()
 
 	match array.pop() {
-		Option.some(x) -> unsafe printf("popped = Some(%d)\n".ptr, x)
-		Option.none -> unsafe printf("popped = None\n".ptr)
+		Option.Some(x) -> unsafe printf("popped = Some(%d)\n".ptr, x)
+		Option.None -> unsafe printf("popped = None\n".ptr)
 	}
 
 	array.print()
@@ -38,15 +38,15 @@ fn main() = {
 	array.print()
 }
 
-fn print_at(array: &Array[int], idx: uint) = {
+fn print-at(array: &Array[int], idx: uint) = {
 	match array.get(idx) {
-		Option.some(x) -> unsafe printf("array[%d] = Some(%d)\n".ptr, idx, x)
-		Option.none -> unsafe printf("array[%d] = None\n".ptr, idx)
+		Option.Some(x) -> unsafe printf("array[%d] = Some(%d)\n".ptr, idx, x)
+		Option.None -> unsafe printf("array[%d] = None\n".ptr, idx)
 	}
 }
 
 fn print(array: &Array[int]) = {
-	array.as_ref().print()
+	array.as-ref().print()
 }
 
 fn print(slice: &[]int) = {

@@ -19,11 +19,11 @@ fn main() = {
 	let mixed2 = mixed.a
 	let mixed2c = mixed.a.b.c
 
-	print_point(Point(1, 2))
-	print_point(Point(x: 420, y: 69))
-	print_point(Point(5, y: 10))
+	print-point(Point(1, 2))
+	print-point(Point(x: 420, y: 69))
+	print-point(Point(5, y: 10))
 }
 
-fn print_point(p: Point) = {
+fn print-point(p: Point) = {
 	unsafe printf("Point(%d, %d)\n".ptr, p.x, p.y)
 }

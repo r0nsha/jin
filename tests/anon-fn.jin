@@ -1,5 +1,5 @@
 fn main() = {
-	if Option.some(1).map_or(false) fn(x) { x == 1 } {
+	if Option.Some(1).map-or(false) fn(x) { x == 1 } {
 		call(fn { println("hello") })
 	}
 }

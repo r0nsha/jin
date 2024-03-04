@@ -1,14 +1,12 @@
 use std::{hash::Hasher as _, iter};
 
-use ustr::{ustr, Ustr};
-
 use crate::{
     db::{Adt, Db},
     hir,
     ty::{Ty, TyKind},
 };
 
-pub fn mangle_fn_name(db: &Db, fun: &hir::Fn) -> Ustr {
+pub fn mangle_fn_name(db: &Db, fun: &hir::Fn) -> String {
     let mut hasher = rustc_hash::FxHasher::default();
     let def = &db[fun.def_id];
 
@@ -19,7 +17,7 @@ pub fn mangle_fn_name(db: &Db, fun: &hir::Fn) -> Ustr {
         hasher.write(mangle_ty_name(db, param.ty).as_bytes());
     }
 
-    ustr(&format!("{}${:x}", def.name, hasher.finish()))
+    mangle_hyphens(format!("{}${:x}", def.name, hasher.finish()))
 }
 
 pub fn mangle_ty_name(db: &Db, ty: Ty) -> String {
@@ -69,5 +67,10 @@ pub fn mangle_adt(db: &Db, adt: &Adt, targs: &[Ty]) -> String {
         hasher.write(mangle_ty_name(db, ty).as_bytes());
     }
 
-    format!("{}${:x}", def.name, hasher.finish())
+    mangle_hyphens(format!("{}${:x}", def.name, hasher.finish()))
+}
+
+#[inline]
+fn mangle_hyphens(s: String) -> String {
+    s.replace('-', "_")
 }

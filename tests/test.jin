@@ -8,12 +8,12 @@ fn extern "c" printf(fmt: *u8, ..) -> i32
 fn main() = {
 	println("Hello, World!")
 	unsafe hello()
-	run(print_answer)
-	do_add(add, 1, 2)
+	run(print-answer)
+	do-add(add, 1, 2)
 	unsafe printf("num = %d\n".ptr, map(1, id))
 }
 
-fn print_answer() = {
+fn print-answer() = {
 	unsafe printf("The answer is %d\n".ptr, answer)
 }
 
@@ -21,7 +21,7 @@ fn add(a: int, b: int) -> int = {
 	a + b
 }
 
-fn do_add(f: fn(int, int) -> int, a: int, b: int) = {
+fn do-add(f: fn(int, int) -> int, a: int, b: int) = {
 	unsafe printf("a + b = %d\n".ptr, f(a, b))
 }
 

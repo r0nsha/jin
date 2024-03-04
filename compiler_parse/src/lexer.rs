@@ -97,11 +97,11 @@ impl<'s> Lexer<'s> {
         match self.bump() {
             Some(ch) => {
                 let kind = match ch {
-                    ch if ch.is_ascii_alphabetic() || ch == '_' => {
+                    ch if ch.is_ascii_alphabetic() => {
                         if ch == 'b' && self.eat('\'') {
                             self.eat_char(CharKind::Byte, start + 2)?
                         } else {
-                            self.eat_ident(start)
+                            self.eat_ident(start)?
                         }
                     }
                     ch if ch.is_ascii_digit() => self.eat_number(start),
@@ -111,6 +111,7 @@ impl<'s> Lexer<'s> {
                         }
                         return self.eat_token();
                     }
+                    '_' => TokenKind::Underscore,
                     '"' => {
                         self.modes.push(Mode::Str);
                         TokenKind::StrOpen
@@ -301,24 +302,39 @@ impl<'s> Lexer<'s> {
         }
     }
 
-    fn eat_ident(&mut self, start: u32) -> TokenKind {
-        while let Some(ch) = self.peek() {
-            if ch.is_ascii_alphanumeric() || ch == '_' {
-                self.next();
-            } else {
-                let s = self.range(start);
+    fn eat_ident(&mut self, start: u32) -> DiagnosticResult<TokenKind> {
+        let mut last_hyphen = false;
 
-                return if s == "_" {
-                    TokenKind::Underscore
-                } else if let Ok(kw) = Kw::try_from(s) {
-                    TokenKind::Kw(kw)
-                } else {
-                    TokenKind::Ident(ustr(s))
-                };
+        while let Some(ch) = self.peek() {
+            match ch {
+                '0'..='9' if last_hyphen => {
+                    return Err(Diagnostic::error(
+                        "to avoid confusion with the `-` operator, a digit cannot follow a hyphen",
+                    )
+                    .with_label(Label::primary(
+                        self.create_span_range(self.pos - 1, self.pos + 1),
+                        "a hyphen followed by a digit",
+                    )));
+                }
+                'a'..='z' | 'A'..='Z' | '0'..='9' => {
+                    last_hyphen = false;
+                    self.next();
+                }
+                '-' => {
+                    last_hyphen = true;
+                    self.next();
+                }
+                _ => break,
             }
         }
 
-        unreachable!()
+        if last_hyphen {
+            return Err(Diagnostic::error("identifier cannot end with a hyphen")
+                .with_label(Label::primary(self.create_span(start), "identifier with a trailing hyphen")));
+        }
+
+        let s = self.range(start);
+        Ok(Kw::try_from(s).map(TokenKind::Kw).unwrap_or_else(|s| TokenKind::Ident(ustr(s))))
     }
 
     fn eat_number(&mut self, start: u32) -> TokenKind {
