@@ -629,9 +629,13 @@ impl<'db> Generator<'db> {
             }
             Inst::Cast { value, source, target, .. } => self.value_assign(state, *value, |this| {
                 let target_doc = target.cty(this).append(D::text("*"));
-                let source_doc = util::addr(this.value(state, *source));
-                let cast = util::cast(target_doc, source_doc);
-                util::deref(cast)
+                let source_doc = this.value(state, *source);
+
+                if state.ty_of(*source).is_ptr(this) && target.is_ptr(this) {
+                    util::cast(target_doc, source_doc)
+                } else {
+                    util::deref(util::cast(target_doc, util::addr(source_doc)))
+                }
             }),
             Inst::StrLit { value, lit } => {
                 self.value_assign(state, *value, |_| escaped_str_value(lit))
