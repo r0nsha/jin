@@ -3,48 +3,15 @@ import std.(
     io
 )
 
-// TODO: Result
-fn open*(path: &str, options: OpenOptions) -> io.Result[File] = {
+// TODO: Use lower-level `open` C api with flags
+// TODO: Add an API for custom file opening with `OpenOptions`
+fn open*(path: &str) -> io.Result[File] = {
     let pathname = unsafe as[_](path.as-bytes().ptr)
-    let mode = unsafe as[_](options.to-str().ptr)
+    let mode = unsafe as[_]("rw".ptr)
     let fd = unsafe fopen(pathname, mode)
     println("{fd}")
     Result.Ok(File(fd))
 }
 
 type RawFd = c-int
-
 type File*(fd: RawFd)
-
-// TODO: Do we need to validate these options?
-type OpenOptions*(
-    read: bool,
-    write: bool,
-    append: bool,
-)
-
-fn OpenOptions.new*() -> OpenOptions =
-    OpenOptions(read: false, write: false, append: false)
-
-fn read*(mut self: OpenOptions, value: bool) -> OpenOptions = {
-    self.read = value
-    self
-}
-
-fn write*(mut self: OpenOptions, value: bool) -> OpenOptions = {
-    self.write = value
-    self
-}
-
-fn append*(mut self: OpenOptions, value: bool) -> OpenOptions = {
-    self.append = value
-    self
-}    
-
-fn to-str*(self: OpenOptions) -> str = {
-    let mut s = StrBuf.with-cap(3)
-    if self.read { s.push('r') }
-    if self.write { s.push('w') }
-    if self.append { s.push('a') }
-    s.take()
-}    

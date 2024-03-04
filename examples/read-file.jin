@@ -1,15 +1,7 @@
-import std.(
-    fs,
-    fs.OpenOptions
-)
+import std.fs
 
 fn main() = {
-    let file = std.fs.open(
-        "/home/ron/file.txt", 
-        OpenOptions.new().read(true)
-    )
-
-    match file {
+    match std.fs.open("/home/ron/file.txt") {
         Result.Ok(file) -> {}
         Result.Err(err) -> println("Error: {err}")
     }
