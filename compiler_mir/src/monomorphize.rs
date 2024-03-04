@@ -266,7 +266,7 @@ impl<'db, 'cx> MonomorphizeBody<'db, 'cx> {
 
         let instantation_str = instantiation
             .tys()
-            .map(|ty| mangle::mangle_ty_name(self.cx.db, ty))
+            .map(|ty| mangle::ty_name(self.cx.db, ty))
             .collect::<Vec<_>>()
             .join("_");
 
@@ -496,7 +496,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
         let adt_ty = instantiation.fold(adt.ty());
         let adt_span = adt.name.span();
 
-        let adt_name = mangle::mangle_adt(self.cx.db, adt, targs);
+        let adt_name = mangle::adt_name(self.cx.db, adt, targs);
         let mangled_name = ustr(&format!("{adt_name}_destroy"));
         let display_name =
             ustr(&self.cx.db[adt.def_id].qpath.clone().child(ustr("$destroy")).join());
@@ -616,7 +616,7 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
 
         let main_span = Span::uniform(self.cx.db.main_source_id(), 0);
 
-        let tyname = mangle::mangle_ty_name(self.cx.db, ty);
+        let tyname = mangle::ty_name(self.cx.db, ty);
         let mangled_name = ustr(&format!("{tyname}_destroy"));
         let display_name = ustr(&format!("{}$destroy", ty.display(self.cx.db)));
         let sig = create_destroy_sig(self.cx, ty, mangled_name, display_name, main_span);

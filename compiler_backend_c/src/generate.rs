@@ -214,7 +214,7 @@ impl<'db> Generator<'db> {
     fn codegen_adt(&mut self, ty: Ty, adt_id: AdtId, targs: &[Ty]) {
         let adt = &self.db[adt_id];
 
-        let adt_name = ustr(&mangle::mangle_adt(self.db, adt, targs));
+        let adt_name = ustr(&mangle::adt_name(self.db, adt, targs));
         self.adt_names.insert(ty, adt_name);
 
         let instantiation = adt.instantiation(targs);

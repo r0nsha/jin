@@ -6,7 +6,7 @@ use crate::{
     ty::{Ty, TyKind},
 };
 
-pub fn mangle_fn_name(db: &Db, fun: &hir::Fn) -> String {
+pub fn fn_name(db: &Db, fun: &hir::Fn) -> String {
     let mut hasher = rustc_hash::FxHasher::default();
     let def = &db[fun.def_id];
 
@@ -14,35 +14,35 @@ pub fn mangle_fn_name(db: &Db, fun: &hir::Fn) -> String {
 
     for param in &fun.sig.params {
         hasher.write(param.pat.to_string().as_bytes());
-        hasher.write(mangle_ty_name(db, param.ty).as_bytes());
+        hasher.write(ty_name(db, param.ty).as_bytes());
     }
 
-    mangle_hyphens(format!("{}${:x}", def.name, hasher.finish()))
+    ident(format!("{}${:x}", def.name, hasher.finish()))
 }
 
-pub fn mangle_ty_name(db: &Db, ty: Ty) -> String {
-    match ty.kind() {
+pub fn ty_name(db: &Db, t: Ty) -> String {
+    match t.kind() {
         TyKind::Fn(f) => iter::once("fn".to_string())
             .chain(f.params.iter().map(|p| {
-                let ty_name = mangle_ty_name(db, p.ty);
+                let ty_name = ty_name(db, p.ty);
                 if let Some(name) = p.name {
                     format!("{name}_{ty_name}")
                 } else {
                     ty_name
                 }
             }))
-            .chain(iter::once(mangle_ty_name(db, f.ret)))
+            .chain(iter::once(ty_name(db, f.ret)))
             .collect::<Vec<String>>()
             .join("_"),
-        TyKind::Adt(adt_id, targs) => mangle_adt(db, &db[*adt_id], targs),
+        TyKind::Adt(adt_id, targs) => adt_name(db, &db[*adt_id], targs),
         TyKind::Slice(inner) => {
-            format!("s{}", mangle_ty_name(db, *inner))
+            format!("s{}", ty_name(db, *inner))
         }
         TyKind::Ref(inner, mutability) => {
-            format!("r{}_{}", mutability, mangle_ty_name(db, *inner))
+            format!("r{}_{}", mutability, ty_name(db, *inner))
         }
         TyKind::RawPtr(pointee) => {
-            format!("p{}", mangle_ty_name(db, *pointee))
+            format!("p{}", ty_name(db, *pointee))
         }
         TyKind::Unit => "unit".to_string(),
         TyKind::Param(p) => p.name.to_string(),
@@ -52,25 +52,33 @@ pub fn mangle_ty_name(db: &Db, ty: Ty) -> String {
         | TyKind::Str
         | TyKind::Char
         | TyKind::Bool
-        | TyKind::Never => ty.to_string(db),
-        _ => unreachable!("unexpected ty {ty:?}"),
+        | TyKind::Never => t.to_string(db),
+        _ => unreachable!("unexpected ty {t:?}"),
     }
 }
 
-pub fn mangle_adt(db: &Db, adt: &Adt, targs: &[Ty]) -> String {
+pub fn adt_name(db: &Db, adt: &Adt, targs: &[Ty]) -> String {
     let mut hasher = rustc_hash::FxHasher::default();
     let def = &db[adt.def_id];
 
     hasher.write(def.qpath.join().as_bytes());
 
     for &ty in targs {
-        hasher.write(mangle_ty_name(db, ty).as_bytes());
+        hasher.write(ty_name(db, ty).as_bytes());
     }
 
-    mangle_hyphens(format!("{}${:x}", def.name, hasher.finish()))
+    ident(format!("{}${:x}", def.name, hasher.finish()))
 }
 
-#[inline]
-fn mangle_hyphens(s: String) -> String {
-    s.replace('-', "_")
+pub fn ident(s: String) -> String {
+    let mut new = String::with_capacity(s.len());
+
+    for ch in s.chars() {
+        match ch {
+            '-' => new.push('_'),
+            ch => new.push(ch),
+        }
+    }
+
+    new
 }
