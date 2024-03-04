@@ -34,15 +34,9 @@ impl<'a> Parser<'a> {
 
     pub(super) fn parse_import(&mut self, attrs: &Attrs) -> DiagnosticResult<Import> {
         let start = self.last_span();
-        let is_submodule = self.is(TokenKind::Dot);
         let root = self.eat_ident()?.word();
-
-        let module_path =
-            if is_submodule { self.search_submodule(root)? } else { self.search_package(root)? };
-        self.imported_module_paths.insert(module_path.clone());
-
+        let module_path = self.search_package(root)?;
         let tree = self.parse_import_tree_name(root)?;
-
         Ok(Import { attrs: attrs.clone(), module_path, tree, span: start.merge(self.last_span()) })
     }
 
