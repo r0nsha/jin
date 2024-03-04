@@ -573,7 +573,7 @@ fn check_name(
     }
 
     if cx.ty_aliases.contains_key(&id) {
-        let ty = tyexpr::check_ty_alias(cx, env.module_id(), id, AllowTyHole::Yes)?;
+        let ty = tyexpr::check_ty_alias(cx, id, AllowTyHole::Yes)?;
         let (ty, instantiation) = types::apply_targs_to_ty(cx, env, ty, targs, span)?;
 
         return Ok(cx.expr(

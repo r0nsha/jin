@@ -1,4 +1,4 @@
-use compiler_core::db::{DefId, ModuleId};
+use compiler_core::db::DefId;
 use compiler_core::{
     db::DefKind,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -148,7 +148,7 @@ fn check_path(
                         span,
                     )?;
 
-                    let ty = check_ty_alias(cx, env.module_id(), id, allow_hole)?;
+                    let ty = check_ty_alias(cx, id, allow_hole)?;
                     let instantiation =
                         cx.ty_aliases[&id].instantiation(&targs.unwrap_or_default());
                     Ok(instantiation.fold(ty))
@@ -223,14 +223,13 @@ pub(crate) fn check_optional_targs_exact(
 
 pub(crate) fn check_ty_alias(
     cx: &mut Typeck,
-    module_id: ModuleId,
     id: DefId,
     allow_hole: AllowTyHole,
 ) -> DiagnosticResult<Ty> {
     if let Some(ty) = cx.ty_aliases[&id].ty {
         Ok(ty)
     } else {
-        let mut env = Env::new(module_id);
+        let mut env = Env::new(cx.db[id].scope.module_id);
 
         env.with_anon_scope(ScopeKind::TyDef, |env| {
             for tp in &cx.ty_aliases[&id].ty_params {
