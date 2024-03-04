@@ -1,3 +1,4 @@
+use compiler_core::middle::TyParam;
 use compiler_core::{
     db::DefKind,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -7,6 +8,7 @@ use compiler_core::{
     word::Word,
 };
 use compiler_helpers::create_bool_enum;
+use ustr::Ustr;
 
 use crate::{errors, lookup::PathLookup, ns::Env, Typeck};
 
@@ -122,19 +124,31 @@ fn check_path(
                     }
                 }
                 &DefKind::Adt(adt_id) => {
-                    let targs = check_optional_targs(cx, env, targs, allow_hole)?;
-
                     let ty_params = &cx.db[adt_id].ty_params;
-                    let targs_len = targs.as_ref().map_or(0, Vec::len);
+                    let targs = check_optional_targs_exact(
+                        cx,
+                        env,
+                        cx.db[adt_id].name.name(),
+                        targs,
+                        ty_params.len(),
+                        allow_hole,
+                        span,
+                    )?;
 
-                    if targs_len == ty_params.len() {
-                        Ok(Ty::new(TyKind::Adt(adt_id, targs.unwrap_or_default())))
-                    } else {
-                        Err(errors::adt_ty_arg_mismatch(cx.db, adt_id, targs_len, span))
-                    }
+                    Ok(Ty::new(TyKind::Adt(adt_id, targs.unwrap_or_default())))
                 }
                 DefKind::Global if cx.ty_aliases.contains_key(&id) => {
                     let alias = &cx.ty_aliases[&id];
+                    let ty_params = &alias.ty_params;
+                    let targs = check_optional_targs_exact(
+                        cx,
+                        env,
+                        cx.db[id].name,
+                        targs,
+                        ty_params.len(),
+                        allow_hole,
+                        span,
+                    )?;
                     todo!()
                 }
                 _ => Err(Diagnostic::error(format!(
@@ -184,6 +198,25 @@ pub(crate) fn check_optional_targs(
     } else {
         Ok(None)
     }
+}
+
+pub(crate) fn check_optional_targs_exact(
+    cx: &mut Typeck,
+    env: &Env,
+    ty_name: Ustr,
+    targs: Option<&[TyExpr]>,
+    ty_params_len: usize,
+    allow_hole: AllowTyHole,
+    span: Span,
+) -> DiagnosticResult<Option<Vec<Ty>>> {
+    let targs = check_optional_targs(cx, env, targs, allow_hole)?;
+    let targs_len = targs.as_ref().map_or(0, Vec::len);
+
+    if targs_len != ty_params_len {
+        return Err(errors::adt_ty_arg_mismatch(&ty_name, targs_len, ty_params_len, span));
+    }
+
+    Ok(targs)
 }
 
 create_bool_enum!(AllowTyHole);
