@@ -1,8 +1,8 @@
 fn main() = {
     let slice = [1, 3, 42, 487, 5, 66, 4055, 33]
     match slice.binary-search(4055) {
-        Option.some(idx) -> println("found: {idx}")
-        Option.none -> println("not found")
+        Option.Some(idx) -> println("found: {idx}")
+        Option.None -> println("not found")
     }
 }
 
@@ -15,7 +15,7 @@ fn binary-search(haystack: &[]int, needle: int) -> Option[uint] = {
         let elem = haystack.[mid]
 
         if elem == needle {
-            return Option.some(mid)
+            return Option.Some(mid)
         }
 
         if needle < elem {
@@ -25,5 +25,5 @@ fn binary-search(haystack: &[]int, needle: int) -> Option[uint] = {
         }
     }
 
-    Option.none
+    Option.None
 }

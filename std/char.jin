@@ -10,13 +10,13 @@ fn char.from-digit*(num: u32, radix: u32) -> Option[char] = {
 
     if num < radix {
 	let num = u8(num)
-	Option.some(char(if num < 10 {
+	Option.Some(char(if num < 10 {
 	    b'0' + num
 	} else {
 	    b'a' + num - 10
 	}))
     } else {
-        Option.none
+        Option.None
     }
 }
 

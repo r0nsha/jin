@@ -35,17 +35,17 @@ fn take*[T](self: Array[T]) -> []T = self.buf
 
 fn get*[T](self: &Array[T], index: uint) -> Option[&T] = {
 	if index < self.buf.len {
-		Option.some(&self.buf.[index])
+		Option.Some(&self.buf.[index])
 	} else {
-		Option.none
+		Option.None
 	}
 }
 
 fn set*[T](self: &mut Array[T], index: uint, value: T) -> Option[T] = {
 	if index < self.buf.len {
-		Option.some(self.buf.[index] := value)
+		Option.Some(self.buf.[index] := value)
 	} else {
-		Option.none
+		Option.None
 	}
 }
 
@@ -56,11 +56,11 @@ fn push*[T](self: &mut Array[T], value: T) = {
 
 fn pop*[T](self: &mut Array[T]) -> Option[T] = {
 	if self.buf.len == 0 {
-		return Option.none
+		return Option.None
 	}
 
 	unsafe self.buf.len -= 1
-	Option.some(unsafe (self.buf.ptr + self.buf.len).0)
+	Option.Some(unsafe (self.buf.ptr + self.buf.len).0)
 }
 
 fn clear*[T](self: &mut Array[T]) = {
