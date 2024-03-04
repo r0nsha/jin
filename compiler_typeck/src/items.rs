@@ -15,6 +15,7 @@ use compiler_core::{
 use compiler_data_structures::index_vec::{IndexVecExt as _, Key as _};
 use ustr::ustr;
 
+use crate::TyAlias;
 use crate::{
     attrs, errors, exprs, fns,
     lookup::{FnCandidate, Query},
@@ -162,7 +163,8 @@ fn define_tydef(
                         unknown, // Will be filled later
                     ))
                 });
-                finish_define_adt(cx, env, item_id, tydef, adt_id);
+                check_adt_ty_params(cx, env, tydef, adt_id);
+                cx.res_map.item_to_adt.insert(item_id, adt_id);
             }
             ast::TyDefKind::Union(union_def) => {
                 let adt_id = cx
@@ -170,24 +172,24 @@ fn define_tydef(
                     .adt(module_id, tydef, |id| AdtKind::Union(UnionDef::new(id, union_def.kind)));
                 let variants = define_variants(cx, union_def, adt_id);
                 cx.db[adt_id].as_union_mut().unwrap().variants = variants;
-                finish_define_adt(cx, env, item_id, tydef, adt_id);
+                check_adt_ty_params(cx, env, tydef, adt_id);
+                cx.res_map.item_to_adt.insert(item_id, adt_id);
             }
             ast::TyDefKind::Alias(alias) => {
-                todo!()
+                let def_id = cx.define().new_global(
+                    module_id,
+                    tydef.vis,
+                    DefKind::Global,
+                    tydef.word,
+                    Mutability::Imm,
+                );
+
+                let ty_params = types::define_ty_params(cx, env, &tydef.ty_params);
+                cx.ty_aliases
+                    .insert(def_id, TyAlias { tyexpr: alias.ty.clone(), ty: None, ty_params });
             }
         }
     });
-}
-
-fn finish_define_adt(
-    cx: &mut Typeck<'_>,
-    env: &mut Env,
-    item_id: ast::GlobalItemId,
-    tydef: &ast::TyDef,
-    adt_id: AdtId,
-) {
-    check_adt_ty_params(cx, env, tydef, adt_id);
-    cx.res_map.item_to_adt.insert(item_id, adt_id);
 }
 
 fn define_variants(

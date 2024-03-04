@@ -11,7 +11,7 @@ use compiler_helpers::create_bool_enum;
 use crate::{errors, lookup::PathLookup, ns::Env, Typeck};
 
 pub(crate) fn check(
-    cx: &Typeck,
+    cx: &mut Typeck,
     env: &Env,
     ty: &TyExpr,
     allow_hole: AllowTyHole,
@@ -96,7 +96,7 @@ pub(crate) fn check(
 }
 
 fn check_path(
-    cx: &Typeck,
+    cx: &mut Typeck,
     env: &Env,
     path: &[Word],
     targs: Option<&[TyExpr]>,
@@ -133,6 +133,10 @@ fn check_path(
                         Err(errors::adt_ty_arg_mismatch(cx.db, adt_id, targs_len, span))
                     }
                 }
+                DefKind::Global if cx.ty_aliases.contains_key(&id) => {
+                    let alias = &cx.ty_aliases[&id];
+                    todo!()
+                }
                 _ => Err(Diagnostic::error(format!(
                     "expected a type, found value of type `{}`",
                     cx.def_ty(id).display(cx.db)
@@ -153,7 +157,7 @@ fn check_path(
 }
 
 pub(crate) fn check_optional(
-    cx: &Typeck,
+    cx: &mut Typeck,
     env: &Env,
     ty: Option<&TyExpr>,
     allow_hole: AllowTyHole,
@@ -166,7 +170,7 @@ pub(crate) fn check_optional(
 }
 
 pub(crate) fn check_optional_targs(
-    cx: &Typeck,
+    cx: &mut Typeck,
     env: &Env,
     targs: Option<&[TyExpr]>,
     allow_hole: AllowTyHole,

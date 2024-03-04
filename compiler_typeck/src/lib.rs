@@ -20,6 +20,8 @@ mod unify;
 use std::cell::RefCell;
 
 use compiler_ast::{self as ast, Ast};
+use compiler_core::middle::{TyExpr, TyParam};
+use compiler_core::ty::Instantiation;
 use compiler_core::{
     counter::Counter,
     db::{AdtId, Db, DefId, ModuleId},
@@ -91,6 +93,9 @@ pub(crate) struct Typeck<'db> {
     pub(crate) storage: RefCell<TyStorage>,
 
     /// A mapping from definitions to their resolved type
+    pub(crate) ty_aliases: FxHashMap<DefId, TyAlias>,
+
+    /// A mapping from definitions to their resolved type
     pub(crate) def_to_ty: FxHashMap<DefId, Ty>,
 
     /// Counter for generating hir::ExprId's
@@ -150,6 +155,7 @@ impl<'db> Typeck<'db> {
             global_env: GlobalEnv::new(builtin_tys),
             res_map: ResMap::new(),
             storage: RefCell::new(TyStorage::new()),
+            ty_aliases: FxHashMap::default(),
             def_to_ty,
             expr_id: Counter::new(),
         }
@@ -262,5 +268,23 @@ impl ResMap {
             item_to_ty: FxHashMap::default(),
             item_to_sig: FxHashMap::default(),
         }
+    }
+}
+
+pub(crate) struct TyAlias {
+    pub(crate) tyexpr: TyExpr,
+    pub(crate) ty: Option<Ty>,
+    pub(crate) ty_params: Vec<TyParam>,
+}
+
+impl TyAlias {
+    pub fn instantiation(&self, targs: &[Ty]) -> Instantiation {
+        debug_assert!(targs.len() == self.ty_params.len());
+
+        self.ty_params
+            .iter()
+            .zip(targs)
+            .map(|(tp, ty)| (tp.ty.as_param().unwrap().var, *ty))
+            .collect()
     }
 }
