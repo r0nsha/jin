@@ -1,3 +1,4 @@
+use std::fmt::Write;
 use std::{hash::Hasher as _, iter};
 
 use crate::{
@@ -76,7 +77,8 @@ pub fn ident(s: String) -> String {
     for ch in s.chars() {
         match ch {
             '-' => new.push('_'),
-            ch => new.push(ch),
+            ch if ch.is_alphanumeric() => new.push(ch),
+            ch => write!(new, "${:x}", ch as i32).unwrap(),
         }
     }
 
