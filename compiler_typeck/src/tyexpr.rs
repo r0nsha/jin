@@ -1,3 +1,4 @@
+use compiler_core::db::DefId;
 use compiler_core::{
     db::DefKind,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -136,13 +137,6 @@ fn check_path(
                     Ok(Ty::new(TyKind::Adt(adt_id, targs.unwrap_or_default())))
                 }
                 DefKind::Global if cx.ty_aliases.contains_key(&id) => {
-                    let ty = if let Some(ty) = cx.ty_aliases[&id].ty {
-                        ty
-                    } else {
-                        let tyexpr = cx.ty_aliases[&id].tyexpr.clone();
-                        self::check(cx, env, &tyexpr, allow_hole)?
-                    };
-
                     let targs = check_optional_targs_exact(
                         cx,
                         env,
@@ -153,9 +147,7 @@ fn check_path(
                         span,
                     )?;
 
-                    let instantiation =
-                        cx.ty_aliases[&id].instantiation(&targs.unwrap_or_default());
-                    Ok(instantiation.fold(ty))
+                    instantiate_ty_alias(cx, env, id, targs.as_deref(), allow_hole)
                 }
                 _ => Err(Diagnostic::error(format!(
                     "expected a type, found value of type `{}`",
@@ -223,6 +215,24 @@ pub(crate) fn check_optional_targs_exact(
     }
 
     Ok(targs)
+}
+
+pub(crate) fn instantiate_ty_alias(
+    cx: &mut Typeck,
+    env: &Env,
+    id: DefId,
+    targs: Option<&[Ty]>,
+    allow_hole: AllowTyHole,
+) -> DiagnosticResult<Ty> {
+    let ty = if let Some(ty) = cx.ty_aliases[&id].ty {
+        ty
+    } else {
+        let tyexpr = cx.ty_aliases[&id].tyexpr.clone();
+        self::check(cx, env, &tyexpr, allow_hole)?
+    };
+
+    let instantiation = cx.ty_aliases[&id].instantiation(&targs.unwrap_or_default());
+    Ok(instantiation.fold(ty))
 }
 
 create_bool_enum!(AllowTyHole);

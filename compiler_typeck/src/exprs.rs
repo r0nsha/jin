@@ -572,6 +572,15 @@ fn check_name(
         }
     }
 
+    if cx.ty_aliases.contains_key(&id) {
+        let ty = tyexpr::instantiate_ty_alias(cx, env, id, targs, AllowTyHole::Yes)?;
+        return Ok(cx.expr(
+            hir::ExprKind::Name(hir::Name { id, word, instantiation: Instantiation::default() }),
+            Ty::new(TyKind::Type(ty)),
+            span,
+        ));
+    }
+
     let def_ty = cx.normalize(cx.def_ty(id));
     let (ty, instantiation) = types::apply_targs_to_ty(cx, env, def_ty, targs, span)?;
 
