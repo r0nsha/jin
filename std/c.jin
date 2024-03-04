@@ -1,0 +1,14 @@
+type c-char* = i8
+type c-uchar* = u8
+
+type c-short* = i16
+type c-ushort* = u16
+
+type c-int* = i32
+type c-uint* = u32
+
+type c-long* = i64
+type c-ulong* = u64
+
+type c-longlong* = i64
+type c-ulonglong* = u64

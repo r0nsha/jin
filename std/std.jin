@@ -1,5 +1,6 @@
 mod bool*
 mod builtin*
+mod c*
 mod char*
 mod collections*
 mod int*
