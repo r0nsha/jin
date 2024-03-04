@@ -36,6 +36,7 @@ pub enum Placement {
     ExternLet,
     Struct,
     Union,
+    TyAlias,
     Import,
     ExternImport,
 }

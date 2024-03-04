@@ -333,6 +333,10 @@ impl PrettyPrint for TyDef {
                     cx.builder.end_child();
                 }
             }
+            TyDefKind::Alias(alias) => {
+                cx.builder.add_empty_child("type alias".to_string());
+                alias.ty.pretty_print(cx);
+            }
         }
 
         cx.builder.end_child();

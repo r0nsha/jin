@@ -43,6 +43,7 @@ fn check_tydef(
         match &tydef.kind {
             ast::TyDefKind::Struct(struct_def) => check_struct(cx, env, adt_id, struct_def),
             ast::TyDefKind::Union(union_def) => check_union(cx, env, adt_id, union_def),
+            ast::TyDefKind::Alias(alias) => check_alias(cx, env, adt_id, alias),
         }
     })
 }
@@ -142,6 +143,15 @@ fn check_variant(
     variant.fill_ctor_ty(adt_ty);
 
     Ok(())
+}
+
+fn check_alias(
+    cx: &mut Typeck<'_>,
+    env: &mut Env,
+    adt_id: AdtId,
+    alias: &ast::AliasTyDef,
+) -> DiagnosticResult<()> {
+    todo!()
 }
 
 pub(crate) fn define_ty_params(
