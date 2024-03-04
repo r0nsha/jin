@@ -157,15 +157,6 @@ fn check_variant(
     Ok(())
 }
 
-fn check_alias(
-    cx: &mut Typeck<'_>,
-    env: &mut Env,
-    adt_id: AdtId,
-    alias: &ast::AliasTyDef,
-) -> DiagnosticResult<()> {
-    todo!()
-}
-
 pub(crate) fn define_ty_params(
     cx: &mut Typeck,
     env: &mut Env,

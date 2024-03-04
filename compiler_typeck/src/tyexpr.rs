@@ -1,4 +1,4 @@
-use compiler_core::db::DefId;
+use compiler_core::db::{DefId, ModuleId};
 use compiler_core::{
     db::DefKind,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -10,6 +10,7 @@ use compiler_core::{
 use compiler_helpers::create_bool_enum;
 use ustr::Ustr;
 
+use crate::ns::ScopeKind;
 use crate::{errors, lookup::PathLookup, ns::Env, Typeck};
 
 pub(crate) fn check(
@@ -147,7 +148,7 @@ fn check_path(
                         span,
                     )?;
 
-                    instantiate_ty_alias(cx, env, id, targs.as_deref(), allow_hole)
+                    instantiate_ty_alias(cx, env.module_id(), id, targs.as_deref(), allow_hole)
                 }
                 _ => Err(Diagnostic::error(format!(
                     "expected a type, found value of type `{}`",
@@ -219,7 +220,7 @@ pub(crate) fn check_optional_targs_exact(
 
 pub(crate) fn instantiate_ty_alias(
     cx: &mut Typeck,
-    env: &Env,
+    module_id: ModuleId,
     id: DefId,
     targs: Option<&[Ty]>,
     allow_hole: AllowTyHole,
@@ -227,11 +228,19 @@ pub(crate) fn instantiate_ty_alias(
     let ty = if let Some(ty) = cx.ty_aliases[&id].ty {
         ty
     } else {
-        let tyexpr = cx.ty_aliases[&id].tyexpr.clone();
-        self::check(cx, env, &tyexpr, allow_hole)?
+        let mut env = Env::new(module_id);
+
+        env.with_anon_scope(ScopeKind::TyDef, |env| {
+            for tp in &cx.ty_aliases[&id].ty_params {
+                env.insert(tp.word.name(), tp.id);
+            }
+
+            let tyexpr = cx.ty_aliases[&id].tyexpr.clone();
+            self::check(cx, env, &tyexpr, allow_hole)
+        })?
     };
 
-    let instantiation = cx.ty_aliases[&id].instantiation(&targs.unwrap_or_default());
+    let instantiation = cx.ty_aliases[&id].instantiation(targs.unwrap_or_default());
     Ok(instantiation.fold(ty))
 }
 

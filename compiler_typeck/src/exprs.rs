@@ -573,7 +573,8 @@ fn check_name(
     }
 
     if cx.ty_aliases.contains_key(&id) {
-        let ty = tyexpr::instantiate_ty_alias(cx, env, id, targs, AllowTyHole::Yes)?;
+        let ty = tyexpr::instantiate_ty_alias(cx, env.module_id(), id, targs, AllowTyHole::Yes)?;
+
         return Ok(cx.expr(
             hir::ExprKind::Name(hir::Name { id, word, instantiation: Instantiation::default() }),
             Ty::new(TyKind::Type(ty)),
