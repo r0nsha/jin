@@ -212,6 +212,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         }
 
         let id = self.query(from_module, target_module, &Query::Name(last))?;
+
         Ok(PathLookup::Def(id))
     }
 
@@ -272,7 +273,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         span: Span,
         should_lookup_fns: ShouldLookupFns,
     ) -> DiagnosticResult<Option<DefId>> {
-        let results = self.many(in_module, name, should_lookup_fns, IsUfcs::No);
+        let results = self.many(from_module, in_module, name, should_lookup_fns, IsUfcs::No);
 
         if results.is_empty() {
             // We allow looking up builtin types only when looking up a symbol in the same
@@ -304,12 +305,27 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
 
     fn many(
         &self,
+        from_module: ModuleId,
         in_module: ModuleId,
         name: Ustr,
         should_lookup_fns: ShouldLookupFns,
         is_ufcs: IsUfcs,
     ) -> Vec<LookupResult> {
-        let lookup_modules = self.get_lookup_modules(in_module, is_ufcs);
+        if from_module == in_module {
+            let lookup_modules = self.get_lookup_modules(in_module, is_ufcs);
+            self.lookup_many_helper(in_module, lookup_modules, name, should_lookup_fns)
+        } else {
+            self.lookup_many_helper(in_module, iter::once(in_module), name, should_lookup_fns)
+        }
+    }
+
+    fn lookup_many_helper(
+        &self,
+        in_module: ModuleId,
+        lookup_modules: impl Iterator<Item = ModuleId>,
+        name: Ustr,
+        should_lookup_fns: ShouldLookupFns,
+    ) -> Vec<LookupResult> {
         let mut results = FxHashSet::default();
 
         for module_id in lookup_modules {
