@@ -1,0 +1,3 @@
+fn main() = {
+    let file = std.fs.open("file.txt")
+}
