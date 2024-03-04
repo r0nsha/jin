@@ -1,15 +1,21 @@
-import std.c.(c-char)
+import std.(
+    c.(c-char),
+    io
+)
 
 fn extern "c" fopen(pathname: *c-char, mode: *c-char) -> RawFd
 
-type RawFd = int
-
-fn open*(path: &str, options: OpenOptions) = {
+// TODO: Result
+fn open*(path: &str, options: OpenOptions) -> io.Result[File] = {
     let pathname = unsafe as[_](path.as-bytes().ptr)
     let mode = unsafe as[_](options.to-str().ptr)
     let fd = unsafe fopen(pathname, mode)
-    println("{fd}")
+    File(fd)
 }
+
+type RawFd = int
+
+type File*(fd: RawFd)
 
 // TODO: Do we need to validate these options?
 type OpenOptions*(
