@@ -1,3 +1,11 @@
+import std.(
+    fs,
+    fs.OpenOptions
+)
+
 fn main() = {
-    let file = std.fs.open("file.txt")
+    let file = std.fs.open(
+        "/home/ron/file.txt", 
+        OpenOptions.new().read(true)
+    )
 }

@@ -4,11 +4,14 @@ fn extern "c" fopen(pathname: *c-char, mode: *c-char) -> RawFd
 
 type RawFd = int
 
-// TODO: OpenOptions
-fn open*(path: &str) = {
-    let fd = fopen(path.as_bytes().ptr, "r".ptr)
+fn open*(path: &str, options: OpenOptions) = {
+    let pathname = unsafe as[_](path.as-bytes().ptr)
+    let mode = unsafe as[_](options.to-str().ptr)
+    let fd = unsafe fopen(pathname, mode)
+    println("{fd}")
 }
 
+// TODO: Do we need to validate these options?
 type OpenOptions*(
     read: bool,
     write: bool,
@@ -31,4 +34,12 @@ fn write*(mut self: OpenOptions, value: bool) -> OpenOptions = {
 fn append*(mut self: OpenOptions, value: bool) -> OpenOptions = {
     self.append = value
     self
+}    
+
+fn to-str*(self: OpenOptions) -> str = {
+    let mut s = StrBuf.with-cap(3)
+    if self.read { s.push('r') }
+    if self.write { s.push('w') }
+    if self.append { s.push('a') }
+    s.take()
 }    
