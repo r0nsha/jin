@@ -254,7 +254,7 @@ impl<'db> Lower<'db> {
         let mangled_name = if fun.kind.is_extern() {
             fun.sig.word.name()
         } else {
-            mangle::mangle_fn_name(self.db, fun)
+            ustr(&mangle::mangle_fn_name(self.db, fun))
         };
 
         let display_name = ustr(&self.db[fun.def_id].qpath.join());

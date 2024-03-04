@@ -97,7 +97,7 @@ impl<'s> Lexer<'s> {
         match self.bump() {
             Some(ch) => {
                 let kind = match ch {
-                    ch if ch.is_ascii_alphabetic() || ch == '_' => {
+                    ch if ch.is_ascii_alphabetic() => {
                         if ch == 'b' && self.eat('\'') {
                             self.eat_char(CharKind::Byte, start + 2)?
                         } else {
@@ -111,6 +111,7 @@ impl<'s> Lexer<'s> {
                         }
                         return self.eat_token();
                     }
+                    '_' => TokenKind::Underscore,
                     '"' => {
                         self.modes.push(Mode::Str);
                         TokenKind::StrOpen
@@ -303,18 +304,13 @@ impl<'s> Lexer<'s> {
 
     fn eat_ident(&mut self, start: u32) -> TokenKind {
         while let Some(ch) = self.peek() {
-            if ch.is_ascii_alphanumeric() || ch == '_' {
+            if ch.is_ascii_alphanumeric() || ch == '_' || ch == '-' {
                 self.next();
             } else {
                 let s = self.range(start);
-
-                return if s == "_" {
-                    TokenKind::Underscore
-                } else if let Ok(kw) = Kw::try_from(s) {
-                    TokenKind::Kw(kw)
-                } else {
-                    TokenKind::Ident(ustr(s))
-                };
+                return Kw::try_from(s)
+                    .map(TokenKind::Kw)
+                    .unwrap_or_else(|s| TokenKind::Ident(ustr(s)));
             }
         }
 
