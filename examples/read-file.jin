@@ -1,7 +1,7 @@
 import std.fs
 
 fn main() = {
-    match std.fs.open("/home/ron/file.txt") {
+    match std.fs.open("/home/ron/file.txtt") {
         Result.Ok(file) -> {}
         Result.Err(err) -> println("Error: {err}")
     }

@@ -1,17 +1,17 @@
-import std.(
-    c.(c-int, fopen),
-    io
-)
+import std.(c, io)
 
 // TODO: Use lower-level `open` C api with flags
 // TODO: Add an API for custom file opening with `OpenOptions`
 fn open*(path: &str) -> io.Result[File] = {
     let pathname = unsafe as[_](path.as-bytes().ptr)
-    let mode = unsafe as[_]("rw".ptr)
-    let fd = unsafe fopen(pathname, mode)
-    println("{fd}")
-    Result.Ok(File(fd))
+    let fd = unsafe c.open(pathname, c.O_RDONLY, 0)
+
+    if fd != -1 {
+	Result.Ok(File(fd))
+    } else {
+	Result.Err(io.Error.from-os-error(fd))
+    }
 }
 
-type RawFd = c-int
+type RawFd = c.c-int
 type File*(fd: RawFd)

@@ -16,5 +16,11 @@ type c-ulonglong* = u64
 type c-size-t* = uint
 type c-ssize-t* = int
 
-fn extern "c" fopen*(pathname: *c-char, mode: *c-char) -> c-int
+type mode-t* = u32
+
+fn extern "c" open*(pathname: *c-char, flags: c-int, mode: mode-t) -> c-int
 fn extern "c" write*(fd: c-int, buf: *c-char, count: c-size-t) -> c-int
+
+let O_RDONLY*: c-int = 0
+let O_WRONLY*: c-int = 1
+let O_RDWR*: c-int = 2
