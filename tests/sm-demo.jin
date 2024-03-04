@@ -13,7 +13,7 @@ fn main() = {
 fn int-types() = {
 	let id: i8 = 126
 	let promoted = i64(id) + 5555
-	let demoted-1 = i32(promoted)
+	let demoted1 = i32(promoted)
 	let demoted2 = i16(demoted1 - 4000)
 	let int-to-uint = uint(int(663151))
 }

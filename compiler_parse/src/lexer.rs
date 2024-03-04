@@ -314,7 +314,7 @@ impl<'s> Lexer<'s> {
                     .with_label(Label::primary(
                         self.create_span_range(self.pos - 1, self.pos + 1),
                         "a hyphen followed by a digit",
-                    )))
+                    )));
                 }
                 'a'..='z' | 'A'..='Z' | '0'..='9' => {
                     last_hyphen = false;
@@ -326,6 +326,11 @@ impl<'s> Lexer<'s> {
                 }
                 _ => break,
             }
+        }
+
+        if last_hyphen {
+            return Err(Diagnostic::error("identifier cannot end with a hyphen")
+                .with_label(Label::primary(self.create_span(start), "identifier with a trailing hyphen")));
         }
 
         let s = self.range(start);
