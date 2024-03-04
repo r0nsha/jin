@@ -111,6 +111,7 @@ impl<'s> Lexer<'s> {
                         }
                         return self.eat_token();
                     }
+                    '`' => self.eat_raw_ident()?,
                     '_' => TokenKind::Underscore,
                     '"' => {
                         self.modes.push(Mode::Str);
@@ -329,8 +330,9 @@ impl<'s> Lexer<'s> {
         }
 
         if last_hyphen {
-            return Err(Diagnostic::error("identifier cannot end with a hyphen")
-                .with_label(Label::primary(self.create_span(start), "identifier with a trailing hyphen")));
+            return Err(Diagnostic::error("identifier cannot end with a hyphen").with_label(
+                Label::primary(self.create_span(start), "identifier with a trailing hyphen"),
+            ));
         }
 
         let s = self.range(start);
@@ -503,6 +505,29 @@ impl<'s> Lexer<'s> {
             Err(Diagnostic::error("invalid escape sequence")
                 .with_label(Label::primary(self.create_span(self.pos), "invalid sequence")))
         }
+    }
+
+    fn eat_raw_ident(&mut self) -> DiagnosticResult<TokenKind> {
+        let start = self.pos;
+
+        loop {
+            match self.bump() {
+                Some('`') => break,
+                Some(_) => (),
+                None => {
+                    return Err(Diagnostic::error(
+                        "missing trailing ' to end the character literal",
+                    )
+                    .with_label(Label::primary(
+                        self.create_span(self.pos),
+                        "unterminated character",
+                    )))
+                }
+            }
+        }
+
+        let s = self.range(start);
+        Ok(TokenKind::Ident(ustr(&s[..s.len() - 1])))
     }
 
     fn eat_comment(&mut self) {

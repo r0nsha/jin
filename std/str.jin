@@ -88,7 +88,7 @@ fn clear*(self: &mut StrBuf) = {
 }
 
 fn array-with-nul-byte(cap: uint) -> Array[u8] = {
-	let mut a = Array.with-cap(cap)
-	a.push(b'\0')
-	a
+	let mut `foo+bar$` = Array.with-cap(cap)
+	`foo+bar$`.push(b'\0')
+	`foo+bar$.`
 }
