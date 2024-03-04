@@ -12,3 +12,26 @@ fn print*(msg: str) = print(&msg)
 fn println*() = print("\n")
 fn println*(msg: &str) = print("{msg}\n")
 fn println*(msg: str) = println(&msg)
+
+type Result*[T] = Result[T, Error]
+
+type Error* {
+	PermissionDenied
+	NotFound
+	Interrupted
+	AlreadyExists
+	InvalidArgument
+	Other(code: i32)
+}
+
+// TODO: match on `os.errors.*`.
+// This requires the language to have a way on matching constants.
+fn Error.from-os-error*(code: i32) -> Error =
+	match code {
+		1 -> Error.PermissionDenied
+		2 -> Error.NotFound
+		4 -> Error.Interrupted
+		17 -> Error.AlreadyExists
+		22 -> Error.InvalidArgument
+		code -> Error.Other(code)
+	}
