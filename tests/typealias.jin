@@ -1,0 +1,6 @@
+type Fd = uint
+
+fn main() = {
+	let x: Fd = 1
+	let x: Fd = "foobar"
+}

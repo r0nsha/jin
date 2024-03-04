@@ -37,7 +37,7 @@ impl<'a> Parser<'a> {
         } else if self.is_kw(Kw::Ref) {
             self.parse_tydef_union(UnionKind::Ref)
         } else {
-            Err(self.unexpected_token("(, {, `ref` or `value`"))
+            Err(self.unexpected_token("(, {, `ref` or `extern`"))
         }
     }
 
