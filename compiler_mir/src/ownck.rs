@@ -256,16 +256,17 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
         }
 
-        self.body.print_dot();
-        debug_assert!(
-            !is_initial_state,
-            "value v{} aka {}(: {}) is missing a state in block b{} aka `{}`.",
-            value.0,
-            self.value_name(value),
-            self.ty_of(value).display(self.cx.db),
-            block,
-            self.body.block(block).name
-        );
+        if is_initial_state {
+            self.body.print_dot();
+            println!(
+                "value v{} aka {}(: {}) is missing a state in block b{} aka `{}`.",
+                value.0,
+                self.value_name(value),
+                self.ty_of(value).display(self.cx.db),
+                block,
+                self.body.block(block).name
+            );
+        }
 
         result_state
     }
