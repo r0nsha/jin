@@ -21,7 +21,7 @@ type mode-t* = u32
 fn extern "c" close*(fd: c-int) -> c-int
 fn extern "c" open*(pathname: *c-char, flags: c-int, mode: mode-t) -> c-int
 fn extern "c" printf*(format: *c-uchar, ..) -> c-int
-fn extern "c" read*(fd: c-int, buf: *c-uchar, count: c-size-t) -> c-size-t 
+fn extern "c" read*(fd: c-int, buf: *c-uchar, count: c-size-t) -> c-ssize-t 
 fn extern "c" write*(fd: c-int, buf: *c-char, count: c-size-t) -> c-int
 fn extern "c" __errno_location*() -> *c-int
 

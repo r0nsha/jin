@@ -64,12 +64,9 @@ fn read-to-str*(self: &File) -> io.Result[str] = {
 }
 
 fn read*(self: &File, buf: &mut []u8) -> io.Result[uint] = {
-    let len = unsafe c.read(self.fd, buf.ptr, buf.len)
-
-    if len != -1 {
-	Result.Ok(len)
-    } else {
-	Result.Err(io.Error.last-os-error())
+    match unsafe c.read(self.fd, buf.ptr, buf.len) {
+	-1 -> Result.Err(io.Error.last-os-error())
+	len -> Result.Ok(uint(len))
     }
 }
 
