@@ -1,5 +1,62 @@
 import std.(c, io)
 
+fn read*(path: &str) -> io.Result[Array[u8]] =
+    match File.open(path) {
+        Result.Ok(file) -> {
+            match file.read-to-end() {
+                Result.Ok(buf) -> {
+                    file.close()
+                    Result.Ok(buf)
+                }
+                Result.Err(err) -> {
+                    file.close()
+                    Result.Err(err)
+                }
+            }
+        }
+        Result.Err(err) -> Result.Err(err)
+    }
+
+fn read-to-str*(path: &str) -> io.Result[str] =
+    match File.open(path) {
+        Result.Ok(file) -> {
+            match file.read-to-str() {
+                Result.Ok(contents) -> {
+                    file.close()
+                    Result.Ok(contents)
+                }
+                Result.Err(err) -> {
+                    file.close()
+                    Result.Err(err)
+                }
+            }
+        }
+        Result.Err(err) -> Result.Err(err)
+    }
+
+fn write*(path: &str, contents: str) -> io.Result[()] =
+    write(path, &contents)
+
+fn write*(path: &str, contents: &str) -> io.Result[()] =
+    write(path, contents.as-bytes())
+
+fn write*(path: &str, bytes: &[]u8) -> io.Result[()] =
+    match File.create(path) {
+        Result.Ok(mut file) -> {
+            match file.write(bytes) {
+                Result.Ok(_) -> {
+                    file.close()
+                    Result.Ok(())
+                }
+                Result.Err(err) -> {
+                    file.close()
+                    Result.Err(err)
+                }
+            }
+        }
+        Result.Err(err) -> Result.Err(err)
+    }
+
 // TODO: Add an API for custom file opening with `OpenOptions`
 fn File.open*(path: &str) -> io.Result[File] =
     match open-impl(path, c.O_RDONLY, 0) {

@@ -6,33 +6,17 @@ import std.(
 // TODO: or-panic for `Result` would be nice here
 // TODO: and try syntax would be amazing here!
 fn main() = {
-    match read-file() {
-        Result.Ok(contents) -> match write-file2(contents) {
-            Result.Ok(()) -> ()
-            Result.Err(err) -> println("Error writing to 'examples/file2.txt': {err}")
+    match std.fs.read-to-str("examples/file.txt") {
+        Result.Ok(contents) -> {
+            print("--- Read ---\n{contents}")
+            match write-file2(contents) {
+                Result.Ok(()) -> ()
+                Result.Err(err) -> println("Error writing to 'examples/file2.txt': {err}")
+            }
         }
         Result.Err(err) -> println("Error reading 'examples/file.txt': {err}")
     }
 }
-
-// TODO: replace with `read`
-fn read-file() -> io.Result[str] =
-    match File.open("examples/file.txt") {
-        Result.Ok(file) -> {
-            match file.read-to-str() {
-                Result.Ok(contents) -> {
-                    print("--- Read ---\n{contents}")
-                    file.close()
-                    Result.Ok(contents)
-                }
-                Result.Err(err) -> {
-                    file.close()
-                    Result.Err(err)
-                }
-            }
-        }
-        Result.Err(err) -> Result.Err(err)
-    }
 
 // TODO: replace with `write`
 fn write-file2(contents: str) -> io.Result[()] =
