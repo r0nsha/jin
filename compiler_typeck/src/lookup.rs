@@ -90,16 +90,29 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         in_module: ModuleId,
         query: &FnQuery,
     ) -> DiagnosticResult<Option<DefId>> {
-        let candidates = self
-            .get_lookup_modules(in_module, query.is_ufcs)
-            .filter_map(|module_id| {
-                self.cx.global_env.module(module_id).ns.fns.get(&query.word.name())
-            })
-            .flat_map(|set| set.find(self.cx, query))
-            .unique_by(|candidate| candidate.id)
-            .collect::<Vec<_>>();
+        fn inner(
+            this: &Lookup,
+            from_module: ModuleId,
+            lookup_modules: impl Iterator<Item = ModuleId>,
+            query: &FnQuery,
+        ) -> DiagnosticResult<Option<DefId>> {
+            let candidates = lookup_modules
+                .filter_map(|module_id| {
+                    this.cx.global_env.module(module_id).ns.fns.get(&query.word.name())
+                })
+                .flat_map(|set| set.find(this.cx, query))
+                .unique_by(|candidate| candidate.id)
+                .collect::<Vec<_>>();
 
-        self.check_and_filter_fn_candidates(query, candidates, from_module)
+            this.check_and_filter_fn_candidates(query, candidates, from_module)
+        }
+
+        if from_module == in_module {
+            let lookup_modules = self.get_lookup_modules(in_module, query.is_ufcs);
+            inner(self, from_module, lookup_modules, query)
+        } else {
+            inner(self, from_module, iter::once(in_module), query)
+        }
     }
 
     fn query_assoc_fns(
@@ -311,42 +324,42 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         should_lookup_fns: ShouldLookupFns,
         is_ufcs: IsUfcs,
     ) -> Vec<LookupResult> {
-        if from_module == in_module {
-            let lookup_modules = self.get_lookup_modules(in_module, is_ufcs);
-            self.lookup_many_helper(in_module, lookup_modules, name, should_lookup_fns)
-        } else {
-            self.lookup_many_helper(in_module, iter::once(in_module), name, should_lookup_fns)
-        }
-    }
+        fn inner(
+            this: &Lookup,
+            in_module: ModuleId,
+            lookup_modules: impl Iterator<Item = ModuleId>,
+            name: Ustr,
+            should_lookup_fns: ShouldLookupFns,
+        ) -> Vec<LookupResult> {
+            let mut results = FxHashSet::default();
 
-    fn lookup_many_helper(
-        &self,
-        in_module: ModuleId,
-        lookup_modules: impl Iterator<Item = ModuleId>,
-        name: Ustr,
-        should_lookup_fns: ShouldLookupFns,
-    ) -> Vec<LookupResult> {
-        let mut results = FxHashSet::default();
+            for module_id in lookup_modules {
+                let env = this.cx.global_env.module(module_id);
 
-        for module_id in lookup_modules {
-            let env = self.cx.global_env.module(module_id);
+                if let Some(def) = env.ns.defs.get(&name) {
+                    if module_id == in_module {
+                        // For definitions, we always prioritize a definition which is defined or
+                        // imported in scope. Glob imports always come next for definitions.
+                        return vec![LookupResult::Def(*def)];
+                    }
 
-            if let Some(def) = env.ns.defs.get(&name) {
-                if module_id == in_module {
-                    // For definitions, we always prioritize a definition which is defined or
-                    // imported in scope. Glob imports always come next for definitions.
-                    return vec![LookupResult::Def(*def)];
-                }
-
-                results.insert(LookupResult::Def(*def));
-            } else if let ShouldLookupFns::Yes = should_lookup_fns {
-                if let Some(candidates) = env.ns.fns.get(&name) {
-                    results.extend(candidates.iter().cloned().map(LookupResult::Fn));
+                    results.insert(LookupResult::Def(*def));
+                } else if let ShouldLookupFns::Yes = should_lookup_fns {
+                    if let Some(candidates) = env.ns.fns.get(&name) {
+                        results.extend(candidates.iter().cloned().map(LookupResult::Fn));
+                    }
                 }
             }
+
+            results.into_iter().collect()
         }
 
-        results.into_iter().collect()
+        if from_module == in_module {
+            let lookup_modules = self.get_lookup_modules(in_module, is_ufcs);
+            inner(self, in_module, lookup_modules, name, should_lookup_fns)
+        } else {
+            inner(self, in_module, iter::once(in_module), name, should_lookup_fns)
+        }
     }
 
     fn get_lookup_modules(
