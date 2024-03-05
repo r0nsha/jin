@@ -21,6 +21,7 @@ type Error* {
 	PermissionDenied
 	NotFound
 	Interrupted
+	BadFileNumber
 	AlreadyExists
 	InvalidArgument
 	Other(code: i32)
@@ -33,6 +34,7 @@ fn Error.from-os-error*(code: i32) -> Error =
 		1 -> Error.PermissionDenied
 		2 -> Error.NotFound
 		4 -> Error.Interrupted
+		9 -> Error.BadFileNumber
 		17 -> Error.AlreadyExists
 		22 -> Error.InvalidArgument
 		code -> Error.Other(code)
@@ -47,6 +49,7 @@ fn fmt*(self: &Error, buf: &mut StrBuf) =
 		Error.PermissionDenied -> buf.push("Permission denied")
 		Error.NotFound -> buf.push("Not found")
 		Error.Interrupted -> buf.push("Interrupted")
+		Error.BadFileNumber -> buf.push("Bad file number")
 		Error.AlreadyExists -> buf.push("Already exists")
 		Error.InvalidArgument -> buf.push("Invalid argument")
 		Error.Other(code) -> buf.push("Other({code})")
