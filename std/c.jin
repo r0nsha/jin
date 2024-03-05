@@ -19,6 +19,7 @@ type c-ssize-t* = int
 type mode-t* = u32
 
 fn extern "c" open*(pathname: *c-char, flags: c-int, mode: mode-t) -> c-int
+fn extern "c" printf(format: *c-char, ..) -> c-int
 fn extern "c" write*(fd: c-int, buf: *c-char, count: c-size-t) -> c-int
 fn extern "c" __errno_location*() -> *c-int
 
