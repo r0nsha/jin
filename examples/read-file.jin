@@ -1,17 +1,30 @@
-import std.fs
+import std.fs.File
 
+// TODO: or-panic for `Result` would be nice here
+// TODO: and try syntax would be amazing here!
 fn main() = {
-    match std.fs.open("/home/ron/file.txt") {
+    match File.open("examples/file.txt") {
         Result.Ok(file) -> {
             match file.read-to-str() {
                 Result.Ok(contents) -> {
                     print("--- Read ---\n{contents}")
+                    match File.create("examples/file2.txt") {
+                        Result.Ok(mut file) -> {
+                            match file.write("Hello, Files!".as-bytes()) {
+                                Result.Ok(written) -> println("Written {written} bytes to 'examples/file2.txt'")
+                                Result.Err(err) -> println("Error writing to 'examples/file2.txt': {err}")
+                            }
+
+                            file.close()
+                        }
+                        Result.Err(err) -> println("Error creating 'examples/file2.txt': {err}")
+                    }
                 }
-                Result.Err(err) -> println("Error reading file: {err}")
+                Result.Err(err) -> println("Error reading 'examples/file.txt': {err}")
             }
 
             file.close()
         }
-        Result.Err(err) -> println("Error opening file: {err}")
+        Result.Err(err) -> println("Error opening 'examples/file.txt': {err}")
     }
 }

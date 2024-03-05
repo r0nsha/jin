@@ -1,14 +1,14 @@
 import std.(c, io)
 
 // TODO: Add an API for custom file opening with `OpenOptions`
-fn open*(path: &str) -> io.Result[File] =
+fn File.open*(path: &str) -> io.Result[File] =
     match open-impl(path, c.O_RDONLY, 0) {
 	-1 -> Result.Err(io.Error.last-os-error())
 	fd -> Result.Ok(File(fd))
     }
 
-fn create*(path: &str) -> io.Result[File] =
-    match open-impl(path, c.O_WRONLY | c.O_CREAT, 0) {
+fn File.create*(path: &str) -> io.Result[File] =
+    match open-impl(path, c.O_WRONLY | c.O_CREAT | c.O_TRUNC, 0o644) {
 	-1 -> Result.Err(io.Error.last-os-error())
 	fd -> Result.Ok(File(fd))
     }
@@ -53,7 +53,6 @@ fn read-to-end*(self: &File) -> io.Result[Array[u8]] = {
     Result.Ok(buf)
 }
 
-
 fn read-to-str*(self: &File) -> io.Result[str] =
     match self.read-to-end() {
 	// TODO: utf8 check. if fails, return `io.Error.InvalidData(stream did not contain valid UTF-8)`
@@ -65,6 +64,12 @@ fn read*(self: &File, buf: &mut []u8) -> io.Result[uint] =
     match unsafe c.read(self.fd, buf.ptr, buf.len) {
 	-1 -> Result.Err(io.Error.last-os-error())
 	len -> Result.Ok(uint(len))
+    }
+
+fn write*(self: &mut File, buf: &[]u8) -> io.Result[uint] =
+    match unsafe c.write(self.fd, buf.ptr, buf.len) {
+	-1 -> Result.Err(io.Error.last-os-error())
+	written -> Result.Ok(uint(written))
     }
 
 fn close*(self: File) = {
