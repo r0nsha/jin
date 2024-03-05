@@ -63,12 +63,11 @@ fn read-to-str*(self: &File) -> io.Result[str] = {
     
 }
 
-fn read*(self: &File, buf: &mut []u8) -> io.Result[uint] = {
+fn read*(self: &File, buf: &mut []u8) -> io.Result[uint] =
     match unsafe c.read(self.fd, buf.ptr, buf.len) {
 	-1 -> Result.Err(io.Error.last-os-error())
 	len -> Result.Ok(uint(len))
     }
-}
 
 fn close*(self: File) = {
     unsafe c.close(self.fd)
