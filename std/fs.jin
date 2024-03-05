@@ -1,17 +1,22 @@
 import std.(c, io)
 
-// TODO: Use lower-level `open` C api with flags
 // TODO: Add an API for custom file opening with `OpenOptions`
-fn open*(path: &str) -> io.Result[File] = {
+fn open*(path: &str) -> io.Result[File] =
+    match open-impl(path, c.O_RDONLY, 0) {
+	-1 -> Result.Err(io.Error.last-os-error())
+	fd -> Result.Ok(File(fd))
+    }
+
+fn create*(path: &str) -> io.Result[File] =
+    match open-impl(path, c.O_WRONLY | c.O_CREAT, 0) {
+	-1 -> Result.Err(io.Error.last-os-error())
+	fd -> Result.Ok(File(fd))
+    }
+
+fn open-impl(path: &str, flags: c.c-int, mode: c.mode-t) -> c.c-int = {
     let pathname = unsafe as[_](path.as-bytes().ptr)
     // TODO: cross-platform open
-    let fd = unsafe c.open(pathname, c.O_RDONLY, 0)
-
-    if fd != -1 {
-	Result.Ok(File(fd))
-    } else {
-	Result.Err(io.Error.last-os-error())
-    }
+    unsafe c.open(pathname, flags, mode)
 }
 
 type RawFd = c.c-int
@@ -50,13 +55,12 @@ fn read-to-end*(self: &File) -> io.Result[Array[u8]] = {
 
 
 fn read-to-str*(self: &File) -> io.Result[str] = {
-    let buf = match self.read-to-end() {
-	Result.Ok(buf) -> buf
+    match self.read-to-end() {
+	// TODO: utf8 check. if fails, return `io.Error.InvalidData(stream did not contain valid UTF-8)`
+	Result.Ok(buf) -> Result.Ok(str.from-utf8-unchecked(buf.take())) 
 	Result.Err(err) -> return Result.Err(err) 
     }
-
-    // TODO: utf8 check. if fails, return `io.Error.InvalidData(stream did not contain valid UTF-8)`
-    Result.Ok(str.from-utf8-unchecked(buf.take()))
+    
 }
 
 fn read*(self: &File, buf: &mut []u8) -> io.Result[uint] = {

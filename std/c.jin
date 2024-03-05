@@ -28,3 +28,20 @@ fn extern "c" __errno_location*() -> *c-int
 let O_RDONLY*: c-int = 0
 let O_WRONLY*: c-int = 1
 let O_RDWR*: c-int = 2
+
+let O_DIRECT*: c-int = 0x4000;
+let O_DIRECTORY*: c-int = 0x10000;
+let O_NOFOLLOW*: c-int = 0x20000;
+
+let O_APPEND*: c-int = 1024;
+let O_CREAT*: c-int = 64;
+let O_EXCL*: c-int = 128;
+let O_NOCTTY*: c-int = 256;
+let O_NONBLOCK*: c-int = 2048;
+let O_SYNC*: c-int = 1052672;
+let O_RSYNC*: c-int = 1052672;
+let O_DSYNC*: c-int = 4096;
+let O_FSYNC*: c-int = 0x101000;
+let O_NOATIME*: c-int = 0o1000000;
+let O_PATH*: c-int = 0o10000000;
+let O_TMPFILE*: c-int = 0o20000000 | O_DIRECTORY;
