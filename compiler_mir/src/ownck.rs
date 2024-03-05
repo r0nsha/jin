@@ -258,11 +258,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         debug_assert!(
             !is_initial_state,
-            "value v{} aka {} (type: {}) is missing a state in block {:?}.",
+            "value v{} aka {}(: {}) is missing a state in block b{} aka `{}`.",
             value.0,
             self.value_name(value),
             self.ty_of(value).display(self.cx.db),
             block,
+            self.body.block(block).name
         );
 
         result_state

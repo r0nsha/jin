@@ -492,6 +492,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             hir::ExprKind::Loop(loop_) => {
                 let loop_start = self.body.create_block("loop_start");
                 let loop_end = self.body.create_block("loop_end");
+                self.body.create_edge(loop_start, loop_end);
 
                 self.enter_scope(ScopeKind::Loop(LoopScope::new(loop_end)), expr.span);
 
@@ -1000,7 +1001,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         values: Vec<ValueId>,
     ) -> BlockId {
         let block = self.body.create_block("match_test");
-
         self.ins(parent_block).br(block);
 
         let blocks: Vec<_> = cases
