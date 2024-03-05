@@ -1,1 +1,9 @@
-Hello, Files!
+The contents from 'examples/file.txt':
+Amet enim congue tellus diam sed sed id,. 
+Vel auctor diam, vitae consequat lectus amet pretium cursus ut lectus dui euismod enim pellentesque nullam dolor neque rutrum.
+Imperdiet cras varius varius malesuada viverra, consectetur blandit magna ac, elementum nam at tempus nunc, eu pharetra at ultricies eget dis neque tempus imperdiet.
+Aliquam consectetur maximus consectetur auctor eu, pulvinar posuere imperdiet magna.
+Nunc consequat eros id a sit ultrices ultrices dictum amet, vitae etiam.
+Quisque iaculis tincidunt suscipit metus tristique finibus id nunc sed elementum dignissim tempor arcu sapien sit natoque ac non porttitor maximus dignissim duis.
+Sit morbi aenean quis pharetra elementum nullam ex aliquet quisque enim, velit metus vivamus tincidunt ac tincidunt ornare dapibus. Luctus suscipit bibendum lectus, sed nulla pellentesque at.
+Tortor urna sapien aenean diam lorem nisi nunc velit ut ipsum vulputate aenean lectus erat aliquam vitae vulputate laoreet in convallis dolor massa pharetra justo cursus diam.

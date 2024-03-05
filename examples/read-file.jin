@@ -1,30 +1,54 @@
-import std.fs.File
+import std.(
+    fs.(File),
+    io
+)
 
 // TODO: or-panic for `Result` would be nice here
 // TODO: and try syntax would be amazing here!
 fn main() = {
+    match read-file() {
+        Result.Ok(contents) -> match write-file2(contents) {
+            Result.Ok(()) -> ()
+            Result.Err(err) -> println("Error writing to 'examples/file2.txt': {err}")
+        }
+        Result.Err(err) -> println("Error reading 'examples/file.txt': {err}")
+    }
+}
+
+// TODO: replace with `read`
+fn read-file() -> io.Result[str] =
     match File.open("examples/file.txt") {
         Result.Ok(file) -> {
             match file.read-to-str() {
                 Result.Ok(contents) -> {
                     print("--- Read ---\n{contents}")
-                    match File.create("examples/file2.txt") {
-                        Result.Ok(mut file) -> {
-                            match file.write("Hello, Files!".as-bytes()) {
-                                Result.Ok(written) -> println("Written {written} bytes to 'examples/file2.txt'")
-                                Result.Err(err) -> println("Error writing to 'examples/file2.txt': {err}")
-                            }
-
-                            file.close()
-                        }
-                        Result.Err(err) -> println("Error creating 'examples/file2.txt': {err}")
-                    }
+                    file.close()
+                    Result.Ok(contents)
                 }
-                Result.Err(err) -> println("Error reading 'examples/file.txt': {err}")
+                Result.Err(err) -> {
+                    file.close()
+                    Result.Err(err)
+                }
             }
-
-            file.close()
         }
-        Result.Err(err) -> println("Error opening 'examples/file.txt': {err}")
+        Result.Err(err) -> Result.Err(err)
     }
-}
+
+// TODO: replace with `write`
+fn write-file2(contents: str) -> io.Result[()] =
+    match File.create("examples/file2.txt") {
+        Result.Ok(mut file) -> {
+            match file.write("The contents from 'examples/file.txt':\n{contents}".as-bytes()) {
+                Result.Ok(written) -> {
+                    println("\n--- Write ---\nWritten {written} bytes to 'examples/file2.txt'")
+                    file.close()
+                    Result.Ok(())
+                }
+                Result.Err(err) -> {
+                    file.close()
+                    Result.Err(err)
+                }
+            }
+        }
+        Result.Err(err) -> Result.Err(err)
+    }
