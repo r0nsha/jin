@@ -68,3 +68,7 @@ fn read*(self: &File, buf: &mut []u8) -> io.Result[uint] = {
 	Result.Err(io.Error.last-os-error())
     }
 }
+
+fn close*(self: File) = {
+    unsafe c.close(self.fd)
+}
