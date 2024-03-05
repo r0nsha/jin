@@ -538,6 +538,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.enter_scope(ScopeKind::Block, expr.span);
 
                 for expr in &block.exprs {
+                    if !self.in_connected_block() {
+                        // TODO: emit unreachable code warning?
+                        break;
+                    }
+
                     result = Some(self.lower_expr(expr));
                 }
 
