@@ -48,6 +48,17 @@ fn read-to-end*(self: &File) -> io.Result[Array[u8]] = {
     Result.Ok(buf)
 }
 
+
+fn read-to-str*(self: &File) -> io.Result[str] = {
+    let buf = match self.read-to-end() {
+	Result.Ok(buf) -> buf
+	Result.Err(err) -> return Result.Err(err) 
+    }
+
+    // TODO: utf8 check. if fails, return `io.Error.InvalidData(stream did not contain valid UTF-8)`
+    Result.Ok(str.from-utf8-unchecked(buf.take()))
+}
+
 fn read*(self: &File, buf: &mut []u8) -> io.Result[uint] = {
     let len = unsafe c.read(self.fd, buf.ptr, buf.len)
 
