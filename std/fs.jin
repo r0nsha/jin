@@ -17,8 +17,7 @@ fn open*(path: &str) -> io.Result[File] = {
 type RawFd = c.c-int
 type File*(fd: RawFd)
 
-let default-buf-size: uint = 512
-// let default-buf-size: uint = 8 * 1024
+let default-buf-size: uint = 8 * 1024
 
 fn read-to-end*(self: &File) -> io.Result[Array[u8]] = {
     // TODO: initialize with-cap to file's size (or 0 if reading size fails)
