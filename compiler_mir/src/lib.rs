@@ -348,18 +348,18 @@ impl Body {
         }
     }
 
-    fn block_graph(&self) -> DiGraph<BlockId, ()> {
+    fn block_graph(&self) -> DiGraph<BlockId, &'static str> {
         let mut graph = DiGraphMap::new();
 
         for (id, block) in self.blocks().iter_enumerated() {
             graph.add_node(id);
 
             for &pred in &block.predecessors {
-                graph.add_edge(pred, id, ());
+                graph.add_edge(pred, id, "to");
             }
 
             for &succ in &block.successors {
-                graph.add_edge(id, succ, ());
+                graph.add_edge(id, succ, "to");
             }
         }
 
@@ -367,8 +367,9 @@ impl Body {
     }
 
     fn print_dot(&self) {
-        let graph = self.block_graph().map(|_, &id| self.block(id).display_name(), |_, _| ());
-        println!("{:?}", petgraph::dot::Dot::new(&graph));
+        let graph = self.block_graph();
+        let graph = graph.map(|_, &id| self.block(id).display_name(), |_, e| e);
+        println!("{}", petgraph::dot::Dot::new(&graph));
     }
 }
 
