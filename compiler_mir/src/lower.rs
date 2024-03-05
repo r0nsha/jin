@@ -492,7 +492,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             hir::ExprKind::Loop(loop_) => {
                 let loop_start = self.body.create_block("loop_start");
                 let loop_end = self.body.create_block("loop_end");
-                self.body.create_edge(loop_start, loop_end);
 
                 self.enter_scope(ScopeKind::Loop(LoopScope::new(loop_end)), expr.span);
 
@@ -528,11 +527,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Break => {
                 self.destroy_loop_values(expr.span);
-
                 let end_block =
                     self.closest_loop_scope().expect("to be inside a loop block").end_block;
                 self.ins(self.current_block).br(end_block);
-
                 self.const_unit()
             }
             hir::ExprKind::Block(block) => {
@@ -1531,7 +1528,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         for coercion in coercions.iter() {
             coerced_value = match coercion.kind {
                 CoercionKind::NeverToAny | CoercionKind::RefToOwned => coerced_value,
-                CoercionKind::AnyToUnit => self.const_unit(),
+                CoercionKind::AnyToUnit | CoercionKind::AnyToNever => self.const_unit(),
                 CoercionKind::IntPromotion => {
                     self.push_inst_with_register(coercion.target, |value| Inst::Convert {
                         value,

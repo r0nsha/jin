@@ -40,6 +40,7 @@ pub struct Coercion {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CoercionKind {
     NeverToAny,
+    AnyToNever,
     AnyToUnit,
     IntPromotion,
     MutRefToImm,

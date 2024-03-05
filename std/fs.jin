@@ -22,28 +22,28 @@ let default-buf-size: uint = 8 * 1024
 fn read-to-end*(self: &File) -> io.Result[Array[u8]] = {
     // TODO: initialize with-cap to file's size (or 0 if reading size fails)
     // TODO: implement `Array.filled(T, uint) where T: Copy`
-    let mut buf = Array.new()
+    let mut buf = Array.new[u8]()
 
     // TODO: implement `std.slice.filled(T, uint) where T: Copy`
-    let mut scratch = [:default-buf-size]
+    let mut scratch: []u8 = [:default-buf-size]
     unsafe scratch.len = default-buf-size
 
-    // TODO: read until end with a moving cursor, until result is 0
     for {
 	match self.read(&mut scratch) {
-	    // Result.Ok(0) -> break
-	    Result.Ok(0) -> return Result.Ok(buf) // TODO: ICE: broken mir state
-	    Result.Ok(len) -> {
-		// TODO: Implement `std.array.extend([]T)`
-		buf.reserve(len)
-
-		let mut i = 0
-		for if i < len {
-		    buf.push-unchecked(scratch.[i])
-		    i += 1
-		}
-	    }
-	    Result.Err(err) -> return Result.Err(err) 
+	//     // Result.Ok(0) -> break
+	//     Result.Ok(0) -> return Result.Ok(buf) // TODO: ICE: broken mir state
+	//     Result.Ok(len) -> {
+	// 	// TODO: Implement `std.array.extend([]T)`
+	// 	buf.reserve(len)
+	//
+	// 	let mut i = 0
+	// 	for if i < len {
+	// 	    buf.push-unchecked(scratch.[i])
+	// 	    i += 1
+	// 	}
+	//     }
+	//     Result.Err(err) -> return Result.Err(err) 
+	    _ -> return Result.Ok(buf) 
 	}
     }
 
