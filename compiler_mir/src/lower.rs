@@ -1540,13 +1540,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         span,
                     })
                 }
-                CoercionKind::MutRefToImm => {
-                    self.set_moved(coerced_value, span);
-                    self.push_inst_with_register(coercion.target, |value| Inst::StackAlloc {
-                        value,
-                        init: Some(coerced_value),
-                    })
-                }
+                CoercionKind::MutRefToImm => self.create_ref(coerced_value, coercion.target, span),
                 CoercionKind::OwnedToRef => self.create_ref(coerced_value, coercion.target, span),
             };
 
