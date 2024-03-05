@@ -29,8 +29,7 @@ fn read-to-end*(self: &File) -> io.Result[Array[u8]] = {
     // TODO: read until end with a moving cursor, until result is 0
     match self.read(a.as-mut()) {
 	Result.Ok(0) -> Result.Ok(a)
-	// TODO: Result.Ok(n) -> todo()
-	Result.Ok(n) -> Result.Ok(a)
+	Result.Ok(n) -> todo()
 	Result.Err(err) -> Result.Err(err) 
     }
 }
