@@ -4,12 +4,15 @@ import std.(c, io)
 // TODO: Add an API for custom file opening with `OpenOptions`
 fn open*(path: &str) -> io.Result[File] = {
     let pathname = unsafe as[_](path.as-bytes().ptr)
+    // TODO: cross-platform open
     let fd = unsafe c.open(pathname, c.O_RDONLY, 0)
 
     if fd != -1 {
 	Result.Ok(File(fd))
     } else {
-	Result.Err(io.Error.from-os-error(fd))
+	// TODO: cross-platform errno
+	let errno = unsafe (c.__errno_location().0)
+	Result.Err(io.Error.from-os-error(errno))
     }
 }
 
