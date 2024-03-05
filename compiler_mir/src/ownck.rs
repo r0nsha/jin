@@ -258,7 +258,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         if is_initial_state {
             self.body.print_dot();
-            println!(
+            panic!(
                 "value v{} aka {}(: {}) is missing a state in block b{} aka `{}`.",
                 value.0,
                 self.value_name(value),
