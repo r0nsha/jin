@@ -352,6 +352,8 @@ impl Body {
         let mut graph = DiGraphMap::new();
 
         for (id, block) in self.blocks().iter_enumerated() {
+            graph.add_node(id);
+
             for &pred in &block.predecessors {
                 graph.add_edge(pred, id, ());
             }
