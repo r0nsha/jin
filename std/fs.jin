@@ -17,9 +17,12 @@ fn open*(path: &str) -> io.Result[File] = {
 type RawFd = c.c-int
 type File*(fd: RawFd)
 
+let default-buf-size: uint = 8 * 1024
+
 fn read-to-end*(self: &File) -> io.Result[Array[u8]] = {
     // TODO: initialize cap to file's size (or 0 if reading size fails)
-    let mut a = Array.with-cap(8 * 1024)
+    // TODO: implement `Array.filled(T, uint) where T: Copy`
+    let mut a = Array.with-cap(default-buf-size)
 
     let mut i = 0
     for if i < a.cap() {
@@ -36,8 +39,9 @@ fn read*(self: &File, buf: &mut []u8) -> io.Result[uint] = {
     let len = unsafe c.read(self.fd, buf.ptr, buf.len)
 
     if len == -1 {
-
+	return Result.Err(io.Error.last-os-error())
     }
+
     println("{len}")
     Result.Ok(len)
 }
