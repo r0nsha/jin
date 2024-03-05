@@ -5,7 +5,7 @@ fn main() = {
         Result.Ok(file) -> {
             match file.read-to-end() {
                 Result.Ok(array) -> {
-                    unsafe std.c.printf("%s\n".ptr, array.as-ref().ptr)
+                    unsafe std.c.printf("%s".ptr, array.as-ref().ptr)
                 }
                 Result.Err(err) -> println("Error reading file: {err}")
             }

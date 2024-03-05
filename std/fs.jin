@@ -32,17 +32,17 @@ fn read-to-end*(self: &File) -> io.Result[Array[u8]] = {
     // TODO: read until end with a moving cursor, until result is 0
     for {
 	match self.read(&mut scratch) {
-	    // Result.Ok(0) -> break // TODO: break instead of return
-	    Result.Ok(0) -> return Result.Ok(buf) // TODO: fix mir
+	    Result.Ok(0) -> break
+	    // Result.Ok(0) -> return Result.Ok(buf) // TODO: ICE: broken mir state
 	    Result.Ok(len) -> {
 		// TODO: Implement `std.array.extend([]T)`
 		buf.reserve(len)
 
-		// let mut i = 0
-		// for if i < len {
-		//     buf.push-unchecked(scratch.[i])
-		//     i += 1
-		// }
+		let mut i = 0
+		for if i < len {
+		    buf.push-unchecked(scratch.[i])
+		    i += 1
+		}
 	    }
 	    Result.Err(err) -> return Result.Err(err) 
 	}

@@ -92,11 +92,12 @@ fn needs-to-grow[T](self: &Array[T], additional: uint) -> bool =
 
 
 fn grow[T](self: &mut Array[T], additional: uint) = {
-	if self.buf.cap > 0 {
-		let new-cap = max(self.buf.cap * 2, self.buf.cap + additional)
+	let cap = self.buf.cap 
+	if cap > 0 {
+		let new-cap = max(cap * 2, cap + additional)
 		unsafe builtin.grow(&mut self.buf, new-cap)
 	} else {
-		self.buf = [:min-cap]
+		self.buf = [:max(min-cap, additional)]
 	}
 }
 
