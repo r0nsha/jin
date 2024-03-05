@@ -1,6 +1,8 @@
 import std.builtin
 import std.option.Option
 
+let min-cap: uint = 4
+
 type Array*[T](buf: []T)
 
 fn Array.new*[T]() -> Array[T] = Array([])
@@ -101,5 +103,3 @@ fn grow[T](self: &mut Array[T], additional: uint) = {
 // TODO: use a polymorphic `std.cmp.max` function instead
 fn max(a: uint, b: uint) -> uint =
 	if a > b { a } else { b }
-
-let min-cap: uint = 4

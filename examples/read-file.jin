@@ -3,8 +3,30 @@ import std.fs
 fn main() = {
     match std.fs.open("/home/ron/file.txt") {
         Result.Ok(file) -> {
-
+            match file.read-to-end() {
+                Result.Ok(array) -> {
+                    array.print()
+                }
+                Result.Err(err) -> println("Error reading file: {err}")
+            }
         }
-        Result.Err(err) -> println("Error: {err}")
+        Result.Err(err) -> println("Error opening file: {err}")
     }
+}
+
+fn print(array: &Array[u8]) = {
+	array.as-ref().print()
+}
+
+fn print(slice: &[]u8) = {
+	unsafe std.c.printf("[".ptr)
+	let mut i = 0
+	for if i < slice.len {
+		unsafe std.c.printf("%d".ptr, slice.[i])
+		if i < slice.len - 1 {
+			unsafe std.c.printf(", ".ptr)
+		}
+		i += 1
+	}
+	unsafe std.c.printf("]\n".ptr)
 }

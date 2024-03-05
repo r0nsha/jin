@@ -18,3 +18,14 @@ fn open*(path: &str) -> io.Result[File] = {
 
 type RawFd = c.c-int
 type File*(fd: RawFd)
+
+fn read-to-end*(self: &File) -> io.Result[Array[u8]] = {
+    let mut a = Array.new()
+    // TODO:
+    Result.Ok(a)
+}
+
+fn read*(self: &File, buf: &mut []u8) -> io.Result[uint] = {
+    // TODO:
+    Result.Ok(0)
+}
