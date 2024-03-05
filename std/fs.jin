@@ -10,9 +10,7 @@ fn open*(path: &str) -> io.Result[File] = {
     if fd != -1 {
 	Result.Ok(File(fd))
     } else {
-	// TODO: cross-platform errno
-	let errno = unsafe (c.__errno_location().0)
-	Result.Err(io.Error.from-os-error(errno))
+	Result.Err(io.Error.last-os-error())
     }
 }
 
@@ -20,12 +18,26 @@ type RawFd = c.c-int
 type File*(fd: RawFd)
 
 fn read-to-end*(self: &File) -> io.Result[Array[u8]] = {
-    let mut a = Array.new()
-    // TODO:
+    // TODO: initialize cap to file's size (or 0 if reading size fails)
+    let mut a = Array.with-cap(8 * 1024)
+
+    let mut i = 0
+    for if i < a.cap() {
+	a.push(0)
+	i += 1
+    }
+
+    // TODO: read until end with a moving cursor, until result is 0
+    self.read(a.as-mut())
     Result.Ok(a)
 }
 
 fn read*(self: &File, buf: &mut []u8) -> io.Result[uint] = {
-    // TODO:
-    Result.Ok(0)
+    let len = unsafe c.read(self.fd, buf.ptr, buf.len)
+
+    if len == -1 {
+
+    }
+    println("{len}")
+    Result.Ok(len)
 }

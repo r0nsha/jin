@@ -1,5 +1,8 @@
-import std.c.write
-import std.str.(?)
+import std.(
+	c,
+	c.write,
+	str.(?)
+)
 
 let stdout: i32 = 1
 
@@ -34,6 +37,10 @@ fn Error.from-os-error*(code: i32) -> Error =
 		22 -> Error.InvalidArgument
 		code -> Error.Other(code)
 	}
+
+// TODO: cross-platform errno
+fn Error.last-os-error*() -> Error =
+	Error.from-os-error(unsafe (c.__errno_location().0))
 
 fn fmt*(self: &Error, buf: &mut StrBuf) =
 	match self {
