@@ -256,6 +256,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
         }
 
+        self.body.print_dot();
         debug_assert!(
             !is_initial_state,
             "value v{} aka {}(: {}) is missing a state in block b{} aka `{}`.",

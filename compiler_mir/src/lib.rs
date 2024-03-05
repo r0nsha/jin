@@ -6,6 +6,7 @@ mod pmatch;
 mod pretty;
 pub mod subst;
 
+use core::fmt;
 use std::{io, iter};
 
 use compiler_data_structures::{
@@ -16,6 +17,8 @@ use compiler_data_structures::{
 use indexmap::{indexset, IndexSet};
 pub use lower::lower;
 pub use monomorphize::monomorphize;
+use petgraph::graph::DiGraph;
+use petgraph::graphmap::DiGraphMap;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
@@ -344,6 +347,27 @@ impl Body {
             }
         }
     }
+
+    fn block_graph(&self) -> DiGraph<BlockId, ()> {
+        let mut graph = DiGraphMap::new();
+
+        for (id, block) in self.blocks().iter_enumerated() {
+            for &pred in &block.predecessors {
+                graph.add_edge(pred, id, ());
+            }
+
+            for &succ in &block.successors {
+                graph.add_edge(id, succ, ());
+            }
+        }
+
+        graph.into_graph()
+    }
+
+    fn print_dot(&self) {
+        let graph = self.block_graph().map(|_, &id| self.block(id).display_name(), |_, _| ());
+        println!("{:?}", petgraph::dot::Dot::new(&graph));
+    }
 }
 
 fn update_block_ids(
@@ -417,6 +441,12 @@ impl Block {
 
     pub fn is_connected(&self) -> bool {
         self.id == BlockId::start() || !self.predecessors.is_empty()
+    }
+}
+
+impl fmt::Display for Block {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.display_name())
     }
 }
 

@@ -368,6 +368,7 @@ dependencies = [
  "compiler_helpers",
  "indexmap",
  "itertools",
+ "petgraph",
  "pretty",
  "rustc-hash",
  "ustr",
