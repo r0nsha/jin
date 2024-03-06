@@ -1,9 +1,9 @@
 fn main() = {
-	let m = Msg("bye bye!")
+	let m = Msg[int]("bye bye!")
 	println("hello")
 }
 
-type Msg(s: &str)
+type Msg[T](s: &str)
 
-fn `=destroy`(m: &mut Msg) =
+fn `=destroy`[T](m: &mut Msg[T]) =
 	println(m.s)

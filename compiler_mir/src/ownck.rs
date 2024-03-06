@@ -1,5 +1,6 @@
 use std::{fmt, mem};
 
+use compiler_core::db::Hook;
 use compiler_helpers::create_bool_enum;
 use itertools::Itertools as _;
 use ustr::ustr;
@@ -430,8 +431,25 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub(super) fn destroy_and_set_flag(&mut self, value: ValueId, destroy_glue: bool, span: Span) {
+        self.call_destroy_hook(value, span);
         self.ins(self.current_block).destroy(value, destroy_glue, span);
         self.set_destroy_flag(value);
+    }
+
+    pub(super) fn call_destroy_hook(&mut self, value: ValueId, span: Span) {
+        let Some((adt_id, targs)) = self.ty_of(value).as_adt() else { return };
+        let Some(&hook_id) = self.cx.db.hooks.get(&(adt_id, Hook::Destroy)) else { return };
+
+        let sig_id = self.cx.id_to_fn_sig[&hook_id];
+        let sig_ty = self.cx.mir.fn_sigs[sig_id].ty;
+        let tparams = sig_ty.collect_params();
+        dbg!(tparams);
+        // TODO: create instantiation
+        // self.body.create_instantation(value, instantiation.clone());
+        // TODO: create callee value
+        // TODO: create arg value (&mut value)
+        // TODO: push call inst
+        todo!()
     }
 
     fn set_destroy_flag(&mut self, value: ValueId) {

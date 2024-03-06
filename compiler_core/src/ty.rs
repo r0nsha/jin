@@ -11,6 +11,7 @@ use internment::Intern;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
+use crate::middle::TyParam;
 use crate::{
     db::{AdtId, AdtKind, Db, ModuleId, StructKind, UnionDef, UnionKind},
     middle::{CallConv, Mutability, Pat, Vis},
@@ -367,6 +368,15 @@ impl TyKind {
     pub fn as_fn(&self) -> Option<&FnTy> {
         if let Self::Fn(v) = self {
             Some(v)
+        } else {
+            None
+        }
+    }
+
+    #[must_use]
+    pub fn as_adt(&self) -> Option<(AdtId, &PolyTyArgs)> {
+        if let Self::Adt(id, targs) = self {
+            Some((*id, targs))
         } else {
             None
         }
@@ -863,6 +873,13 @@ impl ops::IndexMut<TyVar> for Instantiation {
 impl FromIterator<(TyVar, Ty)> for Instantiation {
     fn from_iter<T: IntoIterator<Item = (TyVar, Ty)>>(iter: T) -> Self {
         Self(iter.into_iter().collect())
+    }
+}
+
+impl<'a, 'b> From<(&'a [TyParam], &'b [Ty])> for Instantiation {
+    fn from((tparams, targs): (&'a [TyParam], &'b [Ty])) -> Self {
+        debug_assert!(targs.len() == tparams.len());
+        tparams.iter().zip(targs).map(|(tp, ty)| (tp.ty.as_param().unwrap().var, *ty)).collect()
     }
 }
 

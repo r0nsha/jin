@@ -5,6 +5,7 @@ mod define;
 mod errors;
 mod exprs;
 mod fns;
+mod hooks;
 mod imports;
 mod items;
 mod late;
@@ -16,7 +17,6 @@ mod subst;
 mod tyexpr;
 mod types;
 mod unify;
-mod hooks;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -278,12 +278,6 @@ pub(crate) struct TyAlias {
 
 impl TyAlias {
     pub fn instantiation(&self, targs: &[Ty]) -> Instantiation {
-        debug_assert!(targs.len() == self.ty_params.len());
-
-        self.ty_params
-            .iter()
-            .zip(targs)
-            .map(|(tp, ty)| (tp.ty.as_param().unwrap().var, *ty))
-            .collect()
+        Instantiation::from((self.ty_params.as_slice(), targs))
     }
 }

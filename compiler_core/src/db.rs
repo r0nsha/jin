@@ -526,13 +526,7 @@ impl Adt {
     }
 
     pub fn instantiation(&self, targs: &[Ty]) -> Instantiation {
-        debug_assert!(targs.len() == self.ty_params.len());
-
-        self.ty_params
-            .iter()
-            .zip(targs)
-            .map(|(tp, ty)| (tp.ty.as_param().unwrap().var, *ty))
-            .collect()
+        Instantiation::from((self.ty_params.as_slice(), targs))
     }
 
     pub fn fields<'a>(&'a self, db: &'a Db) -> Box<dyn Iterator<Item = &AdtField> + '_> {
