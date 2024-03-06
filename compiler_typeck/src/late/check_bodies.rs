@@ -1,3 +1,4 @@
+use compiler_core::db::DefId;
 use compiler_core::ty::{IntTy, UintTy};
 use compiler_core::{
     db::Db,
@@ -74,6 +75,10 @@ impl<'db, 'cx> CheckBody<'db, 'cx> {
             )
         }
     }
+
+    fn is_hook(&self, id: DefId) -> bool {
+        self.cx.db.hooks.values().any(|i| *i == id)
+    }
 }
 
 impl<'db, 'cx> Visitor for CheckBody<'db, 'cx> {
@@ -106,7 +111,17 @@ impl<'db, 'cx> Visitor for CheckBody<'db, 'cx> {
         }
 
         match &call.callee.kind {
-            ExprKind::Name(_) => (),
+            ExprKind::Name(name) => {
+                if self.is_hook(name.id) {
+                    self.cx.diagnostics.push(
+                        Diagnostic::error(format!(
+                            "hook `{}` cannot be explicitly called",
+                            name.word
+                        ))
+                        .with_label(Label::primary(expr.span, "explicit hook call")),
+                    );
+                }
+            }
             _ => self.visit_expr(&call.callee),
         }
 
@@ -181,11 +196,15 @@ impl<'db, 'cx> Visitor for CheckBody<'db, 'cx> {
     fn visit_name(&mut self, expr: &Expr, name: &Name) {
         if self.cx.db.builtins.contains_key(&name.id) {
             self.cx.diagnostics.push(
-                Diagnostic::error(format!(
-                    "builtin function `{}` must be called",
-                    self.cx.db[name.id].name
-                ))
-                .with_label(Label::primary(expr.span, "must be called")),
+                Diagnostic::error(format!("builtin function `{}` must be called", name.word))
+                    .with_label(Label::primary(expr.span, "must be called")),
+            );
+        }
+
+        if self.is_hook(name.id) {
+            self.cx.diagnostics.push(
+                Diagnostic::error(format!("hook `{}` cannot be explicitly used", name.word))
+                    .with_label(Label::primary(expr.span, "explicit use of hook")),
             );
         }
     }

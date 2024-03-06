@@ -1,5 +1,5 @@
 fn main() = {
-	let wow = Wow("bye bye!")
+	let mut wow = Wow("bye bye!")
 	println("hello")
 }
 
