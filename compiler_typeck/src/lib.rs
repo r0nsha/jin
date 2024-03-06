@@ -273,11 +273,11 @@ impl ResMap {
 pub(crate) struct TyAlias {
     pub(crate) tyexpr: Option<Rc<TyExpr>>,
     pub(crate) ty: Option<Ty>,
-    pub(crate) ty_params: Vec<TyParam>,
+    pub(crate) tparams: Vec<TyParam>,
 }
 
 impl TyAlias {
     pub fn instantiation(&self, targs: &[Ty]) -> Instantiation {
-        Instantiation::from((self.ty_params.as_slice(), targs))
+        Instantiation::from((self.tparams.as_slice(), targs))
     }
 }

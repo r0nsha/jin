@@ -464,7 +464,7 @@ pub struct Adt {
     pub id: AdtId,
     pub def_id: DefId,
     pub name: Word,
-    pub ty_params: Vec<TyParam>,
+    pub tparams: Vec<TyParam>,
     pub kind: AdtKind,
 }
 
@@ -522,11 +522,11 @@ impl Adt {
     }
 
     pub fn ty(&self) -> Ty {
-        TyKind::Adt(self.id, self.ty_params.iter().map(|tp| tp.ty).collect()).into()
+        TyKind::Adt(self.id, self.tparams.iter().map(|tp| tp.ty).collect()).into()
     }
 
     pub fn instantiation(&self, targs: &[Ty]) -> Instantiation {
-        Instantiation::from((self.ty_params.as_slice(), targs))
+        Instantiation::from((self.tparams.as_slice(), targs))
     }
 
     pub fn fields<'a>(&'a self, db: &'a Db) -> Box<dyn Iterator<Item = &AdtField> + '_> {

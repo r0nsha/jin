@@ -41,7 +41,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
             id,
             def_id: DefId::null(),
             name: tydef.word,
-            ty_params: vec![],
+            tparams: vec![],
             kind: kind(id),
         });
 

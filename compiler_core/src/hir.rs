@@ -132,7 +132,7 @@ impl FnKind {
 #[derive(Debug, Clone)]
 pub struct FnSig {
     pub word: Word,
-    pub ty_params: Vec<TyParam>,
+    pub tparams: Vec<TyParam>,
     pub params: Vec<FnParam>,
     pub ret: Ty,
     pub ret_span: Span,

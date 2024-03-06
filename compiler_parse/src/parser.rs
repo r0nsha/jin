@@ -99,7 +99,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_optional_ty_params(&mut self) -> DiagnosticResult<Vec<TyParam>> {
+    fn parse_optional_tparams(&mut self) -> DiagnosticResult<Vec<TyParam>> {
         self.parse_list_optional(TokenKind::OpenBrack, TokenKind::CloseBrack, |this| {
             let ident = this.eat_ident()?;
             Ok(ControlFlow::Continue(TyParam { word: ident.word() }))

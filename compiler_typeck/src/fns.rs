@@ -29,7 +29,7 @@ pub(crate) fn check_sig(
     callconv: CallConv,
     flags: FnTyFlags,
 ) -> DiagnosticResult<hir::FnSig> {
-    let ty_params = types::define_ty_params(cx, env, &sig.ty_params);
+    let tparams = types::define_tparams(cx, env, &sig.tparams);
     let (params, fnty_params) = check_fn_sig_params(cx, env, &sig.params)?;
 
     let ret = sig
@@ -41,7 +41,7 @@ pub(crate) fn check_sig(
     let ret_span = sig.ret.as_ref().map_or(sig.word.span(), Spanned::span);
 
     let ty = Ty::new(TyKind::Fn(FnTy { params: fnty_params, ret, callconv, flags }));
-    Ok(hir::FnSig { word: sig.word, ty_params, params, ret, ret_span, ty })
+    Ok(hir::FnSig { word: sig.word, tparams, params, ret, ret_span, ty })
 }
 
 pub(crate) fn check_expr_sig(
@@ -69,7 +69,7 @@ pub(crate) fn check_expr_sig(
     let name = ustr(&format!("closure_{}_{}", module_name, span.start()));
     let word = Word::new(name, span);
 
-    Ok(hir::FnSig { word, ty_params: vec![], params, ret, ret_span, ty })
+    Ok(hir::FnSig { word, tparams: vec![], params, ret, ret_span, ty })
 }
 
 fn check_fn_sig_params(
@@ -121,7 +121,7 @@ pub(crate) fn check_fn_body(
         sig.word.name(),
         ScopeKind::Fn(def_id),
         |env| -> DiagnosticResult<_> {
-            for tp in &sig.ty_params {
+            for tp in &sig.tparams {
                 env.insert(tp.word.name(), tp.id);
             }
 

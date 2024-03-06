@@ -121,12 +121,12 @@ impl<'a> Parser<'a> {
         word: Word,
         require_sig_ty: RequireSigTy,
     ) -> DiagnosticResult<(FnSig, bool)> {
-        let ty_params = self.parse_optional_ty_params()?;
+        let tparams = self.parse_optional_tparams()?;
 
         let (params, ret, is_c_variadic) =
             self.parse_fn_sig_helper(AllowOmitParens::No, require_sig_ty)?;
 
-        Ok((FnSig { word, ty_params, params, ret }, is_c_variadic))
+        Ok((FnSig { word, tparams, params, ret }, is_c_variadic))
     }
 
     pub(super) fn parse_fn_sig_helper(

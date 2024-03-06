@@ -55,7 +55,7 @@ fn check_tydef(
 
 fn check_adt_prologue(cx: &mut Typeck<'_>, env: &mut Env, item_id: ast::GlobalItemId) -> AdtId {
     let adt_id = cx.res_map.item_to_adt.remove(&item_id).expect("to be defined");
-    for tp in &cx.db[adt_id].ty_params {
+    for tp in &cx.db[adt_id].tparams {
         env.insert(tp.word.name(), tp.id);
     }
     adt_id
@@ -158,28 +158,28 @@ fn check_variant(
     Ok(())
 }
 
-pub(crate) fn define_ty_params(
+pub(crate) fn define_tparams(
     cx: &mut Typeck,
     env: &mut Env,
-    ty_params: &[ast::TyParam],
+    tparams: &[ast::TyParam],
 ) -> Vec<TyParam> {
-    let mut new_ty_params = vec![];
-    let mut defined_ty_params = WordMap::default();
+    let mut new_tparams = vec![];
+    let mut defined_tparams = WordMap::default();
 
-    for tp in ty_params {
-        let (id, ty) = define_ty_param(cx, env, tp.word);
+    for tp in tparams {
+        let (id, ty) = define_tparam(cx, env, tp.word);
 
-        if let Some(prev_span) = defined_ty_params.insert(tp.word) {
+        if let Some(prev_span) = defined_tparams.insert(tp.word) {
             cx.db.diagnostics.add(errors::name_defined_twice("type parameter", tp.word, prev_span));
         }
 
-        new_ty_params.push(TyParam { id, word: tp.word, ty });
+        new_tparams.push(TyParam { id, word: tp.word, ty });
     }
 
-    new_ty_params
+    new_tparams
 }
 
-pub(crate) fn define_ty_param(cx: &mut Typeck, env: &mut Env, word: Word) -> (DefId, Ty) {
+pub(crate) fn define_tparam(cx: &mut Typeck, env: &mut Env, word: Word) -> (DefId, Ty) {
     let ty = Ty::new(TyKind::Param(ParamTy { name: word.name(), var: cx.fresh_var() }));
     let id = cx.define().new_local(
         env,
@@ -194,18 +194,18 @@ pub(crate) fn define_ty_param(cx: &mut Typeck, env: &mut Env, word: Word) -> (De
 pub(crate) fn fresh_instantiation(
     cx: &Typeck<'_>,
     env: &Env,
-    ty_params: Vec<ParamTy>,
+    tparams: Vec<ParamTy>,
 ) -> Instantiation {
-    let env_fn_ty_params = env.fn_id().map_or(vec![], |id| cx.def_ty(id).collect_params());
+    let env_fn_tparams = env.fn_id().map_or(vec![], |id| cx.def_ty(id).collect_params());
 
-    ty_params
+    tparams
         .into_iter()
         .map(|param| {
             (
                 param.var,
                 // If the type param is one of the current function's type
                 // params, we don't want to instantiate it
-                if env_fn_ty_params.iter().any(|p| p.var == param.var) {
+                if env_fn_tparams.iter().any(|p| p.var == param.var) {
                     Ty::new(TyKind::Param(param))
                 } else {
                     cx.fresh_ty_var()
@@ -232,27 +232,27 @@ pub(crate) fn apply_targs_to_ty(
     targs: Option<&[Ty]>,
     span: Span,
 ) -> DiagnosticResult<(Ty, Instantiation)> {
-    let mut ty_params = ty.collect_params();
+    let mut tparams = ty.collect_params();
 
     // NOTE: map type params that are part of the current polymorphic function to
     // themselves, so that we don't instantiate them. that's quite ugly though.
     if let Some(fn_id) = env.fn_id() {
-        let fn_ty_params = cx.def_ty(fn_id).collect_params();
-        for ftp in fn_ty_params {
-            if let Some(tp) = ty_params.iter_mut().find(|p| p.var == ftp.var) {
+        let fn_tparams = cx.def_ty(fn_id).collect_params();
+        for ftp in fn_tparams {
+            if let Some(tp) = tparams.iter_mut().find(|p| p.var == ftp.var) {
                 *tp = ftp.clone();
             }
         }
     }
 
     let instantiation: Instantiation = match &targs {
-        Some(args) if args.len() == ty_params.len() => {
-            ty_params.into_iter().zip(args.iter()).map(|(param, arg)| (param.var, *arg)).collect()
+        Some(args) if args.len() == tparams.len() => {
+            tparams.into_iter().zip(args.iter()).map(|(param, arg)| (param.var, *arg)).collect()
         }
         Some(args) => {
-            return Err(errors::targ_mismatch(ty_params.len(), args.len(), span));
+            return Err(errors::targ_mismatch(tparams.len(), args.len(), span));
         }
-        _ => fresh_instantiation(cx, env, ty_params),
+        _ => fresh_instantiation(cx, env, tparams),
     };
 
     Ok((instantiation.fold(ty), instantiation))

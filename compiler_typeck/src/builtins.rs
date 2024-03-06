@@ -75,6 +75,6 @@ fn define_ptr(cx: &mut Typeck) {
     };
 
     cx.ty_aliases
-        .insert(id, TyAlias { tyexpr: None, ty: Some(tp.ty.raw_ptr()), ty_params: vec![tp] });
+        .insert(id, TyAlias { tyexpr: None, ty: Some(tp.ty.raw_ptr()), tparams: vec![tp] });
     cx.global_env.builtin_tys.insert(name, id);
 }

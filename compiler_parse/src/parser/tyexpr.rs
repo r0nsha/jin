@@ -73,7 +73,7 @@ impl<'a> Parser<'a> {
         } else {
             (false, CallConv::default())
         };
-        let (params, is_c_variadic) = self.parse_fn_ty_params()?;
+        let (params, is_c_variadic) = self.parse_fn_tparams()?;
         let ret = if self.is(TokenKind::Arrow) { Some(Box::new(self.parse_ty()?)) } else { None };
 
         Ok(TyExprFn {
@@ -86,7 +86,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_fn_ty_params(&mut self) -> DiagnosticResult<(Vec<TyExpr>, bool)> {
+    fn parse_fn_tparams(&mut self) -> DiagnosticResult<(Vec<TyExpr>, bool)> {
         let mut is_c_variadic = false;
 
         let (params, _) = self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {

@@ -301,7 +301,7 @@ pub enum FnKind {
 #[derive(Debug, Clone)]
 pub struct FnSig {
     pub word: Word,
-    pub ty_params: Vec<TyParam>,
+    pub tparams: Vec<TyParam>,
     pub params: Vec<FnParam>,
     pub ret: Option<TyExpr>,
 }
@@ -332,7 +332,7 @@ pub struct TyDef {
     pub attrs: Attrs,
     pub word: Word,
     pub vis: Vis,
-    pub ty_params: Vec<TyParam>,
+    pub tparams: Vec<TyParam>,
     pub kind: TyDefKind,
     pub span: Span,
 }

@@ -123,13 +123,13 @@ fn check_path(
                     }
                 }
                 &DefKind::Adt(adt_id) => {
-                    let ty_params = &cx.db[adt_id].ty_params;
+                    let tparams = &cx.db[adt_id].tparams;
                     let targs = check_optional_targs_exact(
                         cx,
                         env,
                         cx.db[adt_id].name.name(),
                         targs,
-                        ty_params.len(),
+                        tparams.len(),
                         allow_hole,
                         span,
                     )?;
@@ -142,7 +142,7 @@ fn check_path(
                         env,
                         cx.db[id].name,
                         targs,
-                        cx.ty_aliases[&id].ty_params.len(),
+                        cx.ty_aliases[&id].tparams.len(),
                         allow_hole,
                         span,
                     )?;
@@ -204,15 +204,15 @@ pub(crate) fn check_optional_targs_exact(
     env: &Env,
     ty_name: Ustr,
     targs: Option<&[TyExpr]>,
-    ty_params_len: usize,
+    tparams_len: usize,
     allow_hole: AllowTyHole,
     span: Span,
 ) -> DiagnosticResult<Option<Vec<Ty>>> {
     let targs = check_optional_targs(cx, env, targs, allow_hole)?;
     let targs_len = targs.as_ref().map_or(0, Vec::len);
 
-    if targs_len != ty_params_len {
-        return Err(errors::adt_targ_mismatch(&ty_name, targs_len, ty_params_len, span));
+    if targs_len != tparams_len {
+        return Err(errors::adt_targ_mismatch(&ty_name, targs_len, tparams_len, span));
     }
 
     Ok(targs)
@@ -230,7 +230,7 @@ pub(crate) fn check_ty_alias(
     let mut env = Env::new(cx.db[id].scope.module_id);
 
     env.with_anon_scope(ScopeKind::TyDef, |env| {
-        for tp in &cx.ty_aliases[&id].ty_params {
+        for tp in &cx.ty_aliases[&id].tparams {
             env.insert(tp.word.name(), tp.id);
         }
 

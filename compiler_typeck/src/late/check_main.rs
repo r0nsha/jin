@@ -53,7 +53,7 @@ impl<'db> CheckMain<'db> {
         let fty = main_fn.sig.ty.kind();
 
         if is_main_ty(fty) {
-            let tp = &main_fn.sig.ty_params;
+            let tp = &main_fn.sig.tparams;
 
             if !tp.is_empty() {
                 let tp_span = tp[0].word.span().merge(tp.last().unwrap().word.span());

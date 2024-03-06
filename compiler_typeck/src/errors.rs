@@ -137,17 +137,17 @@ pub fn targ_mismatch(expected: usize, found: usize, span: Span) -> Diagnostic {
 
 pub fn adt_targ_mismatch(
     ty_name: &str,
-    targ_len: usize,
-    ty_param_len: usize,
+    targs_len: usize,
+    tparams_len: usize,
     span: Span,
 ) -> Diagnostic {
     Diagnostic::error(format!(
         "type `{}` expects {} type argument(s), but {} were supplied",
-        ty_name, ty_param_len, targ_len
+        ty_name, tparams_len, targs_len
     ))
     .with_label(Label::primary(
         span,
-        format!("expected {ty_param_len} type arguments, found {targ_len}"),
+        format!("expected {tparams_len} type arguments, found {targs_len}"),
     ))
 }
 

@@ -21,11 +21,11 @@ impl<'a> Parser<'a> {
 
         let ident = self.eat_ident()?;
         let vis = self.parse_vis();
-        let ty_params = self.parse_optional_ty_params()?;
+        let tparams = self.parse_optional_tparams()?;
         let kind = self.parse_tydef_kind()?;
 
         let span = start.merge(self.last_span());
-        Ok(TyDef { attrs, word: ident.word(), vis, ty_params, kind, span })
+        Ok(TyDef { attrs, word: ident.word(), vis, tparams, kind, span })
     }
 
     fn parse_tydef_kind(&mut self) -> DiagnosticResult<TyDefKind> {

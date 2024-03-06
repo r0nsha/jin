@@ -733,11 +733,11 @@ fn create_destroy_sig(
         ty,
     }];
 
-    let fn_ty_params =
+    let fn_tparams =
         params.iter().map(|p| FnTyParam { name: Some(p.pat.name().unwrap()), ty: p.ty }).collect();
 
     let fn_ty = Ty::new(TyKind::Fn(FnTy {
-        params: fn_ty_params,
+        params: fn_tparams,
         ret: cx.db.types.unit,
         callconv: CallConv::default(),
         flags: FnTyFlags::empty(),

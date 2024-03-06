@@ -165,7 +165,7 @@ fn define_tydef(
                         unknown, // Will be filled later
                     ))
                 });
-                check_adt_ty_params(cx, env, tydef, adt_id);
+                check_adt_tparams(cx, env, tydef, adt_id);
                 cx.res_map.item_to_adt.insert(item_id, adt_id);
             }
             ast::TyDefKind::Union(union_def) => {
@@ -174,7 +174,7 @@ fn define_tydef(
                     .adt(module_id, tydef, |id| AdtKind::Union(UnionDef::new(id, union_def.kind)));
                 let variants = define_variants(cx, union_def, adt_id);
                 cx.db[adt_id].as_union_mut().unwrap().variants = variants;
-                check_adt_ty_params(cx, env, tydef, adt_id);
+                check_adt_tparams(cx, env, tydef, adt_id);
                 cx.res_map.item_to_adt.insert(item_id, adt_id);
             }
             ast::TyDefKind::Alias(alias) => {
@@ -186,10 +186,10 @@ fn define_tydef(
                     Mutability::Imm,
                 );
 
-                let ty_params = types::define_ty_params(cx, env, &tydef.ty_params);
+                let tparams = types::define_tparams(cx, env, &tydef.tparams);
                 cx.ty_aliases.insert(
                     def_id,
-                    TyAlias { tyexpr: Some(Rc::clone(&alias.ty)), ty: None, ty_params },
+                    TyAlias { tyexpr: Some(Rc::clone(&alias.ty)), ty: None, tparams },
                 );
             }
         }
@@ -235,9 +235,9 @@ fn define_variants(
     variants
 }
 
-fn check_adt_ty_params(cx: &mut Typeck, env: &mut Env, tydef: &ast::TyDef, adt_id: AdtId) {
-    let ty_params = types::define_ty_params(cx, env, &tydef.ty_params);
-    cx.db[adt_id].ty_params = ty_params;
+fn check_adt_tparams(cx: &mut Typeck, env: &mut Env, tydef: &ast::TyDef, adt_id: AdtId) {
+    let tparams = types::define_tparams(cx, env, &tydef.tparams);
+    cx.db[adt_id].tparams = tparams;
     let adt = &cx.db[adt_id];
     cx.def_to_ty.insert(adt.def_id, TyKind::Type(adt.ty()).into());
 }
@@ -441,7 +441,7 @@ fn check_builtin_fn(
         }
 
         cx.db.builtins.insert(id, builtin);
-    } else if fnty.is_extern() && !sig.ty_params.is_empty() {
+    } else if fnty.is_extern() && !sig.tparams.is_empty() {
         return Err(Diagnostic::error("type parameters are not allowed on extern functions")
             .with_label(Label::primary(sig.word.span(), "type parameters not allowed")));
     }
