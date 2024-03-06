@@ -449,7 +449,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let instantiation = Instantiation::from((tparams.as_slice(), targs.as_slice()));
 
         let callee = self.create_untracked_value(instantiation.fold(sig_ty), ValueKind::Fn(sig_id));
-        let arg = value;
+        let arg = self.push_inst_with_register(value_ty.create_ref(Mutability::Mut), |value| {
+            Inst::StackAlloc { value, init: Some(value) }
+        });
         self.ins(self.current_block).incref(arg);
 
         self.push_inst_with_register(self.cx.db.types.unit, |value| Inst::Call {
