@@ -1,4 +1,3 @@
-The contents from 'examples/file.txt':
 Amet enim congue tellus diam sed sed id,. 
 Vel auctor diam, vitae consequat lectus amet pretium cursus ut lectus dui euismod enim pellentesque nullam dolor neque rutrum.
 Imperdiet cras varius varius malesuada viverra, consectetur blandit magna ac, elementum nam at tempus nunc, eu pharetra at ultricies eget dis neque tempus imperdiet.

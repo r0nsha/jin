@@ -9,7 +9,7 @@ fn main() = {
     match std.fs.read-to-str("examples/file.txt") {
         Result.Ok(contents) -> {
             print("--- Read ---\n{contents}")
-            match write-file2(contents) {
+            match std.fs.write("examples/file2.txt", contents) {
                 Result.Ok(()) -> ()
                 Result.Err(err) -> println("Error writing to 'examples/file2.txt': {err}")
             }
@@ -17,22 +17,3 @@ fn main() = {
         Result.Err(err) -> println("Error reading 'examples/file.txt': {err}")
     }
 }
-
-// TODO: replace with `write`
-fn write-file2(contents: str) -> io.Result[()] =
-    match File.create("examples/file2.txt") {
-        Result.Ok(mut file) -> {
-            match file.write("The contents from 'examples/file.txt':\n{contents}".as-bytes()) {
-                Result.Ok(written) -> {
-                    println("\n--- Write ---\nWritten {written} bytes to 'examples/file2.txt'")
-                    file.close()
-                    Result.Ok(())
-                }
-                Result.Err(err) -> {
-                    file.close()
-                    Result.Err(err)
-                }
-            }
-        }
-        Result.Err(err) -> Result.Err(err)
-    }
