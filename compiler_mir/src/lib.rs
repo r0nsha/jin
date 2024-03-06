@@ -482,21 +482,24 @@ pub enum Inst {
 
 #[derive(Debug, Clone, Copy)]
 pub enum RtCallKind {
-    SliceGrow { slice: ValueId, new_cap: ValueId },
     Panic { msg: ValueId },
+    SliceGrow { slice: ValueId, new_cap: ValueId },
+    SliceUtf8Validate { slice: ValueId },
 }
 
 impl RtCallKind {
     pub fn traced(self) -> bool {
         match self {
-            RtCallKind::SliceGrow { .. } | Self::Panic { .. } => true,
+            Self::Panic { .. } | RtCallKind::SliceGrow { .. } => true,
+            RtCallKind::SliceUtf8Validate { .. } => false,
         }
     }
 
     pub fn as_str(self) -> &'static str {
         match self {
-            RtCallKind::SliceGrow { .. } => "jinrt_slice_grow",
             RtCallKind::Panic { .. } => "jinrt_panic",
+            RtCallKind::SliceGrow { .. } => "jinrt_slice_grow",
+            RtCallKind::SliceUtf8Validate { .. } => "jinrt_slice_utf8_validate",
         }
     }
 }

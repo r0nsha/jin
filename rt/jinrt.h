@@ -71,15 +71,16 @@ slice jinrt_slice_slice(jinrt_backtrace *backtrace, slice s, size_t elem_size,
 unit jinrt_slice_grow(jinrt_backtrace *backtrace, slice *s, size_t elem_size,
                       usize new_cap, jinrt_stackframe frame);
 usize jinrt_slice_cap(slice *s);
+bool jinrt_slice_utf8_validate(slice s);
+
+// Str
+bool jinrt_str_cmp(str a, str b);
 
 // Panic
 void jinrt_panic_raw(jinrt_backtrace *backtrace, u8 *msg,
                      jinrt_stackframe frame);
 
 never jinrt_panic(jinrt_backtrace *backtrace, str msg, jinrt_stackframe frame);
-
-// Utils
-bool jinrt_str_cmp(str a, str b);
 
 // Stack traces
 jinrt_backtrace *jinrt_backtrace_new();

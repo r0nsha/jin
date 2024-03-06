@@ -276,6 +276,12 @@ export fn jinrt_str_cmp(a: Str, b: Str) bool {
     return false;
 }
 
+export fn jinrt_slice_utf8_validate(slice: RcSlice) bool {
+    // TODO:
+    _ = slice;
+    return true;
+}
+
 export fn jinrt_backtrace_new() *Backtrace {
     return Backtrace.init(std.heap.c_allocator) catch unreachable;
 }

@@ -841,9 +841,10 @@ impl ExternLib {
 
 #[derive(Debug, Clone, Copy)]
 pub enum Builtin {
-    SliceGrow,
     Forget,
     Panic,
+    SliceGrow,
+    SliceUtf8Validate,
 }
 
 impl<'a> TryFrom<&'a str> for Builtin {
@@ -851,9 +852,10 @@ impl<'a> TryFrom<&'a str> for Builtin {
 
     fn try_from(value: &'a str) -> Result<Self, Self::Error> {
         match value {
-            "slice-grow" => Ok(Self::SliceGrow),
             "forget" => Ok(Self::Forget),
             "panic" => Ok(Self::Panic),
+            "slice-grow" => Ok(Self::SliceGrow),
+            "slice-utf8-validate" => Ok(Self::SliceUtf8Validate),
             _ => Err(()),
         }
     }

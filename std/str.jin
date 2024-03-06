@@ -1,8 +1,13 @@
+import std.builtin
 import std.char.(encode-utf8-raw, ?)
 import std.collections.Array
 
 fn str.from-utf8*(bytes: []u8) -> Result[str, ()] =
-	Result.Ok(unsafe as[_](bytes))
+	if unsafe builtin.slice-utf8-validate(&bytes) {
+		Result.Ok(unsafe as[_](bytes))
+	} else {
+		Result.Err(())
+	}
 
 // TODO:
 // fn str.from-utf8*(bytes: &[]u8) -> str =
