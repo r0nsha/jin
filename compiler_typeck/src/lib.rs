@@ -16,6 +16,7 @@ mod subst;
 mod tyexpr;
 mod types;
 mod unify;
+mod hooks;
 
 use std::cell::RefCell;
 use std::rc::Rc;
