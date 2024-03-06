@@ -91,20 +91,20 @@ fn read-to-end*(self: &File) -> io.Result[Array[u8]] = {
     unsafe scratch.len = default-buf-size
 
     for {
-	match self.read(&mut scratch) {
-	    Result.Ok(0) -> break
-	    Result.Ok(len) -> {
-		// TODO: Implement `std.array.extend([]T)`
-		buf.reserve(len)
+        match self.read(&mut scratch) {
+            Result.Ok(0) -> break
+            Result.Ok(len) -> {
+                // TODO: Implement `std.array.extend([]T)`
+                buf.reserve(len)
 
-		let mut i = 0
-		for if i < len {
-		    buf.push-unchecked(scratch.[i])
-		    i += 1
-		}
-	    }
-	    Result.Err(err) -> return Result.Err(err) 
-	}
+                let mut i = 0
+                for if i < len {
+                    buf.push-unchecked(scratch.[i])
+                    i += 1
+                }
+            }
+            Result.Err(err) -> return Result.Err(err) 
+        }
     }
 
     Result.Ok(buf)
@@ -114,7 +114,7 @@ fn read-to-str*(self: &File) -> io.Result[str] =
     match self.read-to-end() {
 	// TODO: utf8 check. if fails, return `io.Error.InvalidData(stream did not contain valid UTF-8)`
 	Result.Ok(buf) -> Result.Ok(str.from-utf8-unchecked(buf.take())) 
-	Result.Err(err) -> return Result.Err(err) 
+	Result.Err(err) -> Result.Err(err) 
     }
 
 fn read*(self: &File, buf: &mut []u8) -> io.Result[uint] =
