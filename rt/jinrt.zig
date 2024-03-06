@@ -277,9 +277,10 @@ export fn jinrt_str_cmp(a: Str, b: Str) bool {
 }
 
 export fn jinrt_slice_utf8_validate(slice: RcSlice) bool {
-    // TODO:
-    _ = slice;
-    return true;
+    return if (slice.as_slice()) |s|
+        std.unicode.utf8ValidateSlice(s)
+    else
+        false;
 }
 
 export fn jinrt_backtrace_new() *Backtrace {
