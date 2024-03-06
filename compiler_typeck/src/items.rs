@@ -17,6 +17,7 @@ use compiler_core::{
 use compiler_data_structures::index_vec::{IndexVecExt as _, Key as _};
 use ustr::ustr;
 
+use crate::hooks;
 use crate::{
     attrs, errors, exprs, fns,
     lookup::{FnCandidate, Query},
@@ -397,6 +398,10 @@ fn check_fn_helper(
         ast::FnKind::Extern { .. } => {
             check_builtin_fn(cx, module_id, fun, &sig, id)?;
         }
+    }
+
+    if assoc_ty.is_none() && matches!(&fun.kind, ast::FnKind::Bare { .. }) {
+        hooks::check(cx, &sig, id)?;
     }
 
     cx.def_to_ty.insert(id, sig.ty);

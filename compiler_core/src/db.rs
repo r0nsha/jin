@@ -40,6 +40,7 @@ pub struct Db {
     pub variants: IndexVec<VariantId, Variant>,
     pub types: CommonTypes,
     pub builtins: FxHashMap<DefId, Builtin>,
+    pub hooks: FxHashMap<(AdtId, Hook), DefId>,
     pub extern_libs: FxHashSet<ExternLib>,
     pub diagnostics: Diagnostics,
 
@@ -66,6 +67,7 @@ impl Db {
             variants: IndexVec::new(),
             types: CommonTypes::new(),
             builtins: FxHashMap::default(),
+            hooks: FxHashMap::default(),
             extern_libs: FxHashSet::default(),
             diagnostics: Diagnostics::new(),
             std_package_name: Once::new(),
@@ -524,13 +526,7 @@ impl Adt {
     }
 
     pub fn instantiation(&self, targs: &[Ty]) -> Instantiation {
-        debug_assert!(targs.len() == self.ty_params.len());
-
-        self.ty_params
-            .iter()
-            .zip(targs)
-            .map(|(tp, ty)| (tp.ty.as_param().unwrap().var, *ty))
-            .collect()
+        Instantiation::from((self.ty_params.as_slice(), targs))
     }
 
     pub fn fields<'a>(&'a self, db: &'a Db) -> Box<dyn Iterator<Item = &AdtField> + '_> {
@@ -856,6 +852,22 @@ impl<'a> TryFrom<&'a str> for Builtin {
             "panic" => Ok(Self::Panic),
             "slice-grow" => Ok(Self::SliceGrow),
             "slice-utf8-validate" => Ok(Self::SliceUtf8Validate),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Hook {
+    Destroy,
+}
+
+impl<'a> TryFrom<&'a str> for Hook {
+    type Error = ();
+
+    fn try_from(value: &'a str) -> Result<Self, Self::Error> {
+        match value {
+            "=destroy" => Ok(Self::Destroy),
             _ => Err(()),
         }
     }

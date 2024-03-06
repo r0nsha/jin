@@ -1,5 +1,8 @@
 use std::{fmt, mem};
 
+use compiler_core::db::Hook;
+use compiler_core::middle::Mutability;
+use compiler_core::ty::Instantiation;
 use compiler_helpers::create_bool_enum;
 use itertools::Itertools as _;
 use ustr::ustr;
@@ -39,6 +42,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         // Mark its parents (if any) as partially moved
         self.walk_parents(value, |this, parent, child| -> DiagnosticResult<()> {
             this.check_move_out_of_ref(parent, child, moved_to)?;
+            this.check_can_partially_move(parent, moved_to)?;
             this.set_partially_moved(parent, moved_to);
             Ok(())
         })?;
@@ -139,6 +143,22 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 moved_to,
                 format!("cannot move out of {}", self.value_name(parent)),
             )))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn check_can_partially_move(&self, value: ValueId, moved_to: Span) -> DiagnosticResult<()> {
+        let value_ty = self.ty_of(value);
+        let Some((adt_id, _)) = value_ty.as_adt() else { return Ok(()) };
+        if let Some(hook_id) = self.cx.db.hooks.get(&(adt_id, Hook::Destroy)) {
+            Err(Diagnostic::error(format!(
+                "`{}` cannot be partially moved because it's of type `{}`, which has a defined destroy hook",
+                self.value_name(value),
+                value_ty.display(self.cx.db)
+            ))
+            .with_label(Label::primary(moved_to, "cannot be partially moved"))
+            .with_label(Label::secondary(self.cx.db[*hook_id].span, "hook defined here")))
         } else {
             Ok(())
         }
@@ -430,8 +450,39 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub(super) fn destroy_and_set_flag(&mut self, value: ValueId, destroy_glue: bool, span: Span) {
+        self.call_destroy_hook(value, span);
         self.ins(self.current_block).destroy(value, destroy_glue, span);
         self.set_destroy_flag(value);
+    }
+
+    pub(super) fn call_destroy_hook(&mut self, value: ValueId, span: Span) {
+        let value_ty = self.ty_of(value);
+        let Some((adt_id, targs)) = value_ty.as_adt() else { return };
+        let Some(&hook_id) = self.cx.db.hooks.get(&(adt_id, Hook::Destroy)) else { return };
+
+        let sig_id = self.cx.id_to_fn_sig[&hook_id];
+        let sig_ty = self.cx.mir.fn_sigs[sig_id].ty;
+        let tparams = sig_ty.collect_params();
+        let instantiation = Instantiation::from((tparams.as_slice(), targs.as_slice()));
+
+        let callee = self.create_untracked_value(instantiation.fold(sig_ty), ValueKind::Fn(sig_id));
+
+        let arg = {
+            let arg = value;
+            self.push_inst_with_register(value_ty.create_ref(Mutability::Mut), |value| {
+                Inst::StackAlloc { value, init: Some(arg) }
+            })
+        };
+        self.ins(self.current_block).incref(arg);
+
+        self.push_inst_with_register(self.cx.db.types.unit, |value| Inst::Call {
+            value,
+            callee,
+            args: vec![arg],
+            span,
+        });
+
+        self.body.create_instantation(value, instantiation);
     }
 
     fn set_destroy_flag(&mut self, value: ValueId) {
