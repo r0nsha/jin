@@ -138,6 +138,7 @@ fn check_path(
                     Ok(Ty::new(TyKind::Adt(adt_id, targs.unwrap_or_default())))
                 }
                 DefKind::Global if cx.ty_aliases.contains_key(&id) => {
+                    let ty = check_ty_alias(cx, id, allow_hole)?;
                     let targs = check_optional_targs_exact(
                         cx,
                         env,
@@ -147,8 +148,6 @@ fn check_path(
                         allow_hole,
                         span,
                     )?;
-
-                    let ty = check_ty_alias(cx, id, allow_hole)?;
                     let instantiation =
                         cx.ty_aliases[&id].instantiation(&targs.unwrap_or_default());
                     Ok(instantiation.fold(ty))
