@@ -1,5 +1,6 @@
 mod pretty;
 
+use std::rc::Rc;
 use std::{fmt, io};
 
 use camino::Utf8PathBuf;
@@ -376,7 +377,7 @@ pub struct UnionVariantField {
 
 #[derive(Debug, Clone)]
 pub struct AliasTyDef {
-    pub ty: TyExpr,
+    pub ty: Rc<TyExpr>,
 }
 
 #[derive(Debug, Clone)]

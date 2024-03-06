@@ -57,7 +57,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         adt_id
     }
 
-    pub(crate) fn new_global(
+    pub(crate) fn create_global(
         &mut self,
         module_id: ModuleId,
         vis: Vis,
@@ -67,7 +67,18 @@ impl<'db, 'cx> Define<'db, 'cx> {
     ) -> DefId {
         let qpath = self.cx.db[module_id].qpath.clone().child(name.name());
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
-        let id = Def::alloc(self.cx.db, qpath, scope, kind, mutability, name.span());
+        Def::alloc(self.cx.db, qpath, scope, kind, mutability, name.span())
+    }
+
+    pub(crate) fn new_global(
+        &mut self,
+        module_id: ModuleId,
+        vis: Vis,
+        kind: DefKind,
+        name: Word,
+        mutability: Mutability,
+    ) -> DefId {
+        let id = self.create_global(module_id, vis, kind, name, mutability);
 
         if let Err(diagnostic) = self.global(module_id, name, id, vis) {
             self.cx.db.diagnostics.add(diagnostic);

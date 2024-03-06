@@ -1,4 +1,5 @@
 use std::ops::ControlFlow;
+use std::rc::Rc;
 
 use compiler_ast::{
     AliasTyDef, Attrs, StructTyDef, StructTyField, TyDef, TyDefKind, UnionTyDef, UnionVariant,
@@ -87,6 +88,6 @@ impl<'a> Parser<'a> {
 
     fn parse_tydef_alias(&mut self) -> DiagnosticResult<TyDefKind> {
         let ty = self.parse_ty()?;
-        Ok(TyDefKind::Alias(AliasTyDef { ty }))
+        Ok(TyDefKind::Alias(AliasTyDef { ty: Rc::new(ty) }))
     }
 }

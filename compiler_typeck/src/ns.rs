@@ -12,18 +12,22 @@ use compiler_core::{
 use rustc_hash::FxHashMap;
 use ustr::{Ustr, UstrMap};
 
-use crate::{builtins::BuiltinTys, errors, lookup::FnCandidateSet, Typeck};
+use crate::{errors, lookup::FnCandidateSet, Typeck};
 
 #[derive(Debug)]
 pub(crate) struct GlobalEnv {
     pub(crate) modules: FxHashMap<ModuleId, ModuleEnv>,
     pub(crate) assoc_ns: FxHashMap<AssocTy, Ns>,
-    pub(crate) builtin_tys: BuiltinTys,
+    pub(crate) builtin_tys: UstrMap<DefId>,
 }
 
 impl GlobalEnv {
-    pub(crate) fn new(builtin_tys: BuiltinTys) -> Self {
-        Self { modules: FxHashMap::default(), assoc_ns: FxHashMap::default(), builtin_tys }
+    pub(crate) fn new() -> Self {
+        Self {
+            modules: FxHashMap::default(),
+            assoc_ns: FxHashMap::default(),
+            builtin_tys: UstrMap::default(),
+        }
     }
 
     #[track_caller]

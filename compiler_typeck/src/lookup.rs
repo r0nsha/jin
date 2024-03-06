@@ -292,7 +292,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
             // We allow looking up builtin types only when looking up a symbol in the same
             // module as its environment's module.
             if from_module == in_module {
-                return Ok(self.cx.global_env.builtin_tys.get(name));
+                return Ok(self.cx.global_env.builtin_tys.get(&name).copied());
             }
 
             return Ok(None);

@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use compiler_ast::{self as ast, Ast};
 use compiler_core::{
     db::{
@@ -15,7 +17,6 @@ use compiler_core::{
 use compiler_data_structures::index_vec::{IndexVecExt as _, Key as _};
 use ustr::ustr;
 
-use crate::TyAlias;
 use crate::{
     attrs, errors, exprs, fns,
     lookup::{FnCandidate, Query},
@@ -23,7 +24,7 @@ use crate::{
     ns::{AssocTy, Env, ScopeKind},
     tyexpr,
     tyexpr::AllowTyHole,
-    types, Typeck,
+    types, TyAlias, Typeck,
 };
 
 pub(crate) fn define(cx: &mut Typeck, ast: &Ast) {
@@ -179,14 +180,16 @@ fn define_tydef(
                 let def_id = cx.define().new_global(
                     module_id,
                     tydef.vis,
-                    DefKind::Global,
+                    DefKind::TyAlias,
                     tydef.word,
                     Mutability::Imm,
                 );
 
                 let ty_params = types::define_ty_params(cx, env, &tydef.ty_params);
-                cx.ty_aliases
-                    .insert(def_id, TyAlias { tyexpr: alias.ty.clone(), ty: None, ty_params });
+                cx.ty_aliases.insert(
+                    def_id,
+                    TyAlias { tyexpr: Some(Rc::clone(&alias.ty)), ty: None, ty_params },
+                );
             }
         }
     });

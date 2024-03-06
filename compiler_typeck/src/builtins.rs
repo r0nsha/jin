@@ -1,87 +1,80 @@
 use compiler_core::{
-    db::{Db, Def, DefId, DefKind, ScopeInfo, ScopeLevel},
-    middle::{Mutability, Vis},
-    qpath::QPath,
-    span::Span,
+    db::DefKind,
+    middle::{Mutability, TyParam, Vis},
     sym,
-    ty::{Ty, TyKind},
+    ty::{ParamTy, Ty, TyKind},
+    word::Word,
 };
-use rustc_hash::FxHashMap;
-use ustr::{ustr, Ustr, UstrMap};
+use ustr::ustr;
 
-#[derive(Debug)]
-pub struct BuiltinTys {
-    inner: UstrMap<DefId>,
+use crate::{TyAlias, Typeck};
+
+pub(crate) fn define_all(cx: &mut Typeck) {
+    let pairs = &[
+        (sym::ty::I8, cx.db.types.i8),
+        (sym::ty::I16, cx.db.types.i16),
+        (sym::ty::I32, cx.db.types.i32),
+        (sym::ty::I64, cx.db.types.i64),
+        (sym::ty::INT, cx.db.types.int),
+        (sym::ty::U8, cx.db.types.u8),
+        (sym::ty::U16, cx.db.types.u16),
+        (sym::ty::U32, cx.db.types.u32),
+        (sym::ty::U64, cx.db.types.u64),
+        (sym::ty::UINT, cx.db.types.uint),
+        (sym::ty::F32, cx.db.types.f32),
+        (sym::ty::F64, cx.db.types.f64),
+        (sym::ty::STR, cx.db.types.str),
+        (sym::ty::CHAR, cx.db.types.char),
+        (sym::ty::BOOL, cx.db.types.bool),
+        (sym::ty::NEVER, cx.db.types.never),
+    ];
+
+    let main_module = cx.db.main_module.unwrap();
+    for &(name, ty) in pairs {
+        let name = ustr(name);
+        let id = cx.define().create_global(
+            main_module,
+            Vis::Public,
+            DefKind::BuiltinTy(ty),
+            Word::new_unknown(name),
+            Mutability::Imm,
+        );
+        cx.def_to_ty.insert(id, Ty::new(TyKind::Type(ty)));
+        cx.global_env.builtin_tys.insert(name, id);
+    }
+
+    define_ptr(cx);
 }
 
-impl BuiltinTys {
-    pub fn new(db: &mut Db, def_to_ty: &mut FxHashMap<DefId, Ty>) -> Self {
-        let mut this = Self { inner: UstrMap::default() };
+fn define_ptr(cx: &mut Typeck) {
+    let main_module = cx.db.main_module.unwrap();
 
-        this.define_all(
-            db,
-            def_to_ty,
-            &[
-                (sym::ty::I8, db.types.i8),
-                (sym::ty::I16, db.types.i16),
-                (sym::ty::I32, db.types.i32),
-                (sym::ty::I64, db.types.i64),
-                (sym::ty::INT, db.types.int),
-                (sym::ty::U8, db.types.u8),
-                (sym::ty::U16, db.types.u16),
-                (sym::ty::U32, db.types.u32),
-                (sym::ty::U64, db.types.u64),
-                (sym::ty::UINT, db.types.uint),
-                (sym::ty::F32, db.types.f32),
-                (sym::ty::F64, db.types.f64),
-                (sym::ty::STR, db.types.str),
-                (sym::ty::CHAR, db.types.char),
-                (sym::ty::BOOL, db.types.bool),
-                (sym::ty::NEVER, db.types.never),
-            ],
-        );
+    let name = ustr(sym::ty::PTR);
+    let word = Word::new_unknown(name);
 
-        this
-    }
+    let id = cx.define().create_global(
+        main_module,
+        Vis::Public,
+        DefKind::TyAlias,
+        word,
+        Mutability::Imm,
+    );
 
-    fn define_all(
-        &mut self,
-        db: &mut Db,
-        def_to_ty: &mut FxHashMap<DefId, Ty>,
-        pairs: &[(&str, Ty)],
-    ) {
-        for (name, ty) in pairs {
-            self.define(db, def_to_ty, name, *ty);
-        }
-    }
-
-    fn define(
-        &mut self,
-        db: &mut Db,
-        def_to_ty: &mut FxHashMap<DefId, Ty>,
-        name: &str,
-        ty: Ty,
-    ) -> Option<DefId> {
-        let name = ustr(name);
-        let scope_info = ScopeInfo {
-            module_id: db.main_module.unwrap(),
-            level: ScopeLevel::Global,
-            vis: Vis::Public,
-        };
-
-        let id = Def::alloc(
-            db,
-            QPath::from(name),
-            scope_info,
-            DefKind::BuiltinTy(ty),
+    let tp = {
+        let tp_word = Word::new_unknown(ustr("T"));
+        let tp_ty = Ty::new(TyKind::Param(ParamTy { name: tp_word.name(), var: cx.fresh_var() }));
+        let tp_id = cx.define().create_global(
+            main_module,
+            Vis::Public,
+            DefKind::BuiltinTy(tp_ty),
+            tp_word,
             Mutability::Imm,
-            Span::unknown(),
         );
-        def_to_ty.insert(id, Ty::new(TyKind::Type(ty)));
-        self.inner.insert(name, id)
-    }
+        cx.def_to_ty.insert(id, Ty::new(TyKind::Type(tp_ty)));
+        TyParam { id: tp_id, word: tp_word, ty: tp_ty }
+    };
 
-    pub fn get(&self, name: Ustr) -> Option<DefId> {
-        self.inner.get(&name).copied()
-    }
+    cx.ty_aliases
+        .insert(id, TyAlias { tyexpr: None, ty: Some(tp.ty.raw_ptr()), ty_params: vec![tp] });
+    cx.global_env.builtin_tys.insert(name, id);
 }

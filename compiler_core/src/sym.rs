@@ -14,6 +14,7 @@ pub mod ty {
     pub const F32: &str = "f32";
     pub const F64: &str = "f64";
 
+    pub const PTR: &str = "ptr";
     pub const STR: &str = "str";
     pub const CHAR: &str = "char";
     pub const BOOL: &str = "bool";
