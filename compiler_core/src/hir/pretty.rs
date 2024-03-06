@@ -204,8 +204,7 @@ impl PrettyCx<'_> {
                 self.builder.end_child();
             }
             ExprKind::Cast(cast) => {
-                self.builder
-                    .begin_child(format!("cast (to: {})", cast.target.display(self.db)));
+                self.builder.begin_child(format!("cast (to: {})", cast.target.display(self.db)));
                 self.pp_expr(&cast.expr);
                 self.builder.end_child();
             }
