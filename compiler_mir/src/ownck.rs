@@ -42,6 +42,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         // Mark its parents (if any) as partially moved
         self.walk_parents(value, |this, parent, child| -> DiagnosticResult<()> {
             this.check_move_out_of_ref(parent, child, moved_to)?;
+            this.check_can_partially_move(parent, moved_to)?;
             this.set_partially_moved(parent, moved_to);
             Ok(())
         })?;
@@ -142,6 +143,22 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 moved_to,
                 format!("cannot move out of {}", self.value_name(parent)),
             )))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn check_can_partially_move(&self, value: ValueId, moved_to: Span) -> DiagnosticResult<()> {
+        let value_ty = self.ty_of(value);
+        let Some((adt_id, _)) = value_ty.as_adt() else { return Ok(()) };
+        if let Some(hook_id) = self.cx.db.hooks.get(&(adt_id, Hook::Destroy)) {
+            Err(Diagnostic::error(format!(
+                "`{}` cannot be partially moved because it's of type `{}`, which has a defined destroy hook",
+                self.value_name(value),
+                value_ty.display(self.cx.db)
+            ))
+            .with_label(Label::primary(moved_to, "cannot be partially moved"))
+            .with_label(Label::secondary(self.cx.db[*hook_id].span, "hook defined here")))
         } else {
             Ok(())
         }
