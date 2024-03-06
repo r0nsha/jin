@@ -75,7 +75,7 @@ fn push*(self: &mut StrBuf, ch: char) = {
 
 	// TODO: This is a good use-case for implementing an `extend` function. For this we need:
 	//		1. Stack allocated arrays. We then encode the char into an array of 4 elements.
-	//		2. Implement `std.array.extend([T])`
+	//		2. Implement `std.array.extend([]T)`
 	self.array.reserve(ch-len + 1)
 	self.array.set-len(new-len - 1)
 

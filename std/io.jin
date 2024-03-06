@@ -1,14 +1,56 @@
-import std.str.(?)
-
-fn extern "c" write(fd: i32, buf: *u8, count: uint) -> int
+import std.(
+	c,
+	c.write,
+	str.(?)
+)
 
 let stdout: i32 = 1
 
 fn print*(msg: &str) =
-	unsafe write(stdout, msg.ptr, msg.len)
+	unsafe write(stdout, as[_](msg.ptr), msg.len)
 
 fn print*(msg: str) = print(&msg)
 
 fn println*() = print("\n")
 fn println*(msg: &str) = print("{msg}\n")
 fn println*(msg: str) = println(&msg)
+
+type Result*[T] = std.result.Result[T, Error]
+
+type Error* {
+	PermissionDenied
+	NotFound
+	Interrupted
+	BadFileNumber
+	AlreadyExists
+	InvalidArgument
+	Other(code: i32)
+}
+
+// TODO: match on `os.errors.*`.
+// This requires the language to have a way on matching constants.
+fn Error.from-os-error*(code: i32) -> Error =
+	match code {
+		1 -> Error.PermissionDenied
+		2 -> Error.NotFound
+		4 -> Error.Interrupted
+		9 -> Error.BadFileNumber
+		17 -> Error.AlreadyExists
+		22 -> Error.InvalidArgument
+		code -> Error.Other(code)
+	}
+
+// TODO: cross-platform errno
+fn Error.last-os-error*() -> Error =
+	Error.from-os-error(unsafe (c.__errno_location().0))
+
+fn fmt*(self: &Error, buf: &mut StrBuf) =
+	match self {
+		Error.PermissionDenied -> buf.push("Permission denied")
+		Error.NotFound -> buf.push("Not found")
+		Error.Interrupted -> buf.push("Interrupted")
+		Error.BadFileNumber -> buf.push("Bad file number")
+		Error.AlreadyExists -> buf.push("Already exists")
+		Error.InvalidArgument -> buf.push("Invalid argument")
+		Error.Other(code) -> buf.push("Other({code})")
+	}

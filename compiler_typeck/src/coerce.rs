@@ -98,6 +98,10 @@ fn coerce_tys(
             coercions.push(Coercion { kind: CoercionKind::AnyToUnit, target });
             true
         }
+        (_, TyKind::Never) => {
+            coercions.push(Coercion { kind: CoercionKind::AnyToNever, target });
+            true
+        }
         (_, TyKind::Ref(b, _))
             if options.allow_owned_to_ref
                 && can_unify_or_coerce(source, *b, cx, coercions, options) =>

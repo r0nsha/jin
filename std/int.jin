@@ -104,7 +104,7 @@ fn fmt-impl(mut num: uint, is-neg: bool, format: Format) -> str = {
 		buf.push('0')	
 	} else {
 		for if num > 0 {
-			let ch = char.from-digit(u32(num % base), u32(base)).get()
+			let ch = char.from-digit(u32(num % base), u32(base)).or-panic()
 			buf.push(ch)
 			num /= base
 		}

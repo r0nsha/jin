@@ -58,7 +58,8 @@ impl<'db> CTy<'db> for TyKind {
     fn is_ptr(&self, cx: &Generator<'db>) -> bool {
         match self {
             Self::Adt(adt_id, _) => cx.db[*adt_id].is_ref(),
-            Self::Ref(..) | Self::RawPtr(_) => true,
+            Self::Ref(ty, _) => ty.is_ptr(cx),
+            Self::RawPtr(_) => true,
             Self::Fn(_)
             | Self::Int(_)
             | Self::Uint(_)

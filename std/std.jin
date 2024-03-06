@@ -1,10 +1,13 @@
 mod bool*
 mod builtin*
+mod c*
 mod char*
 mod collections*
+mod fs*
 mod int*
 mod io*
 mod option*
+mod os*
 mod panicking*
 mod prelude*
 mod ptr*

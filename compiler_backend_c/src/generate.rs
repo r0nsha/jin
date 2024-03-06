@@ -114,19 +114,19 @@ impl<'db> Generator<'db> {
         // Initialize runtime
         statements.push(stmt(|| util::call(D::text("jinrt_init"), [])));
 
+        // Create a new backtrace
+        statements.push(stmt(|| D::text("jinrt_backtrace *backtrace = jinrt_backtrace_new()")));
+
         // Initialize global variables
         statements.extend(self.get_global_init_order().into_iter().map(|id| {
             let glob = &self.mir.globals[id];
             stmt(|| {
                 assign(
                     ident(glob.name.as_str()),
-                    D::text(global_init_fn_name(glob)).append(D::text("()")),
+                    util::call(D::text(global_init_fn_name(glob)), [D::text("backtrace")]),
                 )
             })
         }));
-
-        // Create new backtrace
-        statements.push(stmt(|| D::text("jinrt_backtrace *backtrace = jinrt_backtrace_new()")));
 
         // Call entry point
         statements.push(stmt(|| util::call(ident(main_fn_name.as_str()), [D::text("backtrace")])));
@@ -187,7 +187,7 @@ impl<'db> Generator<'db> {
 
                     let init_fn_doc = D::text("FORCE_INLINE ")
                         .append(glob.ty.cdecl(self, D::text(global_init_fn_name(glob))))
-                        .append(D::text("() "))
+                        .append(D::text("(jinrt_backtrace *backtrace) "))
                         .append(block_(
                             || {
                                 D::intersperse(block_docs, D::hardline().append(D::hardline()))
@@ -629,9 +629,13 @@ impl<'db> Generator<'db> {
             }
             Inst::Cast { value, source, target, .. } => self.value_assign(state, *value, |this| {
                 let target_doc = target.cty(this).append(D::text("*"));
-                let source_doc = util::addr(this.value(state, *source));
-                let cast = util::cast(target_doc, source_doc);
-                util::deref(cast)
+                let source_doc = this.value(state, *source);
+
+                if state.ty_of(*source).is_ptr(this) && target.is_ptr(this) {
+                    util::cast(target_doc, source_doc)
+                } else {
+                    util::deref(util::cast(target_doc, util::addr(source_doc)))
+                }
             }),
             Inst::StrLit { value, lit } => {
                 self.value_assign(state, *value, |_| escaped_str_value(lit))

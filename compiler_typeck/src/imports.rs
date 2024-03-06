@@ -514,8 +514,8 @@ pub(crate) fn insert_prelude(cx: &mut Typeck) {
         cx.db.find_module_by_path("std", ["prelude"]).expect("std.prelude to exist").id;
 
     for (&module_id, env) in &mut cx.global_env.modules {
-        // Don't insert the prelude for modules in package `std`
-        if ns::in_std(cx.db, module_id) {
+        // Don't insert the prelude in the prelude itself
+        if module_id == prelude_module_id {
             continue;
         }
 

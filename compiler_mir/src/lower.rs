@@ -527,11 +527,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Break => {
                 self.destroy_loop_values(expr.span);
-
                 let end_block =
                     self.closest_loop_scope().expect("to be inside a loop block").end_block;
                 self.ins(self.current_block).br(end_block);
-
                 self.const_unit()
             }
             hir::ExprKind::Block(block) => {
@@ -540,6 +538,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.enter_scope(ScopeKind::Block, expr.span);
 
                 for expr in &block.exprs {
+                    if !self.in_connected_block() {
+                        // TODO: emit unreachable code warning?
+                        break;
+                    }
+
                     result = Some(self.lower_expr(expr));
                 }
 
@@ -1000,7 +1003,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         values: Vec<ValueId>,
     ) -> BlockId {
         let block = self.body.create_block("match_test");
-
         self.ins(parent_block).br(block);
 
         let blocks: Vec<_> = cases
@@ -1420,12 +1422,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         ref_value
     }
 
-    pub fn create_once_ref(&mut self, to_clone: ValueId, ty: Ty, span: Span) -> ValueId {
-        let value = self.create_ref(to_clone, ty, span);
-        self.set_moved(value, span);
-        value
-    }
-
     pub fn create_value_fields(&mut self, value: ValueId) {
         let value = self.body.value(value);
 
@@ -1537,7 +1533,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         for coercion in coercions.iter() {
             coerced_value = match coercion.kind {
                 CoercionKind::NeverToAny | CoercionKind::RefToOwned => coerced_value,
-                CoercionKind::AnyToUnit => self.const_unit(),
+                CoercionKind::AnyToUnit | CoercionKind::AnyToNever => self.const_unit(),
                 CoercionKind::IntPromotion => {
                     self.push_inst_with_register(coercion.target, |value| Inst::Convert {
                         value,
@@ -1546,16 +1542,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         span,
                     })
                 }
-                CoercionKind::MutRefToImm => {
-                    self.set_moved(coerced_value, span);
-                    self.push_inst_with_register(coercion.target, |value| Inst::StackAlloc {
-                        value,
-                        init: Some(coerced_value),
-                    })
-                }
-                CoercionKind::OwnedToRef => {
-                    self.create_once_ref(coerced_value, coercion.target, span)
-                }
+                CoercionKind::MutRefToImm => self.create_ref(coerced_value, coercion.target, span),
+                CoercionKind::OwnedToRef => self.create_ref(coerced_value, coercion.target, span),
             };
 
             self.body.value_mut(coerced_value).ty = coercion.target;

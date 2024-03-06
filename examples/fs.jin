@@ -1,0 +1,16 @@
+import std.(fs, io)
+
+// TODO: or-panic for `Result` would be nice here
+// TODO: and try syntax would be amazing here!
+fn main() = {
+    match std.fs.read-to-str("examples/file.txt") {
+        Result.Ok(contents) -> {
+            print("--- Read ---\n{contents}")
+            match std.fs.write("examples/file2.txt", contents) {
+                Result.Ok(()) -> ()
+                Result.Err(err) -> println("Error writing to 'examples/file2.txt': {err}")
+            }
+        }
+        Result.Err(err) -> println("Error reading 'examples/file.txt': {err}")
+    }
+}

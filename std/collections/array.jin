@@ -1,6 +1,8 @@
 import std.builtin
 import std.option.Option
 
+let min-cap: uint = 4
+
 type Array*[T](buf: []T)
 
 fn Array.new*[T]() -> Array[T] = Array([])
@@ -90,16 +92,15 @@ fn needs-to-grow[T](self: &Array[T], additional: uint) -> bool =
 
 
 fn grow[T](self: &mut Array[T], additional: uint) = {
-	if self.buf.cap > 0 {
-		let new-cap = max(self.buf.cap * 2, self.buf.cap + additional)
+	let cap = self.buf.cap 
+	if cap > 0 {
+		let new-cap = max(cap * 2, cap + additional)
 		unsafe builtin.grow(&mut self.buf, new-cap)
 	} else {
-		self.buf = [:min-cap]
+		self.buf = [:max(min-cap, additional)]
 	}
 }
 
 // TODO: use a polymorphic `std.cmp.max` function instead
 fn max(a: uint, b: uint) -> uint =
 	if a > b { a } else { b }
-
-let min-cap: uint = 4
