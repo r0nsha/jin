@@ -5,18 +5,7 @@ fn read*(path: str) -> io.Result[Array[u8]] =
 
 fn read*(path: &str) -> io.Result[Array[u8]] =
     match File.open(path) {
-        Result.Ok(file) -> {
-            match file.read-to-end() {
-                Result.Ok(buf) -> {
-                    file.close()
-                    Result.Ok(buf)
-                }
-                Result.Err(err) -> {
-                    file.close()
-                    Result.Err(err)
-                }
-            }
-        }
+        Result.Ok(file) -> file.read-to-end()
         Result.Err(err) -> Result.Err(err)
     }
 
@@ -25,18 +14,7 @@ fn read-to-str*(path: str) -> io.Result[str] =
 
 fn read-to-str*(path: &str) -> io.Result[str] =
     match File.open(path) {
-        Result.Ok(file) -> {
-            match file.read-to-str() {
-                Result.Ok(contents) -> {
-                    file.close()
-                    Result.Ok(contents)
-                }
-                Result.Err(err) -> {
-                    file.close()
-                    Result.Err(err)
-                }
-            }
-        }
+        Result.Ok(file) -> file.read-to-str()
         Result.Err(err) -> Result.Err(err)
     }
 
@@ -57,18 +35,7 @@ fn write*(path: str, bytes: &[]u8) -> io.Result[()] =
 
 fn write*(path: &str, bytes: &[]u8) -> io.Result[()] =
     match File.create(path) {
-        Result.Ok(mut file) -> {
-            match file.write(bytes) {
-                Result.Ok(_) -> {
-                    file.close()
-                    Result.Ok(())
-                }
-                Result.Err(err) -> {
-                    file.close()
-                    Result.Err(err)
-                }
-            }
-        }
+        Result.Ok(mut file) -> file.write(bytes).map fn(_) {}
         Result.Err(err) -> Result.Err(err)
     }
 
@@ -152,7 +119,5 @@ fn remove-file*(path: &str) -> io.Result[()] =
 	_ -> Result.Ok(())
     }
 
-fn close*(self: File) = {
+fn `=destroy`*(self: &mut File) =
     unsafe c.close(self.fd)
-}
-

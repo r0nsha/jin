@@ -236,11 +236,18 @@ impl<'a> Parser<'a> {
                     let span = expr.span().merge(fn_expr.span());
                     let fn_arg = CallArg::Positional(fn_expr);
 
-                    match &mut expr {
-                        Expr::Call { args, .. } | Expr::MethodCall { args, .. } => {
+                    match expr {
+                        Expr::Call { ref mut args, .. } | Expr::MethodCall { ref mut args, .. } => {
                             args.push(fn_arg);
                             expr
                         }
+                        Expr::Field { expr, field, .. } => Expr::MethodCall {
+                            expr,
+                            method: field,
+                            targs: None,
+                            args: vec![fn_arg],
+                            span,
+                        },
                         _ => Expr::Call { callee: Box::new(expr), args: vec![fn_arg], span },
                     }
                 }
