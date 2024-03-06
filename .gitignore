@@ -8,6 +8,7 @@
 /examples/build
 /examples/*.a
 /examples/*.so
+/examples/file2.txt
 
 /rt/zig-cache
 /rt/zig-out

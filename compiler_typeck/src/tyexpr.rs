@@ -81,10 +81,6 @@ pub(crate) fn check(
                 .with_label(Label::primary(inner.span(), "invalid referenced type"))),
             }
         }
-        TyExpr::RawPtr(pointee, _) => {
-            let pointee = check(cx, env, pointee, allow_hole)?;
-            Ok(Ty::new(TyKind::RawPtr(pointee)))
-        }
         TyExpr::Path(path, targs, span) => {
             check_path(cx, env, path, targs.as_deref(), *span, allow_hole)
         }

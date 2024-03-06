@@ -175,7 +175,6 @@ pub enum TyExpr {
     Fn(TyExprFn),
     Slice(Box<TyExpr>, Span),
     Ref(Box<TyExpr>, Mutability, Span),
-    RawPtr(Box<TyExpr>, Span),
     Path(Vec<Word>, Option<Vec<TyExpr>>, Span),
     Unit(Span),
     Hole(Span),
@@ -187,7 +186,6 @@ impl Spanned for TyExpr {
             Self::Fn(TyExprFn { span, .. })
             | Self::Slice(_, span)
             | Self::Ref(_, _, span)
-            | Self::RawPtr(_, span)
             | Self::Path(_, _, span)
             | Self::Unit(span)
             | Self::Hole(span) => *span,
