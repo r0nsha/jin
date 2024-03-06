@@ -2,7 +2,7 @@ mod child
 
 import fn-overloading.child.(*)
 
-fn extern "c" printf(fmt: *u8, ..) -> i32
+fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
 fn main() = {
 	unsafe printf("Function overload matching:\n".ptr)

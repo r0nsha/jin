@@ -18,6 +18,7 @@ mod types;
 mod unify;
 
 use std::cell::RefCell;
+use std::rc::Rc;
 
 use compiler_ast::{self as ast, Ast};
 use compiler_core::{
@@ -32,7 +33,7 @@ use compiler_core::{
 use ena::unify::{InPlace, InPlaceUnificationTable, Snapshot};
 use rustc_hash::FxHashMap;
 
-use crate::{builtins::BuiltinTys, ns::GlobalEnv};
+use crate::ns::GlobalEnv;
 
 pub fn typeck(db: &mut Db, ast: Ast) -> Hir {
     let mut cx = Typeck::new(db);
@@ -144,16 +145,14 @@ pub struct TyStorageSnapshot {
 
 impl<'db> Typeck<'db> {
     fn new(db: &'db mut Db) -> Self {
-        let mut def_to_ty = FxHashMap::default();
-        let builtin_tys = BuiltinTys::new(db, &mut def_to_ty);
         Self {
             db,
             hir: Hir::new(),
-            global_env: GlobalEnv::new(builtin_tys),
+            global_env: GlobalEnv::new(),
             res_map: ResMap::new(),
             storage: RefCell::new(TyStorage::new()),
             ty_aliases: FxHashMap::default(),
-            def_to_ty,
+            def_to_ty: FxHashMap::default(),
             expr_id: Counter::new(),
         }
     }
@@ -162,6 +161,8 @@ impl<'db> Typeck<'db> {
         for module in &ast.modules {
             self.global_env.insert_module(module.id);
         }
+
+        builtins::define_all(self);
     }
 
     fn expect_module_def(&self, def_id: DefId, span: Span) -> DiagnosticResult<ModuleId> {
@@ -269,7 +270,7 @@ impl ResMap {
 }
 
 pub(crate) struct TyAlias {
-    pub(crate) tyexpr: TyExpr,
+    pub(crate) tyexpr: Option<Rc<TyExpr>>,
     pub(crate) ty: Option<Ty>,
     pub(crate) ty_params: Vec<TyParam>,
 }

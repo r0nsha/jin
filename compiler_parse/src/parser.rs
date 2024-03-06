@@ -57,14 +57,7 @@ pub(super) struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     fn new(db: &'a Db, source: &'a Source, tokens: Vec<Token>, is_package_root: bool) -> Self {
-        Self {
-            db,
-            source,
-            tokens,
-            is_package_root,
-            pos: 0,
-            submodule_paths: FxHashSet::default(),
-        }
+        Self { db, source, tokens, is_package_root, pos: 0, submodule_paths: FxHashSet::default() }
     }
 
     fn parse(

@@ -35,11 +35,6 @@ impl<'a> Parser<'a> {
                 let fty = self.parse_fn_ty()?;
                 TyExpr::Fn(fty)
             }
-            TokenKind::Star => {
-                let pointee = self.parse_ty()?;
-                let span = tok.span.merge(pointee.span());
-                TyExpr::RawPtr(Box::new(pointee), span)
-            }
             TokenKind::OpenParen => {
                 if self.is(TokenKind::CloseParen) {
                     TyExpr::Unit(tok.span.merge(self.last_span()))

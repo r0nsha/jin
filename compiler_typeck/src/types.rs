@@ -1,4 +1,5 @@
 use compiler_ast::{self as ast, Ast};
+use compiler_core::word::Word;
 use compiler_core::{
     db::{AdtField, AdtId, DefId, DefKind, ModuleId, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -166,15 +167,7 @@ pub(crate) fn define_ty_params(
     let mut defined_ty_params = WordMap::default();
 
     for tp in ty_params {
-        let ty = Ty::new(TyKind::Param(ParamTy { name: tp.word.name(), var: cx.fresh_var() }));
-
-        let id = cx.define().new_local(
-            env,
-            DefKind::BuiltinTy(ty),
-            tp.word,
-            Mutability::Imm,
-            TyKind::Type(ty).into(),
-        );
+        let (id, ty) = define_ty_param(cx, env, tp.word);
 
         if let Some(prev_span) = defined_ty_params.insert(tp.word) {
             cx.db.diagnostics.add(errors::name_defined_twice("type parameter", tp.word, prev_span));
@@ -184,6 +177,18 @@ pub(crate) fn define_ty_params(
     }
 
     new_ty_params
+}
+
+pub(crate) fn define_ty_param(cx: &mut Typeck, env: &mut Env, word: Word) -> (DefId, Ty) {
+    let ty = Ty::new(TyKind::Param(ParamTy { name: word.name(), var: cx.fresh_var() }));
+    let id = cx.define().new_local(
+        env,
+        DefKind::BuiltinTy(ty),
+        word,
+        Mutability::Imm,
+        TyKind::Type(ty).into(),
+    );
+    (id, ty)
 }
 
 pub(crate) fn fresh_instantiation(

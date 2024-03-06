@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use compiler_core::db::DefId;
 use compiler_core::{
     db::DefKind,
@@ -79,10 +81,6 @@ pub(crate) fn check(
                 .with_label(Label::primary(inner.span(), "invalid referenced type"))),
             }
         }
-        TyExpr::RawPtr(pointee, _) => {
-            let pointee = check(cx, env, pointee, allow_hole)?;
-            Ok(Ty::new(TyKind::RawPtr(pointee)))
-        }
         TyExpr::Path(path, targs, span) => {
             check_path(cx, env, path, targs.as_deref(), *span, allow_hole)
         }
@@ -137,7 +135,7 @@ fn check_path(
                     )?;
                     Ok(Ty::new(TyKind::Adt(adt_id, targs.unwrap_or_default())))
                 }
-                DefKind::Global if cx.ty_aliases.contains_key(&id) => {
+                DefKind::TyAlias => {
                     let ty = check_ty_alias(cx, id, allow_hole)?;
                     let targs = check_optional_targs_exact(
                         cx,
@@ -226,19 +224,24 @@ pub(crate) fn check_ty_alias(
     allow_hole: AllowTyHole,
 ) -> DiagnosticResult<Ty> {
     if let Some(ty) = cx.ty_aliases[&id].ty {
-        Ok(ty)
-    } else {
-        let mut env = Env::new(cx.db[id].scope.module_id);
-
-        env.with_anon_scope(ScopeKind::TyDef, |env| {
-            for tp in &cx.ty_aliases[&id].ty_params {
-                env.insert(tp.word.name(), tp.id);
-            }
-
-            let tyexpr = cx.ty_aliases[&id].tyexpr.clone();
-            self::check(cx, env, &tyexpr, allow_hole)
-        })
+        return Ok(ty);
     }
+
+    let mut env = Env::new(cx.db[id].scope.module_id);
+
+    env.with_anon_scope(ScopeKind::TyDef, |env| {
+        for tp in &cx.ty_aliases[&id].ty_params {
+            env.insert(tp.word.name(), tp.id);
+        }
+
+        let tyexpr = Rc::clone(
+            cx.ty_aliases[&id]
+                .tyexpr
+                .as_ref()
+                .expect("unresolved type aliases must have a type expression to resolve"),
+        );
+        self::check(cx, env, &tyexpr, allow_hole)
+    })
 }
 
 create_bool_enum!(AllowTyHole);

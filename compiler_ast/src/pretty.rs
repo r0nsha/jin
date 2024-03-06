@@ -430,11 +430,6 @@ impl PrettyPrint for TyExpr {
                 inner.pretty_print(cx);
                 cx.builder.end_child();
             }
-            TyExpr::RawPtr(pointee, _) => {
-                cx.builder.begin_child("raw ptr".to_string());
-                pointee.pretty_print(cx);
-                cx.builder.end_child();
-            }
             TyExpr::Path(path, targs, _) => {
                 cx.builder.begin_child(format!(
                     "path: {}",
