@@ -1,5 +1,8 @@
 import std.(c, io)
 
+fn read*(path: str) -> io.Result[Array[u8]] =
+    read(&path)
+
 fn read*(path: &str) -> io.Result[Array[u8]] =
     match File.open(path) {
         Result.Ok(file) -> {
@@ -16,6 +19,9 @@ fn read*(path: &str) -> io.Result[Array[u8]] =
         }
         Result.Err(err) -> Result.Err(err)
     }
+
+fn read-to-str*(path: str) -> io.Result[str] =
+    read-to-str(&path)
 
 fn read-to-str*(path: &str) -> io.Result[str] =
     match File.open(path) {
@@ -34,11 +40,20 @@ fn read-to-str*(path: &str) -> io.Result[str] =
         Result.Err(err) -> Result.Err(err)
     }
 
+fn write*(path: str, contents: str) -> io.Result[()] =
+    write(&path, &contents)
+
 fn write*(path: &str, contents: str) -> io.Result[()] =
     write(path, &contents)
 
+fn write*(path: str, contents: &str) -> io.Result[()] =
+    write(&path, contents.as-bytes())
+
 fn write*(path: &str, contents: &str) -> io.Result[()] =
     write(path, contents.as-bytes())
+
+fn write*(path: str, bytes: &[]u8) -> io.Result[()] =
+    write(&path, bytes)
 
 fn write*(path: &str, bytes: &[]u8) -> io.Result[()] =
     match File.create(path) {
