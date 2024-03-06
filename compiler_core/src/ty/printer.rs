@@ -51,9 +51,8 @@ impl<'db> TyPrinter<'db> {
                 Ok(())
             }
             TyKind::Slice(elem) => {
-                f.write_char('[')?;
-                self.fmt_type(f, elem)?;
-                f.write_char(']')
+                f.write_str("[]")?;
+                self.fmt_type(f, elem)
             }
             TyKind::Ref(inner, mutability) => {
                 f.write_str(match mutability {
