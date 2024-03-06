@@ -62,8 +62,9 @@ impl<'db> TyPrinter<'db> {
                 self.fmt_type(f, inner)
             }
             TyKind::RawPtr(pointee) => {
-                f.write_str("*")?;
-                self.fmt_type(f, pointee)
+                f.write_str("ptr[")?;
+                self.fmt_type(f, pointee)?;
+                f.write_str("]")
             }
             TyKind::Int(ity) => f.write_str(match ity {
                 IntTy::I8 => sym::ty::I8,
