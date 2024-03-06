@@ -127,8 +127,10 @@ fn read-to-end*(self: &File) -> io.Result[Array[u8]] = {
 
 fn read-to-str*(self: &File) -> io.Result[str] =
     match self.read-to-end() {
-	// TODO: utf8 check. if fails, return `io.Error.InvalidData(stream did not contain valid UTF-8)`
-	Result.Ok(buf) -> Result.Ok(str.from-utf8-unchecked(buf.take())) 
+	Result.Ok(buf) -> match str.from-utf8(buf.take()) {
+            Result.Ok(s) -> Result.Ok(s) 
+            Result.Err(()) -> Result.Err(io.Error.InvalidData("stream did not contain valid UTF-8")) 
+        }
 	Result.Err(err) -> Result.Err(err) 
     }
 

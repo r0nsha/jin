@@ -1,12 +1,22 @@
 import std.char.(encode-utf8-raw, ?)
 import std.collections.Array
 
+fn str.from-utf8*(bytes: []u8) -> Result[str, ()] =
+	Result.Ok(unsafe as[_](bytes))
+
+// TODO:
+// fn str.from-utf8*(bytes: &[]u8) -> str =
+// 	unsafe as[_](bytes)
+
+// TODO: should be marked unsafe
 fn str.from-utf8-unchecked*(bytes: []u8) -> str =
 	unsafe as[_](bytes)
 
+// TODO: should be marked unsafe
 fn str.from-utf8-unchecked*(bytes: &[]u8) -> &str =
 	unsafe as[_](bytes)
 
+// TODO: should be marked unsafe
 fn str.from-utf8-mut-unchecked*(bytes: &mut []u8) -> &mut str =
 	unsafe as[_](bytes)
 

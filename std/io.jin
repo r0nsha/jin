@@ -24,6 +24,7 @@ type Error* {
 	BadFileNumber
 	AlreadyExists
 	InvalidArgument
+	InvalidData(cause: &str)
 	Other(code: i32)
 }
 
@@ -52,5 +53,9 @@ fn fmt*(self: &Error, buf: &mut StrBuf) =
 		Error.BadFileNumber -> buf.push("Bad file number")
 		Error.AlreadyExists -> buf.push("Already exists")
 		Error.InvalidArgument -> buf.push("Invalid argument")
+		Error.InvalidData(cause) -> {
+			buf.push("Invalid data: ")
+			buf.push(cause)
+		}
 		Error.Other(code) -> buf.push("Other({code})")
 	}
