@@ -400,12 +400,12 @@ fn check_fn_helper(
         }
     }
 
+    if assoc_ty.is_none() && matches!(&fun.kind, ast::FnKind::Bare { .. }) {
+        hooks::check(cx, &sig, id)?;
+    }
+
     cx.def_to_ty.insert(id, sig.ty);
     cx.res_map.item_to_sig.insert(item_id, sig);
-
-    if assoc_ty.is_none() && matches!(&fun.kind, ast::FnKind::Bare { .. }) {
-        hooks::check(cx, id)?;
-    }
 
     Ok(())
 }
