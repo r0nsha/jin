@@ -354,12 +354,12 @@ impl<'a> Parser<'a> {
 
         let name = self.eat_ident()?.word();
 
-        let ty_args = self.parse_optional_targs()?;
+        let targs = self.parse_optional_targs()?;
 
-        if ty_args.is_some() || self.peek_is(TokenKind::OpenParen) {
+        if targs.is_some() || self.peek_is(TokenKind::OpenParen) {
             let (args, args_span) = self.parse_call_args()?;
             let span = expr.span().merge(args_span);
-            Ok(Expr::MethodCall { expr: Box::new(expr), method: name, targs: ty_args, args, span })
+            Ok(Expr::MethodCall { expr: Box::new(expr), method: name, targs, args, span })
         } else {
             let span = expr.span().merge(name.span());
             Ok(Expr::Field { expr: Box::new(expr), field: name, span })

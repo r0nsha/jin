@@ -250,7 +250,7 @@ pub(crate) fn apply_targs_to_ty(
             ty_params.into_iter().zip(args.iter()).map(|(param, arg)| (param.var, *arg)).collect()
         }
         Some(args) => {
-            return Err(errors::ty_arg_mismatch(ty_params.len(), args.len(), span));
+            return Err(errors::targ_mismatch(ty_params.len(), args.len(), span));
         }
         _ => fresh_instantiation(cx, env, ty_params),
     };

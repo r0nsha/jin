@@ -548,8 +548,8 @@ impl FnCandidate {
 
         // Check that the amount of given type arguments == the amount of type
         // parameters in this candidate
-        match query.ty_args {
-            Some(ty_args) if ty_args.len() != self.ty.collect_params().len() => {
+        match query.targs {
+            Some(targs) if targs.len() != self.ty.collect_params().len() => {
                 return None;
             }
             _ => (),
@@ -718,7 +718,7 @@ impl<'a> Query<'a> {
 #[derive(Debug, Clone)]
 pub(crate) struct FnQuery<'a> {
     pub(crate) word: Word,
-    pub(crate) ty_args: Option<&'a [Ty]>,
+    pub(crate) targs: Option<&'a [Ty]>,
     pub(crate) args: &'a [FnTyParam],
     pub(crate) is_ufcs: IsUfcs,
 }
@@ -726,11 +726,11 @@ pub(crate) struct FnQuery<'a> {
 impl<'a> FnQuery<'a> {
     pub(crate) fn new(
         word: Word,
-        ty_args: Option<&'a [Ty]>,
+        targs: Option<&'a [Ty]>,
         args: &'a [FnTyParam],
         is_ufcs: IsUfcs,
     ) -> Self {
-        Self { word, ty_args, args, is_ufcs }
+        Self { word, targs, args, is_ufcs }
     }
 
     pub(crate) fn display<'db>(&'db self, db: &'db Db) -> FnTyPrinter {

@@ -127,7 +127,7 @@ pub fn multiple_fn_def_err(
     .with_note("functions may be overloaded by their parameters' types and names")
 }
 
-pub fn ty_arg_mismatch(expected: usize, found: usize, span: Span) -> Diagnostic {
+pub fn targ_mismatch(expected: usize, found: usize, span: Span) -> Diagnostic {
     Diagnostic::error(format!("expected {expected} type argument(s), but {found} were supplied"))
         .with_label(Label::primary(
             span,
@@ -135,7 +135,7 @@ pub fn ty_arg_mismatch(expected: usize, found: usize, span: Span) -> Diagnostic 
         ))
 }
 
-pub fn adt_ty_arg_mismatch(
+pub fn adt_targ_mismatch(
     ty_name: &str,
     targ_len: usize,
     ty_param_len: usize,

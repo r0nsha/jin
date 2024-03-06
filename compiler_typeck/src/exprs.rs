@@ -755,12 +755,12 @@ fn lookup_fn_for_call(
     env: &Env,
     in_module: ModuleId,
     word: Word,
-    ty_args: Option<&[Ty]>,
+    targs: Option<&[Ty]>,
     args: &[hir::CallArg],
     is_ufcs: IsUfcs,
 ) -> DiagnosticResult<DefId> {
     let args = map_call_args_for_query(cx, args);
-    let query = FnQuery::new(word, ty_args, &args, is_ufcs);
+    let query = FnQuery::new(word, targs, &args, is_ufcs);
     cx.lookup().with_env(env).query(env.module_id(), in_module, &Query::Fn(query))
 }
 
@@ -1125,7 +1125,7 @@ fn interp_let_buf(
             from_module,
             strbuf_ty,
             strbuf_span,
-            &Query::Fn(FnQuery { word: new_word, ty_args: None, args: &[], is_ufcs: IsUfcs::No }),
+            &Query::Fn(FnQuery { word: new_word, targs: None, args: &[], is_ufcs: IsUfcs::No }),
         )
         .expect("StrBuf.new() to exist")
     else {
@@ -1203,7 +1203,7 @@ fn interp_fmt_expr(
         env.module_id(),
         &Query::Fn(FnQuery {
             word: fmt_word,
-            ty_args: None,
+            targs: None,
             args: &[
                 FnTyParam { name: None, ty: ty.create_ref(Mutability::Imm) },
                 FnTyParam { name: None, ty: strbuf_ty.create_ref(Mutability::Mut) },
@@ -1258,7 +1258,7 @@ fn interp_strbuf_take(
             str_module,
             &Query::Fn(FnQuery {
                 word,
-                ty_args: None,
+                targs: None,
                 args: &[FnTyParam { name: None, ty: strbuf_ty }],
                 is_ufcs: IsUfcs::Yes,
             }),

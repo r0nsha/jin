@@ -212,7 +212,7 @@ pub(crate) fn check_optional_targs_exact(
     let targs_len = targs.as_ref().map_or(0, Vec::len);
 
     if targs_len != ty_params_len {
-        return Err(errors::adt_ty_arg_mismatch(&ty_name, targs_len, ty_params_len, span));
+        return Err(errors::adt_targ_mismatch(&ty_name, targs_len, ty_params_len, span));
     }
 
     Ok(targs)

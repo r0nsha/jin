@@ -134,8 +134,8 @@ impl PrettyPrint for Expr {
             Self::Call { callee, args, .. } => {
                 print_call(cx, callee, args, None, None);
             }
-            Self::MethodCall { expr, method, targs: ty_args, args, .. } => {
-                print_call(cx, expr, args, ty_args.as_deref(), Some(*method));
+            Self::MethodCall { expr, method, targs, args, .. } => {
+                print_call(cx, expr, args, targs.as_deref(), Some(*method));
             }
             Self::Unary { expr, op, .. } => {
                 cx.builder.begin_child(op.to_string());
@@ -460,7 +460,7 @@ fn print_call(
     cx: &mut PrettyCx,
     expr: &Expr,
     args: &[CallArg],
-    ty_args: Option<&[TyExpr]>,
+    targs: Option<&[TyExpr]>,
     method: Option<Word>,
 ) {
     cx.builder.begin_child(if let Some(m) = method {
@@ -470,9 +470,9 @@ fn print_call(
     });
     expr.pretty_print(cx);
 
-    if let Some(ty_args) = ty_args {
+    if let Some(targs) = targs {
         cx.builder.begin_child("type args".to_string());
-        for arg in ty_args {
+        for arg in targs {
             arg.pretty_print(cx);
         }
         cx.builder.end_child();
