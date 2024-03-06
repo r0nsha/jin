@@ -1,28 +1,11 @@
-use compiler_ast::{self as ast};
-use compiler_core::db::Hook;
-use compiler_core::middle::Mutability;
 use compiler_core::{
-    db::DefId,
+    db::{DefId, Hook},
     diagnostics::DiagnosticResult,
-    hir,
-    middle::{CallConv, Pat, TyExpr},
-    span::{Span, Spanned},
-    ty::{FnTy, FnTyFlags, FnTyParam, Ty, TyKind},
-    word::{Word, WordMap},
+    middle::Mutability,
+    ty::TyKind,
 };
-use compiler_data_structures::index_vec::Key as _;
-use ustr::ustr;
 
-use crate::{
-    coerce::CoerceExt as _,
-    errors, exprs,
-    ns::{Env, ScopeKind},
-    tyexpr,
-    tyexpr::AllowTyHole,
-    types,
-    unify::Obligation,
-    Typeck,
-};
+use crate::Typeck;
 
 pub(crate) fn check(cx: &mut Typeck, id: DefId) -> DiagnosticResult<()> {
     let Ok(hook) = Hook::try_from(cx.db[id].name.as_str()) else {
