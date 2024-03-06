@@ -51,9 +51,8 @@ impl<'db> TyPrinter<'db> {
                 Ok(())
             }
             TyKind::Slice(elem) => {
-                f.write_char('[')?;
-                self.fmt_type(f, elem)?;
-                f.write_char(']')
+                f.write_str("[]")?;
+                self.fmt_type(f, elem)
             }
             TyKind::Ref(inner, mutability) => {
                 f.write_str(match mutability {
@@ -63,8 +62,9 @@ impl<'db> TyPrinter<'db> {
                 self.fmt_type(f, inner)
             }
             TyKind::RawPtr(pointee) => {
-                f.write_str("*")?;
-                self.fmt_type(f, pointee)
+                f.write_str("ptr[")?;
+                self.fmt_type(f, pointee)?;
+                f.write_str("]")
             }
             TyKind::Int(ity) => f.write_str(match ity {
                 IntTy::I8 => sym::ty::I8,

@@ -570,22 +570,24 @@ impl<'db> Generator<'db> {
                 }
             }
             Inst::RtCall { value, kind, span } => {
-                let traced = kind.traced();
-
                 let mut args = vec![];
 
+                let traced = kind.traced();
                 if traced {
                     args.push(D::text("backtrace"));
                 }
 
                 match kind {
+                    RtCallKind::Panic { msg } => {
+                        args.push(self.value(state, *msg));
+                    }
                     RtCallKind::SliceGrow { slice, new_cap } => {
                         args.push(util::addr(self.value(state, *slice)));
                         args.push(self.sizeof_slice_elem(state, *slice));
                         args.push(self.value(state, *new_cap));
                     }
-                    RtCallKind::Panic { msg } => {
-                        args.push(self.value(state, *msg));
+                    RtCallKind::SliceUtf8Validate { slice } => {
+                        args.push(self.value(state, *slice));
                     }
                 }
 

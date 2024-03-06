@@ -266,7 +266,7 @@ export fn jinrt_slice_cap(slice: *RcSlice) usize {
     return if (slice.array) |a| a.cap else slice.len;
 }
 
-export fn jinrt_strcmp(a: Str, b: Str) bool {
+export fn jinrt_str_cmp(a: Str, b: Str) bool {
     if (a.as_slice()) |as| {
         if (b.as_slice()) |bs| {
             return std.mem.eql(u8, as, bs);
@@ -274,6 +274,13 @@ export fn jinrt_strcmp(a: Str, b: Str) bool {
     }
 
     return false;
+}
+
+export fn jinrt_slice_utf8_validate(slice: RcSlice) bool {
+    return if (slice.as_slice()) |s|
+        std.unicode.utf8ValidateSlice(s)
+    else
+        false;
 }
 
 export fn jinrt_backtrace_new() *Backtrace {

@@ -1,8 +1,11 @@
-@builtin("slice-grow")
-fn extern "jin" grow*[T](slice: &mut []T, new-cap: uint)
-
 @builtin("forget")
 fn extern "jin" forget*[T](x: &T)
 
 @builtin("panic")
 fn extern "jin" panic*(msg: &str) -> never
+
+@builtin("slice-grow")
+fn extern "jin" slice-grow*[T](slice: &mut []T, new-cap: uint)
+
+@builtin("slice-utf8-validate")
+fn extern "jin" slice-utf8-validate*(slice: &[]u8) -> bool

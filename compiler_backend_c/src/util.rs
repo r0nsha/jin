@@ -199,7 +199,7 @@ pub fn call<'a>(callee: D<'a>, args: impl IntoIterator<Item = D<'a>>) -> D<'a> {
 }
 
 pub fn cmp_strs<'a>(a: D<'a>, b: D<'a>) -> D<'a> {
-    util::call(D::text("jinrt_strcmp"), [a, b])
+    util::call(D::text("jinrt_str_cmp"), [a, b])
 }
 
 pub fn escaped_str_value(value: &str) -> D {

@@ -900,19 +900,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         args: Vec<ValueId>,
     ) -> ValueId {
         match builtin {
-            Builtin::SliceGrow => {
-                debug_assert_eq!(args.len(), 2);
-
-                // We must get the root value of this ref, so that it is assigned to
-                let slice = self.value_roots.root_of(args[0]);
-                let new_cap = args[1];
-
-                self.push_inst_with_register(expr.ty, |value| Inst::RtCall {
-                    value,
-                    kind: RtCallKind::SliceGrow { slice, new_cap },
-                    span: expr.span,
-                })
-            }
             Builtin::Forget => {
                 debug_assert_eq!(args.len(), 1);
 
@@ -933,6 +920,30 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.push_inst_with_register(expr.ty, |value| Inst::RtCall {
                     value,
                     kind: RtCallKind::Panic { msg },
+                    span: expr.span,
+                })
+            }
+            Builtin::SliceGrow => {
+                debug_assert_eq!(args.len(), 2);
+
+                // We must get the root value of this ref, so that it is assigned to
+                let slice = self.value_roots.root_of(args[0]);
+                let new_cap = args[1];
+
+                self.push_inst_with_register(expr.ty, |value| Inst::RtCall {
+                    value,
+                    kind: RtCallKind::SliceGrow { slice, new_cap },
+                    span: expr.span,
+                })
+            }
+            Builtin::SliceUtf8Validate => {
+                debug_assert_eq!(args.len(), 1);
+
+                let slice = args[0];
+
+                self.push_inst_with_register(expr.ty, |value| Inst::RtCall {
+                    value,
+                    kind: RtCallKind::SliceUtf8Validate { slice },
                     span: expr.span,
                 })
             }

@@ -237,11 +237,14 @@ impl<'db> PrettyCx<'db> {
                 .append(D::text("("))
                 .append(D::intersperse(
                     match kind {
+                        RtCallKind::Panic { msg } => {
+                            vec![self.value(body, *msg)]
+                        }
                         RtCallKind::SliceGrow { slice, new_cap } => {
                             vec![self.value(body, *slice), self.value(body, *new_cap)]
                         }
-                        RtCallKind::Panic { msg } => {
-                            vec![self.value(body, *msg)]
+                        RtCallKind::SliceUtf8Validate { slice } => {
+                            vec![self.value(body, *slice)]
                         }
                     },
                     D::text(",").append(D::space()),

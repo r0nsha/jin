@@ -95,7 +95,7 @@ fn grow[T](self: &mut Array[T], additional: uint) = {
 	let cap = self.buf.cap 
 	if cap > 0 {
 		let new-cap = max(cap * 2, cap + additional)
-		unsafe builtin.grow(&mut self.buf, new-cap)
+		unsafe builtin.slice-grow(&mut self.buf, new-cap)
 	} else {
 		self.buf = [:max(min-cap, additional)]
 	}
