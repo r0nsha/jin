@@ -1,7 +1,4 @@
-import std.(
-    fs.(File),
-    io
-)
+import std.(fs, io)
 
 // TODO: or-panic for `Result` would be nice here
 // TODO: and try syntax would be amazing here!
