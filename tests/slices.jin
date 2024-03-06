@@ -1,6 +1,6 @@
 import std.builtin
 
-fn extern "c" printf(fmt: *u8, ..) -> i32
+fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
 fn main() = {
 	ints()
