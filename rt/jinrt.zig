@@ -266,7 +266,7 @@ export fn jinrt_slice_cap(slice: *RcSlice) usize {
     return if (slice.array) |a| a.cap else slice.len;
 }
 
-export fn jinrt_strcmp(a: Str, b: Str) bool {
+export fn jinrt_str_cmp(a: Str, b: Str) bool {
     if (a.as_slice()) |as| {
         if (b.as_slice()) |bs| {
             return std.mem.eql(u8, as, bs);

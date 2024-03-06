@@ -79,7 +79,7 @@ void jinrt_panic_raw(jinrt_backtrace *backtrace, u8 *msg,
 never jinrt_panic(jinrt_backtrace *backtrace, str msg, jinrt_stackframe frame);
 
 // Utils
-bool jinrt_strcmp(str a, str b);
+bool jinrt_str_cmp(str a, str b);
 
 // Stack traces
 jinrt_backtrace *jinrt_backtrace_new();
