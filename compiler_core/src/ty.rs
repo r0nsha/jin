@@ -883,6 +883,13 @@ impl<'a, 'b> From<(&'a [TyParam], &'b [Ty])> for Instantiation {
     }
 }
 
+impl<'a, 'b> From<(&'a [ParamTy], &'b [Ty])> for Instantiation {
+    fn from((tparams, targs): (&'a [ParamTy], &'b [Ty])) -> Self {
+        debug_assert!(targs.len() == tparams.len());
+        tparams.iter().zip(targs).map(|(tp, ty)| (tp.var, *ty)).collect()
+    }
+}
+
 pub struct ParamFolder<'a> {
     pub instantiation: &'a Instantiation,
 }

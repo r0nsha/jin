@@ -1,6 +1,7 @@
 use std::{fmt, mem};
 
 use compiler_core::db::Hook;
+use compiler_core::ty::Instantiation;
 use compiler_helpers::create_bool_enum;
 use itertools::Itertools as _;
 use ustr::ustr;
@@ -437,13 +438,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub(super) fn call_destroy_hook(&mut self, value: ValueId, span: Span) {
-        let Some((adt_id, targs)) = self.ty_of(value).as_adt() else { return };
+        let ty = self.ty_of(value);
+        let Some((adt_id, targs)) = ty.as_adt() else { return };
         let Some(&hook_id) = self.cx.db.hooks.get(&(adt_id, Hook::Destroy)) else { return };
 
         let sig_id = self.cx.id_to_fn_sig[&hook_id];
         let sig_ty = self.cx.mir.fn_sigs[sig_id].ty;
         let tparams = sig_ty.collect_params();
-        dbg!(tparams);
+        let instantiation = Instantiation::from((tparams.as_slice(), targs.as_slice()));
+        dbg!(instantiation);
         // TODO: create instantiation
         // self.body.create_instantation(value, instantiation.clone());
         // TODO: create callee value
