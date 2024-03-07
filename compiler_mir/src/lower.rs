@@ -551,7 +551,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let (loop_start, loop_body) = if let Some(cond_expr) = &loop_.cond {
                     let loop_body = self.body.create_block("loop_body");
                     let cond = self.lower_input_expr(cond_expr);
-                    self.ins(loop_start).brif(cond, loop_body, Some(loop_end));
+                    self.ins(loop_start).brif(cond, loop_body, Some(loop_end), expr.span);
                     (loop_start, loop_body)
                 } else {
                     (loop_start, loop_start)
@@ -1088,7 +1088,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             .map(|case| self.lower_decision(state, case.decision, block, values.clone()))
             .collect();
 
-        self.ins(block).brif(cond, blocks[1], Some(blocks[0]));
+        self.ins(block).brif(cond, blocks[1], Some(blocks[0]), state.span);
 
         block
     }
@@ -1136,7 +1136,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
             self.position_at(test_block);
 
-            self.ins(test_block).brif(result_value, then_block, Some(else_block));
+            self.ins(test_block).brif(result_value, then_block, Some(else_block), state.span);
         }
 
         blocks[0]
@@ -1194,7 +1194,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         let uint = self.cx.db.types.uint;
         let tag_field = self.create_untracked_value(uint, ValueKind::Field(cond, ustr("tag")));
-        self.ins(test_block).switch(tag_field, blocks);
+        self.ins(test_block).switch(tag_field, blocks, state.span);
 
         test_block
     }
@@ -1382,7 +1382,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let fallback_block = self.lower_decision(state, fallback, guard_join, values.clone());
 
         self.position_at(guard_join);
-        self.ins(guard_join).brif(cond, body.block, Some(fallback_block));
+        self.ins(guard_join).brif(cond, body.block, Some(fallback_block), state.span);
 
         self.lower_decision_bindings(state, body.block, body.bindings);
         self.destroy_match_values(state, values);

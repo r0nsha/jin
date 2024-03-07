@@ -364,14 +364,14 @@ fn update_block_ids(
         Inst::Br { target } => {
             *target = id_map[find_successor(blocks, *target)];
         }
-        Inst::BrIf { cond: _, then, otherwise } => {
+        Inst::BrIf { then, otherwise, .. } => {
             *then = id_map[find_successor(blocks, *then)];
 
             if let Some(otherwise) = otherwise {
                 *otherwise = id_map[find_successor(blocks, *otherwise)];
             }
         }
-        Inst::Switch { cond: _, blocks: targets } => {
+        Inst::Switch { blocks: targets, .. } => {
             for target in targets {
                 *target = id_map[find_successor(blocks, *target)];
             }
@@ -449,8 +449,8 @@ pub enum Inst {
     IncRef { value: ValueId, span: Span },
     DecRef { value: ValueId, span: Span },
     Br { target: BlockId },
-    BrIf { cond: ValueId, then: BlockId, otherwise: Option<BlockId> },
-    Switch { cond: ValueId, blocks: Vec<BlockId> },
+    BrIf { cond: ValueId, then: BlockId, otherwise: Option<BlockId>, span: Span },
+    Switch { cond: ValueId, blocks: Vec<BlockId>, span: Span },
     Return { value: ValueId, span: Span },
     Call { value: ValueId, callee: ValueId, args: Vec<ValueId>, span: Span },
     RtCall { value: ValueId, kind: RtCallKind, span: Span },
@@ -549,4 +549,186 @@ pub enum Const {
     Float(f64),
     Bool(bool),
     Unit,
+}
+
+impl Const {
+    #[must_use]
+    pub fn as_str(&self) -> Option<&Ustr> {
+        if let Self::Str(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    #[must_use]
+    pub fn as_int(&self) -> Option<&i128> {
+        if let Self::Int(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    #[must_use]
+    pub fn as_float(&self) -> Option<&f64> {
+        if let Self::Float(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    #[must_use]
+    pub fn as_bool(&self) -> Option<&bool> {
+        if let Self::Bool(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    fn neg(&self) -> Self {
+        match self {
+            Const::Int(v) => Self::Int(-*v),
+            Const::Float(v) => Self::Float(-*v),
+            _ => panic!("{self:?}"),
+        }
+    }
+
+    fn not(&self) -> Self {
+        match self {
+            Const::Int(v) => Self::Int(!*v),
+            Const::Bool(v) => Self::Bool(!*v),
+            _ => panic!("{self:?}"),
+        }
+    }
+
+    fn add(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Const::Int(a), Const::Int(b)) => Self::Int(*a + *b),
+            (Const::Float(a), Const::Float(b)) => Self::Float(*a + *b),
+            _ => panic!("{self:?}, {other:?}"),
+        }
+    }
+
+    fn sub(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Const::Int(a), Const::Int(b)) => Self::Int(*a - *b),
+            (Const::Float(a), Const::Float(b)) => Self::Float(*a - *b),
+            _ => panic!("{self:?}, {other:?}"),
+        }
+    }
+
+    fn mul(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Const::Int(a), Const::Int(b)) => Self::Int(*a * *b),
+            (Const::Float(a), Const::Float(b)) => Self::Float(*a * *b),
+            _ => panic!("{self:?}, {other:?}"),
+        }
+    }
+
+    fn div(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Const::Int(a), Const::Int(b)) => Self::Int(*a / *b),
+            (Const::Float(a), Const::Float(b)) => Self::Float(*a / *b),
+            _ => panic!("{self:?}, {other:?}"),
+        }
+    }
+
+    fn rem(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Const::Int(a), Const::Int(b)) => Self::Int(*a % *b),
+            (Const::Float(a), Const::Float(b)) => Self::Float(*a % *b),
+            _ => panic!("{self:?}, {other:?}"),
+        }
+    }
+
+    fn shl(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Const::Int(a), Const::Int(b)) => Self::Int(*a << *b),
+            _ => panic!("{self:?}, {other:?}"),
+        }
+    }
+
+    fn shr(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Const::Int(a), Const::Int(b)) => Self::Int(*a >> *b),
+            _ => panic!("{self:?}, {other:?}"),
+        }
+    }
+
+    fn bitand(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Const::Int(a), Const::Int(b)) => Self::Int(*a & *b),
+            _ => panic!("{self:?}, {other:?}"),
+        }
+    }
+
+    fn bitor(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Const::Int(a), Const::Int(b)) => Self::Int(*a | *b),
+            _ => panic!("{self:?}, {other:?}"),
+        }
+    }
+
+    fn bitxor(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Const::Int(a), Const::Int(b)) => Self::Int(*a ^ *b),
+            _ => panic!("{self:?}, {other:?}"),
+        }
+    }
+
+    fn and(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Const::Bool(a), Const::Bool(b)) => Self::Bool(*a && *b),
+            _ => panic!("{self:?}, {other:?}"),
+        }
+    }
+
+    fn or(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Const::Bool(a), Const::Bool(b)) => Self::Bool(*a || *b),
+            _ => panic!("{self:?}, {other:?}"),
+        }
+    }
+
+    fn eq(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Const::Str(a), Const::Str(b)) => Self::Bool(a == b),
+            (Const::Int(a), Const::Int(b)) => Self::Bool(a == b),
+            (Const::Float(a), Const::Float(b)) => Self::Bool(a == b),
+            (Const::Bool(a), Const::Bool(b)) => Self::Bool(a == b),
+            (Const::Unit, Const::Unit) => Self::Bool(true),
+            _ => panic!("{self:?}, {other:?}"),
+        }
+    }
+
+    fn ne(&self, other: &Self) -> Self {
+        self.eq(other).not()
+    }
+
+    fn lt(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Const::Int(a), Const::Int(b)) => Self::Bool(a < b),
+            (Const::Float(a), Const::Float(b)) => Self::Bool(a < b),
+            _ => panic!("{self:?}, {other:?}"),
+        }
+    }
+
+    fn le(&self, other: &Self) -> Self {
+        self.gt(other).not()
+    }
+
+    fn gt(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Const::Int(a), Const::Int(b)) => Self::Bool(a > b),
+            (Const::Float(a), Const::Float(b)) => Self::Bool(a > b),
+            _ => panic!("{self:?}, {other:?}"),
+        }
+    }
+
+    fn ge(&self, other: &Self) -> Self {
+        self.lt(other).not()
+    }
 }

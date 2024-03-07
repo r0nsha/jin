@@ -179,7 +179,7 @@ impl<'db> PrettyCx<'db> {
             Inst::Br { target } => {
                 D::text("br").append(D::space()).append(D::text(body.block(*target).display_name()))
             }
-            Inst::BrIf { cond, then, otherwise } => D::text("brif")
+            Inst::BrIf { cond, then, otherwise, .. } => D::text("brif")
                 .append(D::text("("))
                 .append(self.value(body, *cond))
                 .append(D::text(")"))
@@ -190,7 +190,7 @@ impl<'db> PrettyCx<'db> {
                 } else {
                     D::nil()
                 }),
-            Inst::Switch { cond, blocks } => D::text("switch")
+            Inst::Switch { cond, blocks, .. } => D::text("switch")
                 .append(D::text("("))
                 .append(self.value(body, *cond))
                 .append(D::text(")"))

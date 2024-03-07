@@ -513,12 +513,12 @@ impl<'db> Generator<'db> {
                 })
             }
             Inst::Br { target } => goto_stmt(state.body.block(*target)),
-            Inst::BrIf { cond, then, otherwise } => util::if_stmt(
+            Inst::BrIf { cond, then, otherwise, .. } => util::if_stmt(
                 self.value(state, *cond),
                 goto_stmt(state.body.block(*then)),
                 otherwise.map(|o| goto_stmt(state.body.block(o))),
             ),
-            Inst::Switch { cond, blocks } => util::switch_stmt(
+            Inst::Switch { cond, blocks, .. } => util::switch_stmt(
                 self.value(state, *cond),
                 blocks
                     .iter()

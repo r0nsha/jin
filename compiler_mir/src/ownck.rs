@@ -390,6 +390,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     destroy_flag,
                     destroy_block,
                     Some(no_destroy_block),
+                    span,
                 );
 
                 let destroy_glue = self.needs_destroy_glue(value);

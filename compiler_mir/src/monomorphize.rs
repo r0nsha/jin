@@ -569,7 +569,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
 
         let uint = self.cx.db.types.uint;
         let tag_field = self.body.create_value(uint, ValueKind::Field(self_value, ustr("tag")));
-        self.body.ins(start_block).switch(tag_field, blocks);
+        self.body.ins(start_block).switch(tag_field, blocks, span);
 
         join_block
     }
@@ -683,7 +683,7 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
             span,
         );
 
-        self.body.ins(loop_start).brif(cond, loop_end, None);
+        self.body.ins(loop_start).brif(cond, loop_end, None, span);
         self.free_elem(loop_start, slice, index, elem_ty, span);
 
         // i += 1

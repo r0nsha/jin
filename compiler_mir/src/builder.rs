@@ -19,23 +19,29 @@ impl<'a> InstBuilder<'a> {
         self
     }
 
-    pub fn brif(&mut self, cond: ValueId, then: BlockId, otherwise: Option<BlockId>) -> &mut Self {
+    pub fn brif(
+        &mut self,
+        cond: ValueId,
+        then: BlockId,
+        otherwise: Option<BlockId>,
+        span: Span,
+    ) -> &mut Self {
         self.body.create_edge(self.block, then);
 
         if let Some(otherwise) = otherwise {
             self.body.create_edge(self.block, otherwise);
         }
 
-        self.inst(Inst::BrIf { cond, then, otherwise });
+        self.inst(Inst::BrIf { cond, then, otherwise, span });
         self
     }
 
-    pub fn switch(&mut self, cond: ValueId, blocks: Vec<BlockId>) -> &mut Self {
+    pub fn switch(&mut self, cond: ValueId, blocks: Vec<BlockId>, span: Span) -> &mut Self {
         for &target in &blocks {
             self.body.create_edge(self.block, target);
         }
 
-        self.inst(Inst::Switch { cond, blocks });
+        self.inst(Inst::Switch { cond, blocks, span });
         self
     }
 
