@@ -17,7 +17,6 @@ use compiler_core::{
 use compiler_data_structures::index_vec::{IndexVecExt as _, Key as _};
 use ustr::ustr;
 
-use crate::hooks;
 use crate::{
     attrs, errors, exprs, fns,
     lookup::{FnCandidate, Query},
@@ -27,6 +26,7 @@ use crate::{
     tyexpr::AllowTyHole,
     types, TyAlias, Typeck,
 };
+use crate::{helpers, hooks};
 
 pub(crate) fn define(cx: &mut Typeck, ast: &Ast) {
     for (module, item, id) in ast.items_with_id() {
@@ -537,6 +537,7 @@ fn check_item_body(
             cx.hir.lets.push_with_key(|id| hir::Let {
                 id,
                 module_id,
+                kind: helpers::trans_let_kind(&let_.kind),
                 pat,
                 value: Box::new(value),
                 ty,

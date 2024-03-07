@@ -14,6 +14,7 @@ use compiler_data_structures::index_vec::{IndexVecExt as _, Key as _};
 use itertools::{Itertools as _, Position};
 use ustr::{ustr, UstrMap};
 
+use crate::helpers;
 use crate::{
     coerce::{CoerceExt as _, CoerceOptions},
     errors, fns, items,
@@ -44,6 +45,7 @@ pub(crate) fn check_expr(
                 hir::ExprKind::Let(hir::Let {
                     id: hir::LetId::null(),
                     module_id: env.module_id(),
+                    kind: helpers::trans_let_kind(&let_.kind),
                     pat,
                     value: Box::new(value),
                     ty,
@@ -1161,6 +1163,7 @@ fn interp_let_buf(
             hir::ExprKind::Let(hir::Let {
                 id: hir::LetId::null(),
                 module_id: from_module,
+                kind: hir::LetKind::Let,
                 pat: Pat::Name(NamePat {
                     id,
                     word: interp_buf_word,

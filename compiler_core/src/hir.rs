@@ -149,10 +149,17 @@ pub struct FnParam {
 pub struct Let {
     pub id: LetId,
     pub module_id: ModuleId,
+    pub kind: LetKind,
     pub pat: Pat,
     pub value: Box<Expr>,
     pub ty: Ty,
     pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub enum LetKind {
+    Let,
+    Const,
 }
 
 #[derive(Debug, Clone)]
