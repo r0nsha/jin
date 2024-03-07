@@ -43,9 +43,9 @@ pub(super) struct Lower<'db> {
     pub(super) diagnostics: Vec<Diagnostic>,
     pub(super) def_to_fn_sig: FxHashMap<DefId, FnSigId>,
     pub(super) def_to_global: FxHashMap<DefId, GlobalId>,
+    pub(super) def_to_const: FxHashMap<DefId, (Const, Ty)>,
     pub(super) struct_ctors: FxHashMap<AdtId, FnSigId>,
     pub(super) variant_ctors: FxHashMap<VariantId, FnSigId>,
-    pub(super) consts: FxHashMap<GlobalId, Const>,
 }
 
 impl<'db> Lower<'db> {
@@ -57,9 +57,9 @@ impl<'db> Lower<'db> {
             diagnostics: vec![],
             def_to_fn_sig: FxHashMap::default(),
             def_to_global: FxHashMap::default(),
+            def_to_const: FxHashMap::default(),
             struct_ctors: FxHashMap::default(),
             variant_ctors: FxHashMap::default(),
-            consts: FxHashMap::default(),
         }
     }
 
@@ -109,11 +109,24 @@ impl<'db> Lower<'db> {
         }
     }
 
-    fn lower_global(&mut self, def_id: DefId) -> GlobalId {
+    fn lower_global(&mut self, def_id: DefId) -> Option<GlobalId> {
         if let Some(target_id) = self.def_to_global.get(&def_id).copied() {
-            return target_id;
+            return Some(target_id);
         }
 
+        self.lower_global_let_by_id(def_id)
+    }
+
+    fn lower_const_let(&mut self, def_id: DefId) -> Option<(Const, Ty)> {
+        if let Some(result) = self.def_to_const.get(&def_id).cloned() {
+            return Some(result);
+        }
+
+        self.lower_global_let_by_id(def_id);
+        self.def_to_const.get(&def_id).cloned()
+    }
+
+    fn lower_global_let_by_id(&mut self, def_id: DefId) -> Option<GlobalId> {
         let let_ = self
             .hir
             .lets
@@ -123,7 +136,7 @@ impl<'db> Lower<'db> {
                 panic!("global let {} not found in hir.lets", self.db[def_id].qpath)
             });
 
-        self.lower_global_let(let_).expect("to output a GlobalId")
+        self.lower_global_let(let_)
     }
 
     fn lower_global_let(&mut self, let_: &hir::Let) -> Option<GlobalId> {
@@ -390,10 +403,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         self.body.cleanup();
 
-        let kind = match &let_.kind {
-            hir::LetKind::Let => GlobalKind::Static(self.body),
+        let const_value = match &let_.kind {
+            hir::LetKind::Let => None,
             hir::LetKind::Const => match self.cx.eval(&self.body) {
-                Ok(result) => GlobalKind::Const(result),
+                Ok(result) => Some(result),
                 Err(err) => {
                     let diagnostic = match err {
                         eval::EvalError::UnsupportedInst(span) => {
@@ -408,8 +421,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     };
 
                     self.cx.diagnostics.push(diagnostic);
-
-                    GlobalKind::Static(self.body)
+                    None
                 }
             },
         };
@@ -418,17 +430,23 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             Pat::Name(name) => {
                 let full_name = self.cx.db[name.id].qpath.join_with("_");
                 let ty = name.ty;
-                let id = self.cx.mir.globals.insert_with_key(|id| Global {
-                    id,
-                    def_id: name.id,
-                    name: full_name.into(),
-                    ty,
-                    kind,
-                });
 
-                self.cx.def_to_global.insert(name.id, id);
+                if let Some(const_value) = const_value {
+                    self.cx.def_to_const.insert(name.id, (const_value, ty));
+                    None
+                } else {
+                    let id = self.cx.mir.globals.insert_with_key(|id| Global {
+                        id,
+                        def_id: name.id,
+                        name: full_name.into(),
+                        ty,
+                        kind: GlobalKind::Static(self.body),
+                    });
 
-                Some(id)
+                    self.cx.def_to_global.insert(name.id, id);
+
+                    Some(id)
+                }
             }
             Pat::Discard(_) => None,
         }
@@ -736,18 +754,22 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 slice
             }
-            hir::ExprKind::StrLit(lit) => self.lower_const(&Const::Str(*lit), expr.ty, expr.span),
+            hir::ExprKind::StrLit(lit) => {
+                self.lower_const_value(&Const::Str(*lit), expr.ty, expr.span)
+            }
             hir::ExprKind::CharLit(lit) => {
-                self.lower_const(&Const::Int(*lit as i128), expr.ty, expr.span)
+                self.lower_const_value(&Const::Int(*lit as i128), expr.ty, expr.span)
             }
             #[allow(clippy::cast_possible_wrap)]
             hir::ExprKind::IntLit(lit) => {
-                self.lower_const(&Const::Int(*lit as i128), expr.ty, expr.span)
+                self.lower_const_value(&Const::Int(*lit as i128), expr.ty, expr.span)
             }
             hir::ExprKind::FloatLit(lit) => {
-                self.lower_const(&Const::Float(*lit), expr.ty, expr.span)
+                self.lower_const_value(&Const::Float(*lit), expr.ty, expr.span)
             }
-            hir::ExprKind::BoolLit(lit) => self.lower_const(&Const::Bool(*lit), expr.ty, expr.span),
+            hir::ExprKind::BoolLit(lit) => {
+                self.lower_const_value(&Const::Bool(*lit), expr.ty, expr.span)
+            }
         }
     }
 
@@ -1291,18 +1313,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
             }
             DefKind::ExternGlobal | DefKind::Global => {
-                let id = self.cx.lower_global(id);
+                let id = self.cx.lower_global(id).expect("to be defined");
                 self.create_value(self.cx.mir.globals[id].ty, ValueKind::Global(id))
             }
             DefKind::Const => {
-                let id = self.cx.lower_global(id);
-                let ty = self.cx.mir.globals[id].ty;
-
-                if let Some(const_value) = self.cx.consts.get(&id) {
-                    self.create_value(ty, ValueKind::Const(const_value.clone()))
+                if let Some((const_value, ty)) = self.cx.lower_const_let(id) {
+                    self.create_value(ty, ValueKind::Const(const_value))
                 } else {
                     // This can happen when const evaluation fails.
-                    self.create_value(ty, ValueKind::Global(id))
+                    let gid = self.cx.def_to_global[&id];
+                    self.create_value(self.cx.mir.globals[gid].ty, ValueKind::Global(gid))
                 }
             }
             DefKind::Variable => self.locals[&id],
@@ -1371,7 +1391,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         guard
     }
 
-    pub fn lower_const(&mut self, value: &Const, ty: Ty, span: Span) -> ValueId {
+    pub fn lower_const_value(&mut self, value: &Const, ty: Ty, span: Span) -> ValueId {
         match value {
             Const::Str(lit) => {
                 self.push_inst_with_register(ty, |value| Inst::StrLit { value, lit: *lit, span })
