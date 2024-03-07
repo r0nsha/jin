@@ -68,8 +68,7 @@ impl<'cx, 'db> Eval<'cx, 'db> {
                     };
                     self.store(*value, result);
                 }
-
-                Inst::Binary { value, lhs, rhs, op, checked, span } => {
+                Inst::Binary { value, lhs, rhs, op, span, .. } => {
                     let lhs = self.value(*lhs, *span)?;
                     let rhs = self.value(*rhs, *span)?;
                     let result = match op {
