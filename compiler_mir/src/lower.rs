@@ -370,33 +370,40 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn lower_global_let(mut self, let_: &hir::Let) -> Option<GlobalId> {
+        self.enter_scope(ScopeKind::Block, let_.value.span);
+        let start_block = self.body.create_block("start");
+        self.position_at(start_block);
+
+        let result = self.lower_input_expr(&let_.value);
+        self.exit_scope();
+
+        self.body.cleanup();
+
+        let kind = match &let_.kind {
+            hir::LetKind::Let => {
+                todo!("eval body")
+                // GlobalKind::Const(result)
+            },
+            hir::LetKind::Const => GlobalKind::Static(StaticGlobal { body: self.body, result }),
+        };
+
+        // let is_const = self.body.blocks.is_empty()
+        //     && self.body.values().len() == 1
+        //     && self.body.value(result).kind.is_const();
+
+        // let kind = if is_const {
+        //     let ValueKind::Const(result) = self.body.values.swap_remove(result).kind else {
+        //         unreachable!()
+        //     };
+        //     GlobalKind::Const(result)
+        // } else {
+        //     GlobalKind::Static(StaticGlobal { body: self.body, result })
+        // };
+
         match &let_.pat {
             Pat::Name(name) => {
                 let full_name = self.cx.db[name.id].qpath.join_with("_");
                 let ty = name.ty;
-
-                self.enter_scope(ScopeKind::Block, let_.value.span);
-                let start_block = self.body.create_block("start");
-                self.position_at(start_block);
-
-                let result = self.lower_input_expr(&let_.value);
-                self.exit_scope();
-
-                self.body.cleanup();
-
-                let is_const = self.body.blocks.is_empty()
-                    && self.body.values().len() == 1
-                    && self.body.value(result).kind.is_const();
-
-                let kind = if is_const {
-                    let ValueKind::Const(result) = self.body.values.swap_remove(result).kind else {
-                        unreachable!()
-                    };
-                    GlobalKind::Const(result)
-                } else {
-                    GlobalKind::Static(StaticGlobal { body: self.body, result })
-                };
-
                 let id = self.cx.mir.globals.insert_with_key(|id| Global {
                     id,
                     def_id: name.id,
