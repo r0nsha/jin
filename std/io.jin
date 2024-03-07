@@ -29,8 +29,6 @@ type Error* {
 	Other(code: i32)
 }
 
-// TODO: match on `os.errors.*`.
-// This requires the language to have a way on matching constants.
 fn Error.from-os-error*(code: i32) -> Error =
 	match code {
 		errors.EPERM -> Error.PermissionDenied
