@@ -17,7 +17,7 @@ use compiler_core::{
 
 use crate::{
     BlockId, Body, Const, Fn, FnParam, FnSig, FnSigId, FxHashMap, GlobalId, GlobalKind, IdMap,
-    Inst, Mir, StaticGlobal, ValueId, ValueKind,
+    Inst, Mir, ValueId, ValueKind,
 };
 
 pub fn monomorphize(db: &Db, mir: &mut Mir) {
@@ -159,9 +159,11 @@ impl<'db, 'cx> MonomorphizeBody<'db, 'cx> {
             JobTarget::Global(id) => {
                 let global = mir.globals.get(&id).expect("global to exist");
 
-                if let GlobalKind::Static(StaticGlobal { body, .. }) = &global.kind {
+                if let GlobalKind::Static(body) = &global.kind {
                     let body_subst = self.monomorphize_body(mir, body);
-                    let body_mut = &mut mir.globals[id].kind.as_static_mut().unwrap().body;
+                    let GlobalKind::Static(body_mut) = &mut mir.globals[id].kind else {
+                        unreachable!()
+                    };
                     body_subst.subst(body_mut);
                 }
             }
@@ -341,7 +343,7 @@ impl<'db> ExpandDestroys<'db> {
         }
 
         for global in mir.globals.values_mut() {
-            if let GlobalKind::Static(StaticGlobal { body, .. }) = &mut global.kind {
+            if let GlobalKind::Static(body) = &mut global.kind {
                 self.body(body);
             }
         }

@@ -1,4 +1,4 @@
-use std::{fs::File, io::Write, iter};
+use std::{fs::File, io::Write};
 
 use camino::Utf8PathBuf;
 use compiler_core::ty::TyKind;
@@ -16,8 +16,7 @@ use compiler_core::{
     word::Word,
 };
 use compiler_mir::{
-    Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir, RtCallKind, StaticGlobal,
-    ValueId, ValueKind,
+    Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir, RtCallKind, ValueId, ValueKind,
 };
 
 use crate::{
@@ -168,22 +167,14 @@ impl<'db> Generator<'db> {
                     });
                     self.globals.push(doc);
                 }
-                GlobalKind::Static(StaticGlobal { body, result }) => {
+                GlobalKind::Static(body) => {
                     let decl_doc = stmt(|| glob.ty.cdecl(self, name_doc));
                     self.globals.push(decl_doc);
 
                     let mut state = GenState::new(glob.name, body);
 
-                    let return_stmt = stmt(|| {
-                        D::text("return").append(D::space()).append(self.value(&state, *result))
-                    });
-
-                    let block_docs: Vec<D> = body
-                        .blocks()
-                        .iter()
-                        .map(|b| self.codegen_block(&mut state, b))
-                        .chain(iter::once(return_stmt))
-                        .collect();
+                    let block_docs: Vec<D> =
+                        body.blocks().iter().map(|b| self.codegen_block(&mut state, b)).collect();
 
                     let init_fn_doc = D::text("FORCE_INLINE ")
                         .append(glob.ty.cdecl(self, D::text(global_init_fn_name(glob))))

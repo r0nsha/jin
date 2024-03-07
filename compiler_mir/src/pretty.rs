@@ -6,8 +6,8 @@ use pretty::RcDoc as D;
 use ustr::ustr;
 
 use crate::{
-    Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir, Pat, RtCallKind, StaticGlobal,
-    ValueId, ValueKind,
+    Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir, Pat, RtCallKind, ValueId,
+    ValueKind,
 };
 
 pub(super) fn print(db: &Db, mir: &Mir, w: &mut impl io::Write) -> io::Result<()> {
@@ -49,16 +49,12 @@ impl<'db> PrettyCx<'db> {
                 .append(D::text("="))
                 .append(D::space())
                 .append(pp_const_value(value)),
-            GlobalKind::Static(StaticGlobal { body, result }) => D::text("let")
+            GlobalKind::Static(body) => D::text("let")
                 .append(D::space())
                 .append(Self::global(glob.name.as_str()))
                 .append(D::text(":"))
                 .append(D::space())
                 .append(D::text(glob.ty.to_string(self.db)))
-                .append(D::space())
-                .append(D::text("="))
-                .append(D::space())
-                .append(self.value(body, *result))
                 .append(D::space())
                 .append(
                     D::text("{")

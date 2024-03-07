@@ -1,4 +1,4 @@
-use compiler_mir::{Global, GlobalId, GlobalKind, StaticGlobal, ValueKind};
+use compiler_mir::{Global, GlobalId, GlobalKind, ValueKind};
 
 use crate::generate::Generator;
 
@@ -26,7 +26,7 @@ impl GlobalInitOrder<'_, '_> {
     }
 
     fn search_global(&mut self, glob: &Global) {
-        if let GlobalKind::Static(StaticGlobal { body, result: _ }) = &glob.kind {
+        if let GlobalKind::Static(body) = &glob.kind {
             for value in body.values() {
                 if let ValueKind::Global(gid) = &value.kind {
                     if !self.add_global(*gid) {

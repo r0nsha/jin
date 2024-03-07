@@ -103,25 +103,8 @@ pub struct Global {
 #[derive(Debug, Clone)]
 pub enum GlobalKind {
     Const(Const),
-    Static(StaticGlobal),
+    Static(Body),
     Extern,
-}
-
-impl GlobalKind {
-    #[must_use]
-    pub fn as_static_mut(&mut self) -> Option<&mut StaticGlobal> {
-        if let Self::Static(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct StaticGlobal {
-    pub body: Body,
-    pub result: ValueId,
 }
 
 #[derive(Debug, Clone)]

@@ -1,3 +1,4 @@
+mod eval;
 use compiler_data_structures::index_vec::Key;
 use indexmap::IndexSet;
 use ustr::{ustr, Ustr};
@@ -21,7 +22,7 @@ use crate::{
     builder::InstBuilder,
     ownck::{CannotMove, ValueState, ValueStates},
     pmatch, AdtId, Block, BlockId, Body, Const, Fn, FnParam, FnSig, FnSigId, FxHashMap, Global,
-    GlobalId, GlobalKind, Inst, Mir, RtCallKind, Span, StaticGlobal, UnOp, ValueId, ValueKind,
+    GlobalId, GlobalKind, Inst, Mir, RtCallKind, Span, UnOp, ValueId, ValueKind,
 };
 
 #[allow(clippy::similar_names)]
@@ -377,14 +378,20 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let result = self.lower_input_expr(&let_.value);
         self.exit_scope();
 
+        if !self.body.last_inst_is_return() {
+            // If the body isn't terminating, we must push a return instruction at the
+            // for the function's last value.
+            self.ins(self.current_block).ret(result);
+        }
+
         self.body.cleanup();
 
         let kind = match &let_.kind {
-            hir::LetKind::Let => {
-                todo!("eval body")
-                // GlobalKind::Const(result)
-            },
-            hir::LetKind::Const => GlobalKind::Static(StaticGlobal { body: self.body, result }),
+            hir::LetKind::Let => GlobalKind::Static(self.body),
+            hir::LetKind::Const => {
+                let result = self.cx.eval(&self.body);
+                GlobalKind::Const(result)
+            }
         };
 
         // let is_const = self.body.blocks.is_empty()
