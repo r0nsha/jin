@@ -321,10 +321,17 @@ pub struct FnParam {
 #[derive(Debug, Clone)]
 pub struct Let {
     pub attrs: Attrs,
+    pub kind: LetKind,
     pub pat: Pat,
     pub ty_expr: Option<TyExpr>,
     pub value: Box<Expr>,
     pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub enum LetKind {
+    Let,
+    Const,
 }
 
 #[derive(Debug, Clone)]

@@ -4,10 +4,10 @@ import std.(
 	str.(?)
 )
 
-let stdout: i32 = 1
+const STDOUT: i32 = 1
 
 fn print*(msg: &str) =
-	unsafe write(stdout, as[_](msg.ptr), msg.len)
+	unsafe write(STDOUT, as[_](msg.ptr), msg.len)
 
 fn print*(msg: str) = print(&msg)
 
