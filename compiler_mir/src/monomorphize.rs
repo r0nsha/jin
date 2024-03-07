@@ -362,7 +362,7 @@ impl<'db> ExpandDestroys<'db> {
 
         for block in body.blocks_mut() {
             block.insts.retain_mut(|inst| match inst {
-                Inst::Destroy { value, destroy_glue, .. } => {
+                Inst::Destroy { value, destroy_glue, span } => {
                     let ty = value_tys[&*value];
 
                     if !self.should_destroy_ty(ty, *destroy_glue) {
@@ -370,7 +370,7 @@ impl<'db> ExpandDestroys<'db> {
                     }
 
                     if ty.is_ref() {
-                        *inst = Inst::DecRef { value: *value };
+                        *inst = Inst::DecRef { value: *value, span: *span };
                     }
 
                     true
@@ -521,7 +521,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
 
         let unit_value =
             self.body.create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit));
-        self.body.ins(join_block).ret(unit_value);
+        self.body.ins(join_block).ret(unit_value, adt_span);
 
         self.cx.mono_mir.fns.insert(sig, Fn { sig, body: self.body });
 
@@ -594,7 +594,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
                     self.body.ins(block).call(result, callee, vec![field_value], span);
                 }
                 TyKind::Ref(..) if self.cx.should_refcount_ty(ty) => {
-                    self.body.ins(block).decref(field_value);
+                    self.body.ins(block).decref(field_value, field.span());
                 }
                 _ => (),
             }
@@ -635,7 +635,7 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
 
         let unit_value =
             self.body.create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit));
-        self.body.ins(end_block).free(slice, false, main_span).ret(unit_value);
+        self.body.ins(end_block).free(slice, false, main_span).ret(unit_value, main_span);
 
         self.cx.mono_mir.fns.insert(sig, Fn { sig, body: self.body });
 
@@ -667,7 +667,7 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
         // uint i = 0;
         let index = self.body.create_register(uint);
         let zero = self.body.create_value(uint, ValueKind::Const(Const::Int(0)));
-        self.body.ins(start).stackalloc(index, zero).br(loop_start);
+        self.body.ins(start).stackalloc(index, zero, span).br(loop_start);
 
         // slice.len
         let slice_len =
@@ -675,7 +675,13 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
 
         // i == slice.len
         let cond = self.body.create_register(self.cx.db.types.bool);
-        self.body.ins(loop_start).binary_unchecked(cond, index, slice_len, BinOp::Cmp(CmpOp::Eq));
+        self.body.ins(loop_start).binary_unchecked(
+            cond,
+            index,
+            slice_len,
+            BinOp::Cmp(CmpOp::Eq),
+            span,
+        );
 
         self.body.ins(loop_start).brif(cond, loop_end, None);
         self.free_elem(loop_start, slice, index, elem_ty, span);
@@ -685,8 +691,8 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
         let one = self.body.create_value(uint, ValueKind::Const(Const::Int(1)));
         self.body
             .ins(loop_start)
-            .binary_unchecked(next_index, index, one, BinOp::Add)
-            .store(next_index, index);
+            .binary_unchecked(next_index, index, one, BinOp::Add, span)
+            .store(next_index, index, span);
 
         self.body.ins(loop_start).br(loop_start);
 
@@ -702,7 +708,7 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
         span: Span,
     ) {
         let elem = self.body.create_register(elem_ty);
-        self.body.ins(block).slice_index_unchecked(elem, slice, index);
+        self.body.ins(block).slice_index_unchecked(elem, slice, index, span);
 
         match elem_ty.kind() {
             TyKind::Adt(..) | TyKind::Slice(..) | TyKind::Str => {
@@ -710,7 +716,7 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
                 self.body.ins(block).call(result, callee, vec![elem], span);
             }
             TyKind::Ref(..) if self.cx.should_refcount_ty(elem_ty) => {
-                self.body.ins(block).decref(elem);
+                self.body.ins(block).decref(elem, span);
             }
             ty => unreachable!("{ty:?}"),
         }

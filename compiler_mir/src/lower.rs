@@ -1,4 +1,5 @@
 mod eval;
+use compiler_core::diagnostics::Label;
 use compiler_data_structures::index_vec::Key;
 use indexmap::IndexSet;
 use ustr::{ustr, Ustr};
@@ -44,6 +45,7 @@ pub(super) struct Lower<'db> {
     pub(super) def_to_global: FxHashMap<DefId, GlobalId>,
     pub(super) struct_ctors: FxHashMap<AdtId, FnSigId>,
     pub(super) variant_ctors: FxHashMap<VariantId, FnSigId>,
+    pub(super) consts: FxHashMap<GlobalId, Const>,
 }
 
 impl<'db> Lower<'db> {
@@ -57,6 +59,7 @@ impl<'db> Lower<'db> {
             def_to_global: FxHashMap::default(),
             struct_ctors: FxHashMap::default(),
             variant_ctors: FxHashMap::default(),
+            consts: FxHashMap::default(),
         }
     }
 
@@ -158,20 +161,21 @@ impl<'db> Lower<'db> {
             span: adt.name.span(),
         });
 
+        let span = def.span;
         let mut body = Body::new();
         let start_block = body.create_block("start");
 
         // Initialize the `this` value based on the struct kind
         let this = body.create_register(adt.ty());
         match struct_def.kind {
-            StructKind::Ref => body.ins(start_block).alloc(this),
-            StructKind::Value => body.ins(start_block).stackalloc_uninit(this),
+            StructKind::Ref => body.ins(start_block).alloc(this, span),
+            StructKind::Value => body.ins(start_block).stackalloc_uninit(this, span),
         };
 
         Self::ctor_init_adt_fields(&mut body, start_block, this, &struct_def.fields);
 
         // Return the struct
-        body.ins(start_block).ret(this);
+        body.ins(start_block).ret(this, span);
 
         self.mir.fns.insert(sig, Fn { sig, body });
 
@@ -194,6 +198,7 @@ impl<'db> Lower<'db> {
         let adt = &self.db[variant.adt_id];
         let def = &self.db[adt.def_id];
         let union_def = adt.as_union().unwrap();
+        let span = variant.name.span();
 
         let mangled_name = ustr(&format!("{}_{}", def.qpath.join_with("_"), variant.name));
         let display_name = ustr(&format!("{}_{}", def.qpath.join(), variant.name));
@@ -216,8 +221,8 @@ impl<'db> Lower<'db> {
         // Initialize the `this` value based on the union kind
         let this = body.create_register(adt.ty());
         match union_def.kind {
-            UnionKind::Ref => body.ins(start_block).alloc(this),
-            UnionKind::Value => body.ins(start_block).stackalloc_uninit(this),
+            UnionKind::Ref => body.ins(start_block).alloc(this, span),
+            UnionKind::Value => body.ins(start_block).stackalloc_uninit(this, span),
         };
 
         // Set the tag to this variant
@@ -225,14 +230,14 @@ impl<'db> Lower<'db> {
         let tag_field = body.create_value(uint, ValueKind::Field(this, ustr("tag")));
         let tag_value =
             body.create_value(uint, ValueKind::Const(Const::Int(variant.index as i128)));
-        body.ins(start_block).store(tag_value, tag_field);
+        body.ins(start_block).store(tag_value, tag_field, span);
 
         let this_variant = body.create_value(adt.ty(), ValueKind::Variant(this, variant.id));
 
         Self::ctor_init_adt_fields(&mut body, start_block, this_variant, &variant.fields);
 
         // Return the struct
-        body.ins(start_block).ret(this);
+        body.ins(start_block).ret(this, span);
 
         self.mir.fns.insert(sig, Fn { sig, body });
 
@@ -257,11 +262,10 @@ impl<'db> Lower<'db> {
 
     fn ctor_init_adt_fields(body: &mut Body, block: BlockId, this: ValueId, fields: &[AdtField]) {
         for (idx, field) in fields.iter().enumerate() {
-            let name = field.name.name();
-            let ty = field.ty;
-            let field_value = body.create_value(ty, ValueKind::Field(this, name));
-            let param = body.create_value(ty, ValueKind::Param(DefId::null(), idx));
-            body.ins(block).store(param, field_value);
+            let field_value =
+                body.create_value(field.ty, ValueKind::Field(this, field.name.name()));
+            let param = body.create_value(field.ty, ValueKind::Param(DefId::null(), idx));
+            body.ins(block).store(param, field_value, field.name.span());
         }
     }
 
@@ -336,7 +340,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         Pat::Name(name) => {
                             let id = name.id;
                             let value = self.create_value(param.ty, ValueKind::Param(id, idx));
-                            self.create_destroy_flag(value);
+                            self.create_destroy_flag(value, param.pat.span());
                             self.locals.insert(id, value);
                         }
                         Pat::Discard(span) => {
@@ -350,14 +354,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 }
 
                 let result = self.lower_input_expr(body);
-                let result = self.copy_value_before_destroy(result);
+                let result = self.copy_value_before_destroy(result, body.span);
 
                 self.exit_scope();
 
                 if !self.body.last_inst_is_return() {
                     // If the body isn't terminating, we must push a return instruction at the
                     // for the function's last value.
-                    self.ins(self.current_block).ret(result);
+                    self.ins(self.current_block).ret(result, body.span);
                 }
 
                 // println!("{}", self.value_states);
@@ -381,31 +385,34 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         if !self.body.last_inst_is_return() {
             // If the body isn't terminating, we must push a return instruction at the
             // for the function's last value.
-            self.ins(self.current_block).ret(result);
+            self.ins(self.current_block).ret(result, let_.value.span);
         }
 
         self.body.cleanup();
 
         let kind = match &let_.kind {
             hir::LetKind::Let => GlobalKind::Static(self.body),
-            hir::LetKind::Const => {
-                let result = self.cx.eval(&self.body);
-                GlobalKind::Const(result)
-            }
+            hir::LetKind::Const => match self.cx.eval(&self.body) {
+                Ok(result) => GlobalKind::Const(result),
+                Err(err) => {
+                    let diagnostic = match err {
+                        eval::EvalError::UnsupportedInst(span) => {
+                            Diagnostic::error("unsupported operation in const evaluation")
+                                .with_label(Label::primary(span, "unsupported operation"))
+                        }
+                        eval::EvalError::NonConstValue(value, span) => Diagnostic::error(format!(
+                            "values must be constants in const evaluation, `{}` isn't",
+                            self.value_name(value),
+                        ))
+                        .with_label(Label::primary(span, "non-const value")),
+                    };
+
+                    self.cx.diagnostics.push(diagnostic);
+
+                    GlobalKind::Static(self.body)
+                }
+            },
         };
-
-        // let is_const = self.body.blocks.is_empty()
-        //     && self.body.values().len() == 1
-        //     && self.body.value(result).kind.is_const();
-
-        // let kind = if is_const {
-        //     let ValueKind::Const(result) = self.body.values.swap_remove(result).kind else {
-        //         unreachable!()
-        //     };
-        //     GlobalKind::Const(result)
-        // } else {
-        //     GlobalKind::Static(StaticGlobal { body: self.body, result })
-        // };
 
         match &let_.pat {
             Pat::Name(name) => {
@@ -441,9 +448,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         let init = self.lower_input_expr(&let_.value);
                         let value =
                             self.push_inst_with(let_.ty, ValueKind::Local(name.id), |value| {
-                                Inst::StackAlloc { value, init: Some(init) }
+                                Inst::StackAlloc { value, init: Some(init), span: expr.span }
                             });
-                        self.create_destroy_flag(value);
+                        self.create_destroy_flag(value, name.span());
                         self.locals.insert(name.id, value);
                     }
                     Pat::Discard(span) => {
@@ -475,6 +482,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let output = self.push_inst_with_register(expr.ty, |value| Inst::StackAlloc {
                     value,
                     init: None,
+                    span: expr.span,
                 });
 
                 let value = self.lower_expr(&match_.expr);
@@ -581,7 +589,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 };
 
                 self.move_out(result, block.exprs.last().map_or(expr.span, |e| e.span));
-                let result = self.copy_value_before_destroy(result);
+                let result = self.copy_value_before_destroy(result, expr.span);
                 self.exit_scope();
 
                 result
@@ -625,6 +633,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         value,
                         inner,
                         op: un.op,
+                        span: expr.span,
                     })
                 }
                 UnOp::Ref(_) => {
@@ -701,14 +710,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     self.const_int(uint, lit.exprs.len() as _)
                 };
 
-                let slice =
-                    self.push_inst_with_register(expr.ty, |value| Inst::SliceAlloc { value, cap });
+                let slice = self.push_inst_with_register(expr.ty, |value| Inst::SliceAlloc {
+                    value,
+                    cap,
+                    span: expr.span,
+                });
 
                 for (index, expr) in lit.exprs.iter().enumerate() {
                     let value = self.lower_input_expr(expr);
 
                     let index = self.const_int(uint, index as _);
-                    self.ins(self.current_block).slice_store_unchecked(slice, index, value);
+                    self.ins(self.current_block)
+                        .slice_store_unchecked(slice, index, value, expr.span);
                 }
 
                 if !lit.exprs.is_empty() {
@@ -718,17 +731,23 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         uint,
                         ValueKind::Field(slice, ustr(sym::field::LEN)),
                     );
-                    self.ins(self.current_block).store(value, len_field);
+                    self.ins(self.current_block).store(value, len_field, expr.span);
                 }
 
                 slice
             }
-            hir::ExprKind::StrLit(lit) => self.lower_const(&Const::Str(*lit), expr.ty),
-            hir::ExprKind::CharLit(lit) => self.lower_const(&Const::Int(*lit as i128), expr.ty),
+            hir::ExprKind::StrLit(lit) => self.lower_const(&Const::Str(*lit), expr.ty, expr.span),
+            hir::ExprKind::CharLit(lit) => {
+                self.lower_const(&Const::Int(*lit as i128), expr.ty, expr.span)
+            }
             #[allow(clippy::cast_possible_wrap)]
-            hir::ExprKind::IntLit(lit) => self.lower_const(&Const::Int(*lit as i128), expr.ty),
-            hir::ExprKind::FloatLit(lit) => self.lower_const(&Const::Float(*lit), expr.ty),
-            hir::ExprKind::BoolLit(lit) => self.lower_const(&Const::Bool(*lit), expr.ty),
+            hir::ExprKind::IntLit(lit) => {
+                self.lower_const(&Const::Int(*lit as i128), expr.ty, expr.span)
+            }
+            hir::ExprKind::FloatLit(lit) => {
+                self.lower_const(&Const::Float(*lit), expr.ty, expr.span)
+            }
+            hir::ExprKind::BoolLit(lit) => self.lower_const(&Const::Bool(*lit), expr.ty, expr.span),
         }
     }
 
@@ -774,13 +793,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         // When a reference is moved, its refcount is incremented.
         if !is_register && ty.is_ref() {
-            self.ins(self.current_block).incref(value);
+            self.ins(self.current_block).incref(value, expr.span);
             return value;
         }
 
         // When a value struct type is moved, its reference fields are incremented
         if !is_register && ty.is_value_struct(self.cx.db) {
-            self.copy_value_type(value);
+            self.copy_value_type(value, expr.span);
             return value;
         }
 
@@ -820,7 +839,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         self.destroy_value_entirely(lhs, assign.lhs.span);
         self.set_owned(lhs);
-        self.ins(self.current_block).store(rhs, lhs);
+        self.ins(self.current_block).store(rhs, lhs, span);
     }
 
     fn lower_swap(&mut self, swap: &hir::Swap, span: Span) -> ValueId {
@@ -833,9 +852,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let old_lhs = self.push_inst_with_register(self.ty_of(lhs), |value| Inst::StackAlloc {
             value,
             init: Some(lhs),
+            span,
         });
-        self.create_destroy_flag(old_lhs);
-        self.ins(self.current_block).store(rhs, lhs);
+        self.create_destroy_flag(old_lhs, span);
+        self.ins(self.current_block).store(rhs, lhs, span);
 
         old_lhs
     }
@@ -859,8 +879,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let old_elem = self.push_inst_with_register(self.ty_of(elem), |value| Inst::StackAlloc {
             value,
             init: Some(elem),
+            span,
         });
-        self.create_destroy_flag(old_elem);
+        self.create_destroy_flag(old_elem, span);
         self.ins(self.current_block).slice_store(slice, index, rhs, swap.lhs.span);
 
         old_elem
@@ -1182,9 +1203,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 pmatch::Binding::Name(id, source, binding_ty, span) => {
                     let binding_value =
                         self.push_inst_with(binding_ty, ValueKind::Local(id), |value| {
-                            Inst::StackAlloc { value, init: Some(source) }
+                            Inst::StackAlloc { value, init: Some(source), span }
                         });
-                    self.create_destroy_flag(binding_value);
+                    self.create_destroy_flag(binding_value, span);
                     self.locals.insert(id, binding_value);
 
                     match state.actions.get(&source) {
@@ -1193,7 +1214,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         }
                         Some(&ValueAction::IncRef(_)) => {
                             self.set_moved(source, span);
-                            self.ins(self.current_block).incref(binding_value);
+                            self.ins(self.current_block).incref(binding_value, span);
                         }
                         None => {
                             self.set_moved(source, span);
@@ -1257,7 +1278,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.exit_scope();
 
         if self.in_connected_block() {
-            self.ins(self.current_block).store(value, state.output).br(state.join_block);
+            self.ins(self.current_block).store(value, state.output, expr.span).br(state.join_block);
         }
 
         start_block
@@ -1275,7 +1296,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             DefKind::Const => {
                 let id = self.cx.lower_global(id);
-                todo!("resolve const value")
+                let ty = self.cx.mir.globals[id].ty;
+
+                if let Some(const_value) = self.cx.consts.get(&id) {
+                    self.create_value(ty, ValueKind::Const(const_value.clone()))
+                } else {
+                    // This can happen when const evaluation fails.
+                    self.create_value(ty, ValueKind::Global(id))
+                }
             }
             DefKind::Variable => self.locals[&id],
             DefKind::Adt(adt_id) => {
@@ -1343,10 +1371,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         guard
     }
 
-    pub fn lower_const(&mut self, value: &Const, ty: Ty) -> ValueId {
+    pub fn lower_const(&mut self, value: &Const, ty: Ty, span: Span) -> ValueId {
         match value {
             Const::Str(lit) => {
-                self.push_inst_with_register(ty, |value| Inst::StrLit { value, lit: *lit })
+                self.push_inst_with_register(ty, |value| Inst::StrLit { value, lit: *lit, span })
             }
             Const::Int(value) => self.const_int(ty, *value),
             Const::Float(value) => self.create_value(ty, ValueKind::Const(Const::Float(*value))),
@@ -1397,7 +1425,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn push_return(&mut self, value: ValueId, span: Span) {
         self.destroy_all_values(span);
-        self.ins(self.current_block).ret(value);
+        self.ins(self.current_block).ret(value, span);
     }
 
     pub fn create_untracked_value(&mut self, ty: Ty, kind: ValueKind) -> ValueId {
@@ -1407,7 +1435,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     // Used to keep a copy of a value that its parent could potentially be destroyed
-    pub fn copy_value_before_destroy(&mut self, value: ValueId) -> ValueId {
+    pub fn copy_value_before_destroy(&mut self, value: ValueId, span: Span) -> ValueId {
         let any_parent_destroyed = self
             .walk_parents(value, |this, parent, _| -> Result<(), ()> {
                 if this.value_is_partially_moved(parent) {
@@ -1423,14 +1451,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
 
         let sa = self.create_untracked_value(self.ty_of(value), ValueKind::Register(None));
-        self.ins(self.current_block).stackalloc(sa, value);
+        self.ins(self.current_block).stackalloc(sa, value, span);
         sa
     }
 
-    pub fn copy_value_type(&mut self, old_value: ValueId) {
+    pub fn copy_value_type(&mut self, old_value: ValueId, span: Span) {
         self.walk_fields(old_value, |this, field| {
             if this.ty_of(field).is_ref() {
-                this.ins(this.current_block).incref(field);
+                this.ins(this.current_block).incref(field, span);
             }
             Ok(())
         })
@@ -1450,11 +1478,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             self.check_ref_mutability(to_clone, span);
         }
 
-        let ref_value = self
-            .push_inst_with_register(ty, |value| Inst::StackAlloc { value, init: Some(to_clone) });
+        let ref_value = self.push_inst_with_register(ty, |value| Inst::StackAlloc {
+            value,
+            init: Some(to_clone),
+            span,
+        });
 
-        self.create_destroy_flag(ref_value);
-        self.ins(self.current_block).incref(ref_value);
+        self.create_destroy_flag(ref_value, span);
+        self.ins(self.current_block).incref(ref_value, span);
 
         self.value_roots.insert(to_clone, ref_value);
 
@@ -1486,7 +1517,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     if should_destroy || f.ty.is_value_struct(self.cx.db) {
                         let field_value = self.create_value(ty, ValueKind::Field(value, name));
                         if should_destroy {
-                            self.create_destroy_flag(field_value);
+                            self.create_destroy_flag(field_value, f.name.span());
                             fields.insert(name, field_value);
                         }
                     }

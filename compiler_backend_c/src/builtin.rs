@@ -20,13 +20,8 @@ pub struct BinOpData {
     pub rhs: ValueId,
     pub op: BinOp,
     pub ty: Ty,
-    pub span: Option<Span>,
-}
-
-impl BinOpData {
-    fn do_safety_checks(&self) -> bool {
-        self.span.is_some()
-    }
+    pub span: Span,
+    pub checked: bool,
 }
 
 impl<'db> Generator<'db> {
@@ -77,7 +72,7 @@ impl<'db> Generator<'db> {
     }
 
     pub fn codegen_bin_op(&mut self, state: &GenState<'db>, data: &BinOpData) -> D<'db> {
-        if data.do_safety_checks() && data.ty.is_any_int() {
+        if data.checked && data.ty.is_any_int() {
             match data.op {
                 BinOp::Add | BinOp::Sub | BinOp::Mul => {
                     return self.codegen_safe_bin_op(state, data)
@@ -106,8 +101,7 @@ impl<'db> Generator<'db> {
         let (lhs, rhs) = (self.value(state, data.lhs), self.value(state, data.rhs));
 
         let cond = rhs.clone().append(D::text(" == 0"));
-        let safety_check =
-            self.panic_if(state, cond, "attempt to divide by zero", data.span.unwrap());
+        let safety_check = self.panic_if(state, cond, "attempt to divide by zero", data.span);
 
         let op = self.value_assign(state, data.target, |_| bin_op(lhs, data.op, rhs));
 
@@ -129,7 +123,7 @@ impl<'db> Generator<'db> {
 
         D::intersperse(
             [
-                self.panic_if(state, cond, &overflow_msg(action), data.span.unwrap()),
+                self.panic_if(state, cond, &overflow_msg(action), data.span),
                 self.value_assign(state, data.target, |_| bin_op(lhs, data.op, rhs)),
             ],
             D::hardline(),
@@ -260,16 +254,10 @@ impl<'db> Generator<'db> {
         slice: ValueId,
         index: ValueId,
         guarded_stmt: D<'db>,
-        span: Option<Span>,
+        span: Span,
     ) -> D<'db> {
-        if let Some(span) = span {
-            let safety_check =
-                util::stmt(|| self.slice_index_boundscheck(state, slice, index, span));
-
-            D::intersperse([safety_check, guarded_stmt], D::hardline())
-        } else {
-            guarded_stmt
-        }
+        let safety_check = util::stmt(|| self.slice_index_boundscheck(state, slice, index, span));
+        D::intersperse([safety_check, guarded_stmt], D::hardline())
     }
 
     pub fn slice_index_boundscheck(

@@ -293,17 +293,17 @@ impl Body {
             update_block_ids(blocks, &id_map, last_inst);
 
             let successors = match last_inst {
-                Inst::Br { target } => {
+                Inst::Br { target, .. } => {
                     indexset! { *target }
                 }
-                Inst::BrIf { cond: _, then, otherwise } => {
+                Inst::BrIf { then, otherwise, .. } => {
                     if let Some(otherwise) = otherwise {
                         indexset! { *then, *otherwise }
                     } else {
                         indexset! { *then }
                     }
                 }
-                Inst::Switch { cond: _, blocks } => blocks.iter().copied().collect::<IndexSet<_>>(),
+                Inst::Switch { blocks, .. } => blocks.iter().copied().collect::<IndexSet<_>>(),
                 _ => continue,
             };
 
@@ -438,29 +438,29 @@ impl fmt::Display for Block {
 
 #[derive(Debug, Clone)]
 pub enum Inst {
-    StackAlloc { value: ValueId, init: Option<ValueId> },
-    Store { value: ValueId, target: ValueId },
-    Alloc { value: ValueId },
-    SliceAlloc { value: ValueId, cap: ValueId },
-    SliceIndex { value: ValueId, slice: ValueId, index: ValueId, span: Option<Span> },
+    StackAlloc { value: ValueId, init: Option<ValueId>, span: Span },
+    Store { value: ValueId, target: ValueId, span: Span },
+    Alloc { value: ValueId, span: Span },
+    SliceAlloc { value: ValueId, cap: ValueId, span: Span },
+    SliceIndex { value: ValueId, slice: ValueId, index: ValueId, checked: bool, span: Span },
     SliceSlice { value: ValueId, slice: ValueId, low: ValueId, high: ValueId, span: Span },
-    SliceStore { slice: ValueId, index: ValueId, value: ValueId, span: Option<Span> },
+    SliceStore { slice: ValueId, index: ValueId, value: ValueId, checked: bool, span: Span },
     Destroy { value: ValueId, destroy_glue: bool, span: Span },
     Free { value: ValueId, traced: bool, span: Span },
-    IncRef { value: ValueId },
-    DecRef { value: ValueId },
+    IncRef { value: ValueId, span: Span },
+    DecRef { value: ValueId, span: Span },
     Br { target: BlockId },
     BrIf { cond: ValueId, then: BlockId, otherwise: Option<BlockId> },
     Switch { cond: ValueId, blocks: Vec<BlockId> },
-    Return { value: ValueId },
+    Return { value: ValueId, span: Span },
     Call { value: ValueId, callee: ValueId, args: Vec<ValueId>, span: Span },
     RtCall { value: ValueId, kind: RtCallKind, span: Span },
-    Binary { value: ValueId, lhs: ValueId, rhs: ValueId, op: BinOp, span: Option<Span> },
-    Unary { value: ValueId, inner: ValueId, op: UnOp },
+    Binary { value: ValueId, lhs: ValueId, rhs: ValueId, op: BinOp, checked: bool, span: Span },
+    Unary { value: ValueId, inner: ValueId, op: UnOp, span: Span },
     Convert { value: ValueId, source: ValueId, target: Ty, span: Span },
     Cast { value: ValueId, source: ValueId, target: Ty, span: Span },
-    StrLit { value: ValueId, lit: Ustr },
-    Unreachable,
+    StrLit { value: ValueId, lit: Ustr, span: Span },
+    Unreachable { span: Span },
 }
 
 #[derive(Debug, Clone, Copy)]

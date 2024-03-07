@@ -47,7 +47,7 @@ impl<'a> InstBuilder<'a> {
         op: BinOp,
         span: Span,
     ) -> &mut Self {
-        self.inst(Inst::Binary { value, lhs, rhs, op, span: Some(span) });
+        self.inst(Inst::Binary { value, lhs, rhs, op, span, checked: true });
         self
     }
 
@@ -57,8 +57,9 @@ impl<'a> InstBuilder<'a> {
         lhs: ValueId,
         rhs: ValueId,
         op: BinOp,
+        span: Span,
     ) -> &mut Self {
-        self.inst(Inst::Binary { value, lhs, rhs, op, span: None });
+        self.inst(Inst::Binary { value, lhs, rhs, op, span, checked: false });
         self
     }
 
@@ -78,13 +79,13 @@ impl<'a> InstBuilder<'a> {
         self
     }
 
-    pub fn ret(&mut self, value: ValueId) -> &mut Self {
-        self.inst(Inst::Return { value });
+    pub fn ret(&mut self, value: ValueId, span: Span) -> &mut Self {
+        self.inst(Inst::Return { value, span });
         self
     }
 
-    pub fn store(&mut self, value: ValueId, target: ValueId) -> &mut Self {
-        self.inst(Inst::Store { value, target });
+    pub fn store(&mut self, value: ValueId, target: ValueId, span: Span) -> &mut Self {
+        self.inst(Inst::Store { value, target, span });
         self
     }
 
@@ -95,7 +96,7 @@ impl<'a> InstBuilder<'a> {
         index: ValueId,
         span: Span,
     ) -> &mut Self {
-        self.inst(Inst::SliceIndex { value, slice, index, span: Some(span) });
+        self.inst(Inst::SliceIndex { value, slice, index, span, checked: true });
         self
     }
 
@@ -104,8 +105,9 @@ impl<'a> InstBuilder<'a> {
         value: ValueId,
         slice: ValueId,
         index: ValueId,
+        span: Span,
     ) -> &mut Self {
-        self.inst(Inst::SliceIndex { value, slice, index, span: None });
+        self.inst(Inst::SliceIndex { value, slice, index, span, checked: false });
         self
     }
 
@@ -128,7 +130,7 @@ impl<'a> InstBuilder<'a> {
         value: ValueId,
         span: Span,
     ) -> &mut Self {
-        self.inst(Inst::SliceStore { slice, index, value, span: Some(span) });
+        self.inst(Inst::SliceStore { slice, index, value, span, checked: true });
         self
     }
 
@@ -137,38 +139,39 @@ impl<'a> InstBuilder<'a> {
         slice: ValueId,
         index: ValueId,
         value: ValueId,
+        span: Span,
     ) -> &mut Self {
-        self.inst(Inst::SliceStore { slice, index, value, span: None });
+        self.inst(Inst::SliceStore { slice, index, value, span, checked: false });
         self
     }
 
-    pub fn incref(&mut self, value: ValueId) -> &mut Self {
-        self.inst(Inst::IncRef { value });
+    pub fn incref(&mut self, value: ValueId, span: Span) -> &mut Self {
+        self.inst(Inst::IncRef { value, span });
         self
     }
 
-    pub fn decref(&mut self, value: ValueId) -> &mut Self {
-        self.inst(Inst::DecRef { value });
+    pub fn decref(&mut self, value: ValueId, span: Span) -> &mut Self {
+        self.inst(Inst::DecRef { value, span });
         self
     }
 
-    pub fn stackalloc(&mut self, value: ValueId, init: ValueId) -> &mut Self {
-        self.inst(Inst::StackAlloc { value, init: Some(init) });
+    pub fn stackalloc(&mut self, value: ValueId, init: ValueId, span: Span) -> &mut Self {
+        self.inst(Inst::StackAlloc { value, init: Some(init), span });
         self
     }
 
-    pub fn stackalloc_uninit(&mut self, value: ValueId) -> &mut Self {
-        self.inst(Inst::StackAlloc { value, init: None });
+    pub fn stackalloc_uninit(&mut self, value: ValueId, span: Span) -> &mut Self {
+        self.inst(Inst::StackAlloc { value, init: None, span });
         self
     }
 
-    pub fn alloc_slice(&mut self, value: ValueId, cap: ValueId) -> &mut Self {
-        self.inst(Inst::SliceAlloc { value, cap });
+    pub fn alloc_slice(&mut self, value: ValueId, cap: ValueId, span: Span) -> &mut Self {
+        self.inst(Inst::SliceAlloc { value, cap, span });
         self
     }
 
-    pub fn alloc(&mut self, value: ValueId) -> &mut Self {
-        self.inst(Inst::Alloc { value });
+    pub fn alloc(&mut self, value: ValueId, span: Span) -> &mut Self {
+        self.inst(Inst::Alloc { value, span });
         self
     }
 

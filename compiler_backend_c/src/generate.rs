@@ -457,14 +457,20 @@ impl<'db> Generator<'db> {
     #[allow(clippy::too_many_lines)]
     fn codegen_inst(&mut self, state: &mut GenState<'db>, inst: &'db Inst) -> D<'db> {
         match inst {
-            Inst::StackAlloc { value, init } => self.codegen_inst_stackalloc(state, *value, *init),
-            Inst::Alloc { value } => self.alloc_value(state, *value),
-            Inst::SliceAlloc { value, cap } => self.alloc_slice(state, *value, *cap),
-            Inst::SliceIndex { value, slice, index, span } => {
+            Inst::StackAlloc { value, init, .. } => {
+                self.codegen_inst_stackalloc(state, *value, *init)
+            }
+            Inst::Alloc { value, .. } => self.alloc_value(state, *value),
+            Inst::SliceAlloc { value, cap, .. } => self.alloc_slice(state, *value, *cap),
+            Inst::SliceIndex { value, slice, index, span, checked } => {
                 let slice_index = self
                     .value_assign(state, *value, |this| this.slice_index(state, *slice, *index));
 
-                self.maybe_slice_index_boundscheck(state, *slice, *index, slice_index, *span)
+                if *checked {
+                    self.maybe_slice_index_boundscheck(state, *slice, *index, slice_index, *span)
+                } else {
+                    slice_index
+                }
             }
             Inst::SliceSlice { value, slice, low, high, span } => {
                 self.value_assign(state, *value, |this| {
@@ -481,17 +487,21 @@ impl<'db> Generator<'db> {
                     )
                 })
             }
-            Inst::SliceStore { slice, index, value, span } => {
+            Inst::SliceStore { slice, index, value, span, checked } => {
                 let slice_index = self.slice_index(state, *slice, *index);
                 let slice_store = stmt(|| util::assign(slice_index, self.value(state, *value)));
 
-                self.maybe_slice_index_boundscheck(state, *slice, *index, slice_store, *span)
+                if *checked {
+                    self.maybe_slice_index_boundscheck(state, *slice, *index, slice_store, *span)
+                } else {
+                    slice_store
+                }
             }
-            Inst::Store { value, target } => {
+            Inst::Store { value, target, .. } => {
                 stmt(|| assign(self.value(state, *target), self.value(state, *value)))
             }
             Inst::Free { value, traced, span } => self.free(state, *value, *traced, *span),
-            Inst::IncRef { value } => {
+            Inst::IncRef { value, .. } => {
                 let value_doc = self.value(state, *value);
 
                 stmt(|| {
@@ -502,7 +512,7 @@ impl<'db> Generator<'db> {
                     }
                 })
             }
-            Inst::DecRef { value } => {
+            Inst::DecRef { value, .. } => {
                 let value_doc = self.value(state, *value);
 
                 stmt(|| {
@@ -526,7 +536,7 @@ impl<'db> Generator<'db> {
                     .enumerate()
                     .map(|(idx, &b)| (D::text(idx.to_string()), goto_stmt(state.body.block(b)))),
             ),
-            Inst::Return { value } => {
+            Inst::Return { value, .. } => {
                 stmt(|| D::text("return").append(D::space()).append(self.value(state, *value)))
             }
             Inst::Call { value, callee, args, span } => {
@@ -588,7 +598,7 @@ impl<'db> Generator<'db> {
 
                 self.value_assign(state, *value, |_| util::call(D::text(kind.as_str()), args))
             }
-            Inst::Binary { value, lhs, rhs, op, span } => self.codegen_bin_op(
+            Inst::Binary { value, lhs, rhs, op, span, checked } => self.codegen_bin_op(
                 state,
                 &BinOpData {
                     target: *value,
@@ -597,9 +607,10 @@ impl<'db> Generator<'db> {
                     op: *op,
                     ty: state.ty_of(*lhs),
                     span: *span,
+                    checked: *checked,
                 },
             ),
-            Inst::Unary { value, inner, op } => {
+            Inst::Unary { value, inner, op, .. } => {
                 let inner_ty = state.ty_of(*inner);
                 let op_str = match op {
                     UnOp::Neg => op.as_str(),
@@ -630,10 +641,10 @@ impl<'db> Generator<'db> {
                     util::deref(util::cast(target_doc, util::addr(source_doc)))
                 }
             }),
-            Inst::StrLit { value, lit } => {
+            Inst::StrLit { value, lit, .. } => {
                 self.value_assign(state, *value, |_| escaped_str_value(lit))
             }
-            Inst::Unreachable => util::call(D::text("_builtin_unreachable"), []),
+            Inst::Unreachable { .. } => util::call(D::text("_builtin_unreachable"), []),
             Inst::Destroy { .. } => unreachable!(),
         }
     }
