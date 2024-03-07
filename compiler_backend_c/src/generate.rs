@@ -40,7 +40,6 @@ pub struct Generator<'db> {
     pub types: Vec<D<'db>>,
     pub rc_types: Vec<D<'db>>,
     pub fn_decls: Vec<D<'db>>,
-    pub consts: Vec<D<'db>>,
     pub globals: Vec<D<'db>>,
     pub fn_defs: Vec<D<'db>>,
     pub target_metrics: TargetMetrics,
@@ -87,12 +86,7 @@ impl<'db> Generator<'db> {
         file.write_all(b"#include \"jinrt.h\"\n\n").unwrap();
 
         let decls = D::intersperse(
-            self.types
-                .into_iter()
-                .chain(self.rc_types)
-                .chain(self.fn_decls)
-                .chain(self.consts)
-                .chain(self.globals),
+            self.types.into_iter().chain(self.rc_types).chain(self.fn_decls).chain(self.globals),
             D::hardline(),
         );
         let fns = D::intersperse(self.fn_defs, D::hardline().append(D::hardline()));
@@ -156,11 +150,6 @@ impl<'db> Generator<'db> {
             let name_doc = ident(glob.name.as_str());
 
             match &glob.kind {
-                GlobalKind::Const(value) => {
-                    let doc =
-                        VariableDoc::assign(self, glob.ty, name_doc, codegen_const_value(value));
-                    self.consts.push(doc);
-                }
                 GlobalKind::Extern => {
                     let doc = stmt(|| {
                         D::text("extern").append(D::space()).append(glob.ty.cdecl(self, name_doc))

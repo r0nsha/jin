@@ -5,6 +5,7 @@ mod define;
 mod errors;
 mod exprs;
 mod fns;
+mod helpers;
 mod hooks;
 mod imports;
 mod items;
@@ -17,7 +18,6 @@ mod subst;
 mod tyexpr;
 mod types;
 mod unify;
-mod helpers;
 
 use std::cell::RefCell;
 use std::rc::Rc;

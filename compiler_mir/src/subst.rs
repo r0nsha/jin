@@ -35,7 +35,7 @@ impl<S: SubstTy> Subst<S> for Global {
             GlobalKind::Static(body) => {
                 body.subst(s);
             }
-            GlobalKind::Const(_) | GlobalKind::Extern => (),
+            GlobalKind::Extern => (),
         }
     }
 }
