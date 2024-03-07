@@ -1,13 +1,14 @@
 import std.(
 	c,
 	c.write,
+	os.errors,
 	str.(?)
 )
 
-let stdout: i32 = 1
+const STDOUT: i32 = 1
 
 fn print*(msg: &str) =
-	unsafe write(stdout, as[_](msg.ptr), msg.len)
+	unsafe write(STDOUT, as[_](msg.ptr), msg.len)
 
 fn print*(msg: str) = print(&msg)
 
@@ -28,16 +29,14 @@ type Error* {
 	Other(code: i32)
 }
 
-// TODO: match on `os.errors.*`.
-// This requires the language to have a way on matching constants.
 fn Error.from-os-error*(code: i32) -> Error =
 	match code {
-		1 -> Error.PermissionDenied
-		2 -> Error.NotFound
-		4 -> Error.Interrupted
-		9 -> Error.BadFileNumber
-		17 -> Error.AlreadyExists
-		22 -> Error.InvalidArgument
+		errors.EPERM -> Error.PermissionDenied
+		errors.ENOENT -> Error.NotFound
+		errors.EINTR -> Error.Interrupted
+		errors.EBADF -> Error.BadFileNumber
+		errors.EEXIST -> Error.AlreadyExists
+		errors.EINVAL -> Error.InvalidArgument
 		code -> Error.Other(code)
 	}
 

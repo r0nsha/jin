@@ -652,6 +652,18 @@ impl core::fmt::Debug for Pat {
 }
 
 impl Pat {
+    pub(super) fn new_true(span: Span) -> Self {
+        Self::Ctor(Ctor::True, vec![], span)
+    }
+
+    pub(super) fn new_false(span: Span) -> Self {
+        Self::Ctor(Ctor::False, vec![], span)
+    }
+
+    pub(super) fn new_unit(span: Span) -> Self {
+        Self::Ctor(Ctor::Unit, vec![], span)
+    }
+
     pub(super) fn flatten_or(self, row: Row) -> Vec<(Self, Row)> {
         if let Self::Or(pats, _) = self {
             pats.into_iter().map(|p| (p, row.clone())).collect()
@@ -660,25 +672,41 @@ impl Pat {
         }
     }
 
-    pub(super) fn from_hir(pat: &hir::MatchPat) -> Self {
+    pub(super) fn from_hir(pat: &hir::MatchPat, consts: &FxHashMap<DefId, (Const, Ty)>) -> Self {
         match pat {
             hir::MatchPat::Name(id, ty, span) => Self::Name(*id, *ty, *span),
+            hir::MatchPat::Const(id, span) => {
+                let (const_value, _) = &consts[id];
+                match const_value {
+                    Const::Str(v) => Self::Str(*v, *span),
+                    Const::Int(v) => Self::Int(*v, *span),
+                    Const::Bool(v) => {
+                        if *v {
+                            Self::new_true(*span)
+                        } else {
+                            Self::new_false(*span)
+                        }
+                    }
+                    Const::Unit => Self::new_unit(*span),
+                    Const::Float(_) => unreachable!(),
+                }
+            }
             hir::MatchPat::Wildcard(span) => Self::Wildcard(*span),
-            hir::MatchPat::Unit(span) => Self::Ctor(Ctor::Unit, vec![], *span),
-            hir::MatchPat::Bool(true, span) => Self::Ctor(Ctor::True, vec![], *span),
-            hir::MatchPat::Bool(false, span) => Self::Ctor(Ctor::False, vec![], *span),
+            hir::MatchPat::Unit(span) => Self::new_unit(*span),
+            hir::MatchPat::Bool(true, span) => Self::new_true(*span),
+            hir::MatchPat::Bool(false, span) => Self::new_false(*span),
             hir::MatchPat::Int(value, span) => Self::Int(*value, *span),
             hir::MatchPat::Str(value, span) => Self::Str(*value, *span),
             hir::MatchPat::Adt(adt_id, pats, span) => {
-                let args: Vec<_> = pats.iter().map(Self::from_hir).collect();
+                let args: Vec<_> = pats.iter().map(|p| Self::from_hir(p, consts)).collect();
                 Self::Ctor(Ctor::Struct(*adt_id), args, *span)
             }
             hir::MatchPat::Variant(variant_id, pats, span) => {
-                let args: Vec<_> = pats.iter().map(Self::from_hir).collect();
+                let args: Vec<_> = pats.iter().map(|p| Self::from_hir(p, consts)).collect();
                 Self::Ctor(Ctor::Variant(*variant_id), args, *span)
             }
             hir::MatchPat::Or(pats, span) => {
-                Self::Or(pats.iter().map(Self::from_hir).collect(), *span)
+                Self::Or(pats.iter().map(|p| Self::from_hir(p, consts)).collect(), *span)
             }
         }
     }

@@ -156,7 +156,8 @@ impl<S: SubstTy> Subst<S> for MatchPat {
             MatchPat::Adt(_, pats, _) | MatchPat::Variant(_, pats, _) | MatchPat::Or(pats, _) => {
                 pats.subst(s);
             }
-            MatchPat::Wildcard(_)
+            MatchPat::Const(_, _)
+            | MatchPat::Wildcard(_)
             | MatchPat::Unit(_)
             | MatchPat::Bool(_, _)
             | MatchPat::Int(_, _)

@@ -50,7 +50,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.insert_loop_move(value, moved_to);
         self.check_move_out_of_global(value, moved_to)?;
 
-        self.set_destroy_flag(value);
+        self.set_destroy_flag(value, moved_to);
 
         Ok(())
     }
@@ -390,6 +390,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     destroy_flag,
                     destroy_block,
                     Some(no_destroy_block),
+                    span,
                 );
 
                 let destroy_glue = self.needs_destroy_glue(value);
@@ -435,7 +436,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.destroy_value(value, span);
     }
 
-    pub(super) fn create_destroy_flag(&mut self, value: ValueId) {
+    pub(super) fn create_destroy_flag(&mut self, value: ValueId, span: Span) {
         if !self.needs_destroy(value) {
             return;
         }
@@ -444,7 +445,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let flag = self.push_inst_with_named_register(
             self.cx.db.types.bool,
             ustr("destroy_flag"),
-            |value| Inst::StackAlloc { value, init: Some(init) },
+            |value| Inst::StackAlloc { value, init: Some(init), span },
         );
         self.body.destroy_flags.insert(value, flag);
     }
@@ -452,7 +453,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     pub(super) fn destroy_and_set_flag(&mut self, value: ValueId, destroy_glue: bool, span: Span) {
         self.call_destroy_hook(value, span);
         self.ins(self.current_block).destroy(value, destroy_glue, span);
-        self.set_destroy_flag(value);
+        self.set_destroy_flag(value, span);
     }
 
     pub(super) fn call_destroy_hook(&mut self, value: ValueId, span: Span) {
@@ -460,7 +461,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let Some((adt_id, targs)) = value_ty.as_adt() else { return };
         let Some(&hook_id) = self.cx.db.hooks.get(&(adt_id, Hook::Destroy)) else { return };
 
-        let sig_id = self.cx.id_to_fn_sig[&hook_id];
+        let sig_id = self.cx.def_to_fn_sig[&hook_id];
         let sig_ty = self.cx.mir.fn_sigs[sig_id].ty;
         let tparams = sig_ty.collect_params();
         let instantiation = Instantiation::from((tparams.as_slice(), targs.as_slice()));
@@ -470,10 +471,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let arg = {
             let arg = value;
             self.push_inst_with_register(value_ty.create_ref(Mutability::Mut), |value| {
-                Inst::StackAlloc { value, init: Some(arg) }
+                Inst::StackAlloc { value, init: Some(arg), span }
             })
         };
-        self.ins(self.current_block).incref(arg);
+        self.ins(self.current_block).incref(arg, span);
 
         self.push_inst_with_register(self.cx.db.types.unit, |value| Inst::Call {
             value,
@@ -485,12 +486,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.body.create_instantation(value, instantiation);
     }
 
-    fn set_destroy_flag(&mut self, value: ValueId) {
+    fn set_destroy_flag(&mut self, value: ValueId, span: Span) {
         if let Some(destroy_flag) = self.body.destroy_flags.get(&value).copied() {
             let const_false = self.const_bool(false);
-            self.ins(self.current_block).store(const_false, destroy_flag);
+            self.ins(self.current_block).store(const_false, destroy_flag, span);
             self.walk_fields(value, |this, field| {
-                this.set_destroy_flag(field);
+                this.set_destroy_flag(field, span);
                 Ok(())
             })
             .unwrap();

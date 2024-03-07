@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use compiler_helpers::create_bool_enum;
 
 use compiler_ast::{
-    Attr, AttrArgs, AttrId, Attrs, ExternLet, Fn, FnKind, FnParam, FnSig, Item, Let,
+    Attr, AttrArgs, AttrId, Attrs, ExternLet, Fn, FnKind, FnParam, FnSig, Item, Let, LetKind,
 };
 use compiler_core::{
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -30,8 +30,14 @@ impl<'a> Parser<'a> {
             return if self.is_kw(Kw::Extern) {
                 self.parse_extern_let(attrs).map(Item::ExternLet)
             } else {
-                self.parse_let(attrs, AllowVis::Yes, RequireTy::Yes).map(Item::Let)
+                self.parse_let(attrs, LetKind::Let, AllowVis::Yes, RequireTy::Yes).map(Item::Let)
             };
+        }
+
+        if self.is_kw(Kw::Const) {
+            return self
+                .parse_let(attrs, LetKind::Const, AllowVis::Yes, RequireTy::Yes)
+                .map(Item::Let);
         }
 
         if self.is_kw(Kw::Type) {
@@ -216,6 +222,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_let(
         &mut self,
         attrs: Attrs,
+        kind: LetKind,
         allow_vis: AllowVis,
         require_ty: RequireTy,
     ) -> DiagnosticResult<Let> {
@@ -234,7 +241,14 @@ impl<'a> Parser<'a> {
 
         let value = self.parse_expr()?;
 
-        Ok(Let { attrs, pat, ty_expr, span: start.merge(value.span()), value: Box::new(value) })
+        Ok(Let {
+            attrs,
+            kind,
+            pat,
+            ty_expr,
+            span: start.merge(value.span()),
+            value: Box::new(value),
+        })
     }
 
     fn parse_extern_let(&mut self, attrs: Attrs) -> DiagnosticResult<ExternLet> {

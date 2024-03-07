@@ -5,6 +5,7 @@ mod define;
 mod errors;
 mod exprs;
 mod fns;
+mod helpers;
 mod hooks;
 mod imports;
 mod items;

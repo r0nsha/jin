@@ -143,6 +143,7 @@ impl TokenKind {
             TokenKind::Kw(
                 Kw::Fn
                 | Kw::Let
+                | Kw::Const
                 | Kw::Type
                 | Kw::Extern
                 | Kw::If
@@ -213,6 +214,7 @@ impl TokenKind {
                 | Kw::Break
                 | Kw::Fn
                 | Kw::Let
+                | Kw::Const
                 | Kw::Type
                 | Kw::Extern
                 | Kw::If
@@ -359,6 +361,7 @@ pub enum Kw {
     Return,
     Fn,
     Let,
+    Const,
     Type,
     Extern,
     If,
@@ -382,6 +385,7 @@ static KEYWORDS: phf::Map<&'static str, Kw> = phf_map! {
     "return" => Kw::Return,
     "fn" => Kw::Fn,
     "let" => Kw::Let,
+    "const" => Kw::Const,
     "type" => Kw::Type,
     "extern" => Kw::Extern,
     "if" => Kw::If,
@@ -418,6 +422,7 @@ impl fmt::Display for Kw {
             Self::Match => "match",
             Self::Fn => "fn",
             Self::Let => "let",
+            Self::Const => "const",
             Self::Type => "type",
             Self::Extern => "extern",
             Self::True => "true",

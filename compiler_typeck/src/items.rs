@@ -17,7 +17,6 @@ use compiler_core::{
 use compiler_data_structures::index_vec::{IndexVecExt as _, Key as _};
 use ustr::ustr;
 
-use crate::hooks;
 use crate::{
     attrs, errors, exprs, fns,
     lookup::{FnCandidate, Query},
@@ -27,6 +26,7 @@ use crate::{
     tyexpr::AllowTyHole,
     types, TyAlias, Typeck,
 };
+use crate::{helpers, hooks};
 
 pub(crate) fn define(cx: &mut Typeck, ast: &Ast) {
     for (module, item, id) in ast.items_with_id() {
@@ -56,7 +56,15 @@ fn define_let(
 ) {
     attrs::validate(cx, &let_.attrs, attrs::Placement::Let);
     let unknown = cx.db.types.unknown;
-    let pat = cx.define().global_pat(module_id, &let_.pat, unknown);
+    let pat = cx.define().global_pat(
+        module_id,
+        &let_.pat,
+        match &let_.kind {
+            ast::LetKind::Let => DefKind::Global,
+            ast::LetKind::Const => DefKind::Const,
+        },
+        unknown,
+    );
     cx.res_map.item_to_pat.insert(item_id, pat);
 }
 
@@ -533,13 +541,11 @@ fn check_item_body(
 ) -> DiagnosticResult<()> {
     match item {
         ast::Item::Let(let_) => {
-            let mut env = Env::new(module_id);
-            let pat = cx.res_map.item_to_pat.remove(&id).expect("to be defined");
-            let ty = cx.res_map.item_to_ty.remove(&id).expect("to be defined");
-            let value = check_let_body(cx, &mut env, ty, let_)?;
+            let (pat, value, ty) = check_let_item_body(cx, module_id, let_, id)?;
             cx.hir.lets.push_with_key(|id| hir::Let {
                 id,
-                module_id: env.module_id(),
+                module_id,
+                kind: helpers::trans_let_kind(&let_.kind),
                 pat,
                 value: Box::new(value),
                 ty,
@@ -559,6 +565,19 @@ fn check_item_body(
         },
         _ => Ok(()),
     }
+}
+
+fn check_let_item_body(
+    cx: &mut Typeck<'_>,
+    module_id: ModuleId,
+    let_: &ast::Let,
+    id: ast::GlobalItemId,
+) -> DiagnosticResult<(Pat, hir::Expr, Ty)> {
+    let mut env = Env::new(module_id);
+    let pat = cx.res_map.item_to_pat.remove(&id).expect("to be defined");
+    let ty = cx.res_map.item_to_ty.remove(&id).expect("to be defined");
+    let value = check_let_body(cx, &mut env, ty, let_)?;
+    Ok((pat, value, ty))
 }
 
 pub(crate) fn check_let_body(

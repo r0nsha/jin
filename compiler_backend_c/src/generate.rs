@@ -1,4 +1,4 @@
-use std::{fs::File, io::Write, iter};
+use std::{fs::File, io::Write};
 
 use camino::Utf8PathBuf;
 use compiler_core::ty::TyKind;
@@ -16,8 +16,7 @@ use compiler_core::{
     word::Word,
 };
 use compiler_mir::{
-    Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir, RtCallKind, StaticGlobal,
-    ValueId, ValueKind,
+    Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir, RtCallKind, ValueId, ValueKind,
 };
 
 use crate::{
@@ -41,7 +40,6 @@ pub struct Generator<'db> {
     pub types: Vec<D<'db>>,
     pub rc_types: Vec<D<'db>>,
     pub fn_decls: Vec<D<'db>>,
-    pub consts: Vec<D<'db>>,
     pub globals: Vec<D<'db>>,
     pub fn_defs: Vec<D<'db>>,
     pub target_metrics: TargetMetrics,
@@ -88,12 +86,7 @@ impl<'db> Generator<'db> {
         file.write_all(b"#include \"jinrt.h\"\n\n").unwrap();
 
         let decls = D::intersperse(
-            self.types
-                .into_iter()
-                .chain(self.rc_types)
-                .chain(self.fn_decls)
-                .chain(self.consts)
-                .chain(self.globals),
+            self.types.into_iter().chain(self.rc_types).chain(self.fn_decls).chain(self.globals),
             D::hardline(),
         );
         let fns = D::intersperse(self.fn_defs, D::hardline().append(D::hardline()));
@@ -157,33 +150,20 @@ impl<'db> Generator<'db> {
             let name_doc = ident(glob.name.as_str());
 
             match &glob.kind {
-                GlobalKind::Const(value) => {
-                    let doc =
-                        VariableDoc::assign(self, glob.ty, name_doc, codegen_const_value(value));
-                    self.consts.push(doc);
-                }
                 GlobalKind::Extern => {
                     let doc = stmt(|| {
                         D::text("extern").append(D::space()).append(glob.ty.cdecl(self, name_doc))
                     });
                     self.globals.push(doc);
                 }
-                GlobalKind::Static(StaticGlobal { body, result }) => {
+                GlobalKind::Static(body) => {
                     let decl_doc = stmt(|| glob.ty.cdecl(self, name_doc));
                     self.globals.push(decl_doc);
 
                     let mut state = GenState::new(glob.name, body);
 
-                    let return_stmt = stmt(|| {
-                        D::text("return").append(D::space()).append(self.value(&state, *result))
-                    });
-
-                    let block_docs: Vec<D> = body
-                        .blocks()
-                        .iter()
-                        .map(|b| self.codegen_block(&mut state, b))
-                        .chain(iter::once(return_stmt))
-                        .collect();
+                    let block_docs: Vec<D> =
+                        body.blocks().iter().map(|b| self.codegen_block(&mut state, b)).collect();
 
                     let init_fn_doc = D::text("FORCE_INLINE ")
                         .append(glob.ty.cdecl(self, D::text(global_init_fn_name(glob))))
@@ -466,14 +446,20 @@ impl<'db> Generator<'db> {
     #[allow(clippy::too_many_lines)]
     fn codegen_inst(&mut self, state: &mut GenState<'db>, inst: &'db Inst) -> D<'db> {
         match inst {
-            Inst::StackAlloc { value, init } => self.codegen_inst_stackalloc(state, *value, *init),
-            Inst::Alloc { value } => self.alloc_value(state, *value),
-            Inst::SliceAlloc { value, cap } => self.alloc_slice(state, *value, *cap),
-            Inst::SliceIndex { value, slice, index, span } => {
+            Inst::StackAlloc { value, init, .. } => {
+                self.codegen_inst_stackalloc(state, *value, *init)
+            }
+            Inst::Alloc { value, .. } => self.alloc_value(state, *value),
+            Inst::SliceAlloc { value, cap, .. } => self.alloc_slice(state, *value, *cap),
+            Inst::SliceIndex { value, slice, index, span, checked } => {
                 let slice_index = self
                     .value_assign(state, *value, |this| this.slice_index(state, *slice, *index));
 
-                self.maybe_slice_index_boundscheck(state, *slice, *index, slice_index, *span)
+                if *checked {
+                    self.maybe_slice_index_boundscheck(state, *slice, *index, slice_index, *span)
+                } else {
+                    slice_index
+                }
             }
             Inst::SliceSlice { value, slice, low, high, span } => {
                 self.value_assign(state, *value, |this| {
@@ -490,17 +476,21 @@ impl<'db> Generator<'db> {
                     )
                 })
             }
-            Inst::SliceStore { slice, index, value, span } => {
+            Inst::SliceStore { slice, index, value, span, checked } => {
                 let slice_index = self.slice_index(state, *slice, *index);
                 let slice_store = stmt(|| util::assign(slice_index, self.value(state, *value)));
 
-                self.maybe_slice_index_boundscheck(state, *slice, *index, slice_store, *span)
+                if *checked {
+                    self.maybe_slice_index_boundscheck(state, *slice, *index, slice_store, *span)
+                } else {
+                    slice_store
+                }
             }
-            Inst::Store { value, target } => {
+            Inst::Store { value, target, .. } => {
                 stmt(|| assign(self.value(state, *target), self.value(state, *value)))
             }
             Inst::Free { value, traced, span } => self.free(state, *value, *traced, *span),
-            Inst::IncRef { value } => {
+            Inst::IncRef { value, .. } => {
                 let value_doc = self.value(state, *value);
 
                 stmt(|| {
@@ -511,7 +501,7 @@ impl<'db> Generator<'db> {
                     }
                 })
             }
-            Inst::DecRef { value } => {
+            Inst::DecRef { value, .. } => {
                 let value_doc = self.value(state, *value);
 
                 stmt(|| {
@@ -523,19 +513,19 @@ impl<'db> Generator<'db> {
                 })
             }
             Inst::Br { target } => goto_stmt(state.body.block(*target)),
-            Inst::BrIf { cond, then, otherwise } => util::if_stmt(
+            Inst::BrIf { cond, then, otherwise, .. } => util::if_stmt(
                 self.value(state, *cond),
                 goto_stmt(state.body.block(*then)),
                 otherwise.map(|o| goto_stmt(state.body.block(o))),
             ),
-            Inst::Switch { cond, blocks } => util::switch_stmt(
+            Inst::Switch { cond, blocks, .. } => util::switch_stmt(
                 self.value(state, *cond),
                 blocks
                     .iter()
                     .enumerate()
                     .map(|(idx, &b)| (D::text(idx.to_string()), goto_stmt(state.body.block(b)))),
             ),
-            Inst::Return { value } => {
+            Inst::Return { value, .. } => {
                 stmt(|| D::text("return").append(D::space()).append(self.value(state, *value)))
             }
             Inst::Call { value, callee, args, span } => {
@@ -597,7 +587,7 @@ impl<'db> Generator<'db> {
 
                 self.value_assign(state, *value, |_| util::call(D::text(kind.as_str()), args))
             }
-            Inst::Binary { value, lhs, rhs, op, span } => self.codegen_bin_op(
+            Inst::Binary { value, lhs, rhs, op, span, checked } => self.codegen_bin_op(
                 state,
                 &BinOpData {
                     target: *value,
@@ -606,9 +596,10 @@ impl<'db> Generator<'db> {
                     op: *op,
                     ty: state.ty_of(*lhs),
                     span: *span,
+                    checked: *checked,
                 },
             ),
-            Inst::Unary { value, inner, op } => {
+            Inst::Unary { value, inner, op, .. } => {
                 let inner_ty = state.ty_of(*inner);
                 let op_str = match op {
                     UnOp::Neg => op.as_str(),
@@ -639,10 +630,10 @@ impl<'db> Generator<'db> {
                     util::deref(util::cast(target_doc, util::addr(source_doc)))
                 }
             }),
-            Inst::StrLit { value, lit } => {
+            Inst::StrLit { value, lit, .. } => {
                 self.value_assign(state, *value, |_| escaped_str_value(lit))
             }
-            Inst::Unreachable => util::call(D::text("_builtin_unreachable"), []),
+            Inst::Unreachable { .. } => util::call(D::text("_builtin_unreachable"), []),
             Inst::Destroy { .. } => unreachable!(),
         }
     }

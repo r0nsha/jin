@@ -26,7 +26,7 @@ impl<'db> CheckMain<'db> {
 
         let main_def_id = self.db.defs.iter().find_map(|def| {
             (def.scope.module_id == main_module_id
-                && matches!(def.kind.as_ref(), DefKind::Fn(FnInfo::Bare))
+                && matches!(&def.kind, DefKind::Fn(FnInfo::Bare))
                 && def.qpath.name() == "main")
                 .then_some(def.id)
         });

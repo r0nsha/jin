@@ -3,7 +3,7 @@ use compiler_core::{
     ty::{Subst, SubstTy},
 };
 
-use crate::{Block, Body, Fn, FnSig, Global, GlobalKind, Inst, Mir, StaticGlobal, Value};
+use crate::{Block, Body, Fn, FnSig, Global, GlobalKind, Inst, Mir, Value};
 
 impl<S: SubstTy> Subst<S> for Mir {
     fn subst(&mut self, s: &mut S) {
@@ -32,10 +32,10 @@ impl<S: SubstTy> Subst<S> for Fn {
 impl<S: SubstTy> Subst<S> for Global {
     fn subst(&mut self, s: &mut S) {
         match &mut self.kind {
-            GlobalKind::Static(StaticGlobal { body, result: _ }) => {
+            GlobalKind::Static(body) => {
                 body.subst(s);
             }
-            GlobalKind::Const(_) | GlobalKind::Extern => (),
+            GlobalKind::Extern => (),
         }
     }
 }

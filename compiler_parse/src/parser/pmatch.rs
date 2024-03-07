@@ -116,21 +116,17 @@ impl<'a> Parser<'a> {
             path.push(self.eat_ident()?.word());
         }
 
-        let (subpats, is_exhaustive) = self.parse_match_adt_subpats_optional()?;
+        let (subpats, is_exhaustive) = self.parse_match_adt_subpats()?;
         let span = start_word.span().merge(self.last_span());
 
         Ok(MatchPat::Adt(MatchPatAdt { path, subpats, is_exhaustive, span }))
     }
 
-    fn parse_match_adt_subpats_optional(&mut self) -> DiagnosticResult<(Vec<MatchSubpat>, bool)> {
-        if self.peek_is(TokenKind::OpenParen) {
-            self.parse_match_adt_subpats()
-        } else {
-            Ok((vec![], true))
+    fn parse_match_adt_subpats(&mut self) -> DiagnosticResult<(Option<Vec<MatchSubpat>>, bool)> {
+        if !self.peek_is(TokenKind::OpenParen) {
+            return Ok((None, true));
         }
-    }
 
-    fn parse_match_adt_subpats(&mut self) -> DiagnosticResult<(Vec<MatchSubpat>, bool)> {
         let mut is_exhaustive = true;
         let mut passed_named_pat = false;
 
@@ -160,7 +156,7 @@ impl<'a> Parser<'a> {
                 Ok(ControlFlow::Continue(subpat))
             })?;
 
-        Ok((subpats, is_exhaustive))
+        Ok((Some(subpats), is_exhaustive))
     }
 
     fn parse_match_adt_subpat(&mut self) -> DiagnosticResult<MatchSubpat> {

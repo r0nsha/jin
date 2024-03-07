@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use compiler_ast::{Attrs, CallArg, CharKind, Expr};
+use compiler_ast::{Attrs, CallArg, CharKind, Expr, LetKind};
 use compiler_core::{
     db::DefId,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -418,8 +418,7 @@ impl<'a> Parser<'a> {
 
     fn parse_stmt(&mut self) -> DiagnosticResult<Expr> {
         if self.is_kw(Kw::Let) {
-            let let_ = self.parse_let(Attrs::new(), AllowVis::No, RequireTy::No)?;
-            Ok(Expr::Let(let_))
+            self.parse_let(Attrs::new(), LetKind::Let, AllowVis::No, RequireTy::No).map(Expr::Let)
         } else {
             self.parse_expr()
         }

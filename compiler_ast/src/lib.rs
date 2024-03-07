@@ -321,10 +321,17 @@ pub struct FnParam {
 #[derive(Debug, Clone)]
 pub struct Let {
     pub attrs: Attrs,
+    pub kind: LetKind,
     pub pat: Pat,
     pub ty_expr: Option<TyExpr>,
     pub value: Box<Expr>,
     pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub enum LetKind {
+    Let,
+    Const,
 }
 
 #[derive(Debug, Clone)]
@@ -433,7 +440,7 @@ impl Spanned for MatchPat {
 #[derive(Debug, Clone)]
 pub struct MatchPatAdt {
     pub path: Vec<Word>,
-    pub subpats: Vec<MatchSubpat>,
+    pub subpats: Option<Vec<MatchSubpat>>,
     pub is_exhaustive: bool,
     pub span: Span,
 }

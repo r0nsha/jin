@@ -6,8 +6,8 @@ use pretty::RcDoc as D;
 use ustr::ustr;
 
 use crate::{
-    Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir, Pat, RtCallKind, StaticGlobal,
-    ValueId, ValueKind,
+    Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir, Pat, RtCallKind, ValueId,
+    ValueKind,
 };
 
 pub(super) fn print(db: &Db, mir: &Mir, w: &mut impl io::Write) -> io::Result<()> {
@@ -39,26 +39,12 @@ struct PrettyCx<'db> {
 impl<'db> PrettyCx<'db> {
     fn pp_global(&mut self, glob: &'db Global) -> D<'db> {
         match &glob.kind {
-            GlobalKind::Const(value) => D::text("let")
+            GlobalKind::Static(body) => D::text("let")
                 .append(D::space())
                 .append(Self::global(glob.name.as_str()))
                 .append(D::text(":"))
                 .append(D::space())
                 .append(D::text(glob.ty.to_string(self.db)))
-                .append(D::space())
-                .append(D::text("="))
-                .append(D::space())
-                .append(pp_const_value(value)),
-            GlobalKind::Static(StaticGlobal { body, result }) => D::text("let")
-                .append(D::space())
-                .append(Self::global(glob.name.as_str()))
-                .append(D::text(":"))
-                .append(D::space())
-                .append(D::text(glob.ty.to_string(self.db)))
-                .append(D::space())
-                .append(D::text("="))
-                .append(D::space())
-                .append(self.value(body, *result))
                 .append(D::space())
                 .append(
                     D::text("{")
@@ -128,7 +114,7 @@ impl<'db> PrettyCx<'db> {
     #[allow(clippy::too_many_lines)]
     fn pp_inst(&mut self, body: &'db Body, inst: &'db Inst) -> D<'db> {
         match inst {
-            Inst::StackAlloc { value, init } => self
+            Inst::StackAlloc { value, init, .. } => self
                 .value_assign(body, *value)
                 .append(D::text("stackalloc"))
                 .append(D::space())
@@ -136,17 +122,17 @@ impl<'db> PrettyCx<'db> {
                     init.map(|init| self.value(body, init))
                         .unwrap_or_else(|| D::text("uninitialized")),
                 ),
-            Inst::Store { value, target } => D::text("store")
+            Inst::Store { value, target, .. } => D::text("store")
                 .append(D::space())
                 .append(self.value(body, *value))
                 .append(D::text(" in "))
                 .append(self.value(body, *target)),
-            Inst::Alloc { value } => self
+            Inst::Alloc { value, .. } => self
                 .value_assign(body, *value)
                 .append(D::text("alloc"))
                 .append(D::space())
                 .append(body.value(*value).ty.to_string(self.db)),
-            Inst::SliceAlloc { value, cap } => self
+            Inst::SliceAlloc { value, cap, .. } => self
                 .value_assign(body, *value)
                 .append(D::text("slice_alloc, cap: "))
                 .append(self.value(body, *cap)),
@@ -184,16 +170,16 @@ impl<'db> PrettyCx<'db> {
             Inst::Free { value, .. } => {
                 D::text("free").append(D::space()).append(self.value(body, *value))
             }
-            Inst::IncRef { value } => {
+            Inst::IncRef { value, .. } => {
                 D::text("incref").append(D::space()).append(self.value(body, *value))
             }
-            Inst::DecRef { value } => {
+            Inst::DecRef { value, .. } => {
                 D::text("decref").append(D::space()).append(self.value(body, *value))
             }
             Inst::Br { target } => {
                 D::text("br").append(D::space()).append(D::text(body.block(*target).display_name()))
             }
-            Inst::BrIf { cond, then, otherwise } => D::text("brif")
+            Inst::BrIf { cond, then, otherwise, .. } => D::text("brif")
                 .append(D::text("("))
                 .append(self.value(body, *cond))
                 .append(D::text(")"))
@@ -204,7 +190,7 @@ impl<'db> PrettyCx<'db> {
                 } else {
                     D::nil()
                 }),
-            Inst::Switch { cond, blocks } => D::text("switch")
+            Inst::Switch { cond, blocks, .. } => D::text("switch")
                 .append(D::text("("))
                 .append(self.value(body, *cond))
                 .append(D::text(")"))
@@ -215,7 +201,7 @@ impl<'db> PrettyCx<'db> {
                     D::text(", "),
                 ))
                 .append(D::text("]")),
-            Inst::Return { value } => {
+            Inst::Return { value, .. } => {
                 D::text("ret").append(D::space()).append(self.value(body, *value))
             }
             Inst::Call { value, callee, args, .. } => self
@@ -257,7 +243,7 @@ impl<'db> PrettyCx<'db> {
                 .append(D::text(op.as_str()))
                 .append(D::space())
                 .append(self.value(body, *rhs)),
-            Inst::Unary { value, inner, op } => self
+            Inst::Unary { value, inner, op, .. } => self
                 .value_assign(body, *value)
                 .append(D::text(op.as_str()))
                 .append(self.value(body, *inner)),
@@ -279,10 +265,10 @@ impl<'db> PrettyCx<'db> {
                 .append(D::text("to"))
                 .append(D::space())
                 .append(D::text(target.to_string(self.db))),
-            Inst::StrLit { value, lit } => self
+            Inst::StrLit { value, lit, .. } => self
                 .value_assign(body, *value)
                 .append(D::text("\"").append(D::text(lit.as_str())).append(D::text("\""))),
-            Inst::Unreachable => D::text("unreachable"),
+            Inst::Unreachable { .. } => D::text("unreachable"),
         }
     }
 

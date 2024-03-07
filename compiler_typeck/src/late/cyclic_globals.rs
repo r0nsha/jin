@@ -103,7 +103,7 @@ impl CyclicGlobals<'_> {
 
 impl Visitor for CyclicGlobals<'_> {
     fn visit_name(&mut self, expr: &Expr, name: &Name) {
-        if let DefKind::Global = self.db[name.id].kind.as_ref() {
+        if let DefKind::Global = &self.db[name.id].kind {
             self.graph.add_edge(self.curr_id, name.id, Use(expr.span));
         }
     }

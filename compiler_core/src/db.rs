@@ -327,7 +327,7 @@ pub struct Def {
     pub name: Ustr,
     pub qpath: QPath,
     pub scope: ScopeInfo,
-    pub kind: Box<DefKind>,
+    pub kind: DefKind,
     pub mutability: Mutability,
     pub span: Span,
 }
@@ -347,6 +347,7 @@ pub enum DefKind {
     TyAlias,
     ExternGlobal,
     Global,
+    Const,
     Variable,
 }
 
@@ -376,6 +377,7 @@ impl DefKind {
             Self::TyAlias => "type alias",
             Self::ExternGlobal => "extern let",
             Self::Global => "let",
+            Self::Const => "constant",
             Self::Variable => "variable",
         }
     }
@@ -401,7 +403,7 @@ impl Def {
             name: qpath.name(),
             qpath,
             scope,
-            kind: Box::new(kind),
+            kind,
             mutability,
             span,
         })

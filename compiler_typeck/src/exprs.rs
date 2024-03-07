@@ -14,6 +14,7 @@ use compiler_data_structures::index_vec::{IndexVecExt as _, Key as _};
 use itertools::{Itertools as _, Position};
 use ustr::{ustr, UstrMap};
 
+use crate::helpers;
 use crate::{
     coerce::{CoerceExt as _, CoerceOptions},
     errors, fns, items,
@@ -44,6 +45,7 @@ pub(crate) fn check_expr(
                 hir::ExprKind::Let(hir::Let {
                     id: hir::LetId::null(),
                     module_id: env.module_id(),
+                    kind: helpers::trans_let_kind(&let_.kind),
                     pat,
                     value: Box::new(value),
                     ty,
@@ -565,7 +567,7 @@ fn check_name(
     span: Span,
     targs: Option<&[Ty]>,
 ) -> DiagnosticResult<hir::Expr> {
-    if let DefKind::Adt(adt_id) = cx.db[id].kind.as_ref() {
+    if let DefKind::Adt(adt_id) = &cx.db[id].kind {
         match &cx.db[*adt_id].kind {
             AdtKind::Struct(_) => {
                 return check_name_struct(cx, env, id, word, span, targs, *adt_id);
@@ -1079,7 +1081,7 @@ fn check_str_interp(
         .lookup()
         .query(env_module, str_module, &Query::Name(Word::new_unknown(ustr("StrBuf"))))
         .expect("std.str.StrBuf to exist");
-    let &DefKind::Adt(strbuf_adt_id) = cx.db[strbuf_def_id].kind.as_ref() else {
+    let DefKind::Adt(strbuf_adt_id) = cx.db[strbuf_def_id].kind else {
         panic!("expected std.str.StrBuf to be an Adt")
     };
     let strbuf_ty = cx.db[strbuf_adt_id].ty();
@@ -1161,6 +1163,7 @@ fn interp_let_buf(
             hir::ExprKind::Let(hir::Let {
                 id: hir::LetId::null(),
                 module_id: from_module,
+                kind: hir::LetKind::Let,
                 pat: Pat::Name(NamePat {
                     id,
                     word: interp_buf_word,

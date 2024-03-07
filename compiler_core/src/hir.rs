@@ -149,10 +149,17 @@ pub struct FnParam {
 pub struct Let {
     pub id: LetId,
     pub module_id: ModuleId,
+    pub kind: LetKind,
     pub pat: Pat,
     pub value: Box<Expr>,
     pub ty: Ty,
     pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub enum LetKind {
+    Let,
+    Const,
 }
 
 #[derive(Debug, Clone)]
@@ -193,6 +200,7 @@ pub struct MatchArm {
 #[derive(Debug, Clone)]
 pub enum MatchPat {
     Name(DefId, Ty, Span),
+    Const(DefId, Span),
     Wildcard(Span),
     Unit(Span),
     Bool(bool, Span),
@@ -207,6 +215,7 @@ impl Spanned for MatchPat {
     fn span(&self) -> Span {
         match self {
             Self::Name(_, _, span)
+            | Self::Const(_, span)
             | Self::Wildcard(span)
             | Self::Unit(span)
             | Self::Bool(_, span)

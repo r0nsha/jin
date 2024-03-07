@@ -1,5 +1,6 @@
-let EPERM*: i32 = 1
-let ENOENT*: i32 = 2
-let EINTR*: i32 = 4
-let EEXIST*: i32 = 17
-let EINVAL*: i32 = 22
+const EPERM*: i32 = 1
+const ENOENT*: i32 = 2
+const EINTR*: i32 = 4
+const EBADF*: i32 = 9
+const EEXIST*: i32 = 17
+const EINVAL*: i32 = 22
