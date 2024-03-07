@@ -62,17 +62,13 @@ impl<'db> Lower<'db> {
     }
 
     fn run(&mut self) {
-        for fun in &self.hir.fns {
-            let sig = self.lower_fn_sig(fun);
-            self.id_to_fn_sig.insert(fun.def_id, sig);
-        }
+        self.lower_extern_lets();
+        self.lower_fn_sigs();
+        self.lower_lets();
+        self.lower_fn_bodies();
+    }
 
-        for let_ in &self.hir.lets {
-            if !let_.pat.any(|name| self.id_to_global.get(&name.id).is_some()) {
-                self.lower_global_let(let_);
-            }
-        }
-
+    fn lower_extern_lets(&mut self) {
         for let_ in &self.hir.extern_lets {
             let id = self.mir.globals.insert_with_key(|id| Global {
                 id,
@@ -84,7 +80,24 @@ impl<'db> Lower<'db> {
 
             self.id_to_global.insert(let_.id, id);
         }
+    }
 
+    fn lower_fn_sigs(&mut self) {
+        for fun in &self.hir.fns {
+            let sig = self.lower_fn_sig(fun);
+            self.id_to_fn_sig.insert(fun.def_id, sig);
+        }
+    }
+
+    fn lower_lets(&mut self) {
+        for let_ in &self.hir.lets {
+            if !let_.pat.any(|name| self.id_to_global.get(&name.id).is_some()) {
+                self.lower_global_let(let_);
+            }
+        }
+    }
+
+    fn lower_fn_bodies(&mut self) {
         for f in self.hir.fns.iter().filter(|f| matches!(f.kind, FnKind::Bare { .. })) {
             let sig = self.id_to_fn_sig[&f.def_id];
             self.lower_fn_body(sig, f);
