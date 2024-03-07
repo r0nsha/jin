@@ -12,7 +12,7 @@ impl<'db> Lower<'db> {
 }
 
 pub(super) struct Eval<'cx, 'db> {
-    cx: &'cx mut Lower<'db>,
+    _cx: &'cx mut Lower<'db>,
     body: &'cx Body,
     current_block: BlockId,
     current_inst: usize,
@@ -22,7 +22,7 @@ pub(super) struct Eval<'cx, 'db> {
 impl<'cx, 'db> Eval<'cx, 'db> {
     fn new(cx: &'cx mut Lower<'db>, body: &'cx Body) -> Self {
         Self {
-            cx,
+            _cx: cx,
             body,
             current_block: BlockId::start(),
             current_inst: 0,

@@ -108,7 +108,7 @@ fn check_match_pat(
 
     match pat {
         ast::MatchPat::Name(word, mutability) => {
-            check_match_pat_name(cx, env, *word, *mutability, pat_ty, names)
+            check_match_pat_name(cx, env, *word, *mutability, parent_span, pat_ty, names)
         }
         ast::MatchPat::Wildcard(span) => Ok(hir::MatchPat::Wildcard(*span)),
         ast::MatchPat::Unit(span) => {
@@ -155,6 +155,7 @@ fn check_match_pat_name(
     env: &mut Env,
     word: Word,
     mutability: Mutability,
+    parent_span: Span,
     pat_ty: Ty,
     names: &mut UstrMap<DefId>,
 ) -> DiagnosticResult<hir::MatchPat> {
@@ -162,7 +163,7 @@ fn check_match_pat_name(
         cx.lookup().with_env(env).query(env.module_id(), env.module_id(), &Query::Name(word))
     {
         if let DefKind::Const = cx.db[id].kind {
-            return check_match_pat_const(cx, env, id, word.span(), pat_ty, names);
+            return check_match_pat_const(cx, id, word.span(), parent_span, pat_ty);
         }
     }
 
@@ -198,13 +199,24 @@ fn check_match_pat_name(
 
 fn check_match_pat_const(
     cx: &mut Typeck<'_>,
-    env: &mut Env,
     id: DefId,
     span: Span,
+    parent_span: Span,
     pat_ty: Ty,
-    names: &mut UstrMap<DefId>,
 ) -> DiagnosticResult<hir::MatchPat> {
-    return Ok(hir::MatchPat::Const(id, span));
+    let def_ty_deref = cx.normalize(cx.def_ty(id)).auto_deref();
+    let pat_ty_deref = cx.normalize(pat_ty).auto_deref();
+    cx.at(Obligation::exprs(span, span, parent_span)).eq(def_ty_deref, pat_ty_deref)?;
+
+    if pat_ty_deref.is_any_float() {
+        return Err(Diagnostic::error(format!(
+            "cannot match against type `{}`",
+            pat_ty_deref.display(cx.db)
+        ))
+        .with_label(Label::primary(span, "cannot match against this pattern type")));
+    }
+
+    Ok(hir::MatchPat::Const(id, span))
 }
 
 // fn maybe_check_match_pat_inferred_variant(
@@ -252,7 +264,7 @@ fn check_match_pat_adt(
                     check_match_pat_struct(cx, env, pat, pat_ty, parent_span, names, adt_id)
                 }
                 DefKind::Const if pat.subpats.is_none() => {
-                    check_match_pat_const(cx, env, id, pat.span, pat_ty, names)
+                    check_match_pat_const(cx, id, pat.span, parent_span, pat_ty)
                 }
                 _ => Err(errors::expected_named_ty(cx.def_ty(id).display(cx.db), pat.span)),
             }
