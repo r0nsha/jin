@@ -11,6 +11,7 @@ use compiler_core::{
 use itertools::Itertools;
 use ustr::{Ustr, UstrMap};
 
+use crate::lookup::Query;
 use crate::{
     coerce::CoerceExt as _,
     errors,
@@ -157,7 +158,15 @@ fn check_match_pat_name(
     pat_ty: Ty,
     names: &mut UstrMap<DefId>,
 ) -> DiagnosticResult<hir::MatchPat> {
-    let id = if let Some(id) = names.get(&word.name()) {
+    if let Ok(id) =
+        cx.lookup().with_env(env).query(env.module_id(), env.module_id(), &Query::Name(word))
+    {
+        if let DefKind::Const = cx.db[id].kind {
+            return check_match_pat_const(cx, env, id, word.span(), pat_ty, names);
+        }
+    }
+
+    if let Some(id) = names.get(&word.name()) {
         // We make sure that names in all alternatives are bound to the same type
         let expected_ty = cx.def_ty(*id);
 
@@ -179,14 +188,23 @@ fn check_match_pat_name(
             )));
         }
 
-        *id
-    } else {
-        let id = cx.define().new_local(env, DefKind::Variable, word, mutability, pat_ty);
-        names.insert(word.name(), id);
-        id
-    };
+        return Ok(hir::MatchPat::Name(*id, cx.def_ty(*id), word.span()));
+    }
 
+    let id = cx.define().new_local(env, DefKind::Variable, word, mutability, pat_ty);
+    names.insert(word.name(), id);
     Ok(hir::MatchPat::Name(id, cx.def_ty(id), word.span()))
+}
+
+fn check_match_pat_const(
+    cx: &mut Typeck<'_>,
+    env: &mut Env,
+    id: DefId,
+    span: Span,
+    pat_ty: Ty,
+    names: &mut UstrMap<DefId>,
+) -> DiagnosticResult<hir::MatchPat> {
+    return Ok(hir::MatchPat::Const(id, span));
 }
 
 // fn maybe_check_match_pat_inferred_variant(
@@ -229,9 +247,12 @@ fn check_match_pat_adt(
         PathLookup::Def(id) => {
             let def = &cx.db[id];
 
-            match def.kind.as_ref() {
-                &DefKind::Adt(adt_id) => {
+            match def.kind {
+                DefKind::Adt(adt_id) => {
                     check_match_pat_struct(cx, env, pat, pat_ty, parent_span, names, adt_id)
+                }
+                DefKind::Const if pat.subpats.is_none() => {
+                    check_match_pat_const(cx, env, id, pat.span, pat_ty, names)
                 }
                 _ => Err(errors::expected_named_ty(cx.def_ty(id).display(cx.db), pat.span)),
             }
@@ -342,51 +363,53 @@ fn check_match_pat_subpats(
 
     let mut new_subpats = vec![hir::MatchPat::Wildcard(pat.span); fields.len()];
 
-    for (idx, subpat) in pat.subpats.iter().enumerate() {
-        let (field_idx, field, subpat, field_use_span) = match subpat {
-            ast::MatchSubpat::Positional(subpat) => {
-                if let Some(field) = fields.get(idx) {
-                    (idx, field, subpat, subpat.span())
-                } else {
-                    return Err(Diagnostic::error(format!(
-                        "expected at most {} patterns for type `{}`",
-                        fields.len(),
-                        adt_name
-                    ))
-                    .with_label(Label::primary(
-                        subpat.span(),
-                        "pattern doesn't map to any field",
-                    )));
+    if let Some(subpats) = &pat.subpats {
+        for (idx, subpat) in subpats.iter().enumerate() {
+            let (field_idx, field, subpat, field_use_span) = match subpat {
+                ast::MatchSubpat::Positional(subpat) => {
+                    if let Some(field) = fields.get(idx) {
+                        (idx, field, subpat, subpat.span())
+                    } else {
+                        return Err(Diagnostic::error(format!(
+                            "expected at most {} patterns for type `{}`",
+                            fields.len(),
+                            adt_name
+                        ))
+                        .with_label(Label::primary(
+                            subpat.span(),
+                            "pattern doesn't map to any field",
+                        )));
+                    }
                 }
-            }
-            ast::MatchSubpat::Named(name, subpat) => {
-                if let Some((field_idx, field)) =
-                    fields.iter().enumerate().find(|(_, f)| f.name.name() == name.name())
-                {
-                    (field_idx, field, subpat, name.span())
-                } else {
-                    return Err(field_not_found(cx.db, cx.db[adt_id].ty(), pat.span, *name));
+                ast::MatchSubpat::Named(name, subpat) => {
+                    if let Some((field_idx, field)) =
+                        fields.iter().enumerate().find(|(_, f)| f.name.name() == name.name())
+                    {
+                        (field_idx, field, subpat, name.span())
+                    } else {
+                        return Err(field_not_found(cx.db, cx.db[adt_id].ty(), pat.span, *name));
+                    }
                 }
-            }
-        };
+            };
 
-        use_field(field.name.name(), field_use_span)?;
+            use_field(field.name.name(), field_use_span)?;
 
-        exprs::check_field_access(cx, env, &cx.db[adt_id], field, field_use_span)?;
+            exprs::check_field_access(cx, env, &cx.db[adt_id], field, field_use_span)?;
 
-        let field_ty = instantiation.fold(field.ty);
-        let field_ty = match pat_ty.kind() {
-            TyKind::Ref(_, mutability) => {
-                // If the parent pattern's type is a reference, the field's type is
-                // implicitly a reference too.
-                field_ty.create_ref(*mutability)
-            }
-            _ => field_ty,
-        };
+            let field_ty = instantiation.fold(field.ty);
+            let field_ty = match pat_ty.kind() {
+                TyKind::Ref(_, mutability) => {
+                    // If the parent pattern's type is a reference, the field's type is
+                    // implicitly a reference too.
+                    field_ty.create_ref(*mutability)
+                }
+                _ => field_ty,
+            };
 
-        let new_subpat = check_match_pat(cx, env, subpat, field_ty, field.span(), names)?;
+            let new_subpat = check_match_pat(cx, env, subpat, field_ty, field.span(), names)?;
 
-        new_subpats[field_idx] = new_subpat;
+            new_subpats[field_idx] = new_subpat;
+        }
     }
 
     if pat.is_exhaustive {

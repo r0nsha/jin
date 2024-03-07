@@ -200,6 +200,7 @@ pub struct MatchArm {
 #[derive(Debug, Clone)]
 pub enum MatchPat {
     Name(DefId, Ty, Span),
+    Const(DefId, Span),
     Wildcard(Span),
     Unit(Span),
     Bool(bool, Span),
@@ -214,6 +215,7 @@ impl Spanned for MatchPat {
     fn span(&self) -> Span {
         match self {
             Self::Name(_, _, span)
+            | Self::Const(_, span)
             | Self::Wildcard(span)
             | Self::Unit(span)
             | Self::Bool(_, span)

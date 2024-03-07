@@ -1,6 +1,7 @@
 import std.(
 	c,
 	c.write,
+	os.errors,
 	str.(?)
 )
 
@@ -32,7 +33,7 @@ type Error* {
 // This requires the language to have a way on matching constants.
 fn Error.from-os-error*(code: i32) -> Error =
 	match code {
-		1 -> Error.PermissionDenied
+		errors.EPERM -> Error.PermissionDenied
 		2 -> Error.NotFound
 		4 -> Error.Interrupted
 		9 -> Error.BadFileNumber

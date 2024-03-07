@@ -440,7 +440,7 @@ impl Spanned for MatchPat {
 #[derive(Debug, Clone)]
 pub struct MatchPatAdt {
     pub path: Vec<Word>,
-    pub subpats: Vec<MatchSubpat>,
+    pub subpats: Option<Vec<MatchSubpat>>,
     pub is_exhaustive: bool,
     pub span: Span,
 }

@@ -327,7 +327,7 @@ pub struct Def {
     pub name: Ustr,
     pub qpath: QPath,
     pub scope: ScopeInfo,
-    pub kind: Box<DefKind>,
+    pub kind: DefKind,
     pub mutability: Mutability,
     pub span: Span,
 }
@@ -403,7 +403,7 @@ impl Def {
             name: qpath.name(),
             qpath,
             scope,
-            kind: Box::new(kind),
+            kind,
             mutability,
             span,
         })

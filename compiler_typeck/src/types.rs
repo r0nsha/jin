@@ -218,7 +218,7 @@ pub(crate) fn fresh_instantiation(
 pub(crate) fn try_extract_assoc_ty(cx: &Typeck<'_>, id: DefId) -> Option<AssocTy> {
     let def = &cx.db[id];
 
-    match def.kind.as_ref() {
+    match &def.kind {
         DefKind::Adt(adt_id) => Some(AssocTy::Adt(*adt_id)),
         DefKind::BuiltinTy(ty) => Some(AssocTy::BuiltinTy(*ty)),
         _ => None,

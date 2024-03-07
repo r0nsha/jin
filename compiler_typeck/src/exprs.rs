@@ -567,7 +567,7 @@ fn check_name(
     span: Span,
     targs: Option<&[Ty]>,
 ) -> DiagnosticResult<hir::Expr> {
-    if let DefKind::Adt(adt_id) = cx.db[id].kind.as_ref() {
+    if let DefKind::Adt(adt_id) = &cx.db[id].kind {
         match &cx.db[*adt_id].kind {
             AdtKind::Struct(_) => {
                 return check_name_struct(cx, env, id, word, span, targs, *adt_id);
@@ -1081,7 +1081,7 @@ fn check_str_interp(
         .lookup()
         .query(env_module, str_module, &Query::Name(Word::new_unknown(ustr("StrBuf"))))
         .expect("std.str.StrBuf to exist");
-    let &DefKind::Adt(strbuf_adt_id) = cx.db[strbuf_def_id].kind.as_ref() else {
+    let DefKind::Adt(strbuf_adt_id) = cx.db[strbuf_def_id].kind else {
         panic!("expected std.str.StrBuf to be an Adt")
     };
     let strbuf_ty = cx.db[strbuf_adt_id].ty();

@@ -43,7 +43,7 @@ pub(super) struct Lower<'db> {
     pub(super) diagnostics: Vec<Diagnostic>,
     pub(super) def_to_fn_sig: FxHashMap<DefId, FnSigId>,
     pub(super) def_to_global: FxHashMap<DefId, GlobalId>,
-    pub(super) def_to_const: FxHashMap<DefId, (Const, Ty)>,
+    pub(super) consts: FxHashMap<DefId, (Const, Ty)>,
     pub(super) struct_ctors: FxHashMap<AdtId, FnSigId>,
     pub(super) variant_ctors: FxHashMap<VariantId, FnSigId>,
 }
@@ -57,7 +57,7 @@ impl<'db> Lower<'db> {
             diagnostics: vec![],
             def_to_fn_sig: FxHashMap::default(),
             def_to_global: FxHashMap::default(),
-            def_to_const: FxHashMap::default(),
+            consts: FxHashMap::default(),
             struct_ctors: FxHashMap::default(),
             variant_ctors: FxHashMap::default(),
         }
@@ -118,12 +118,12 @@ impl<'db> Lower<'db> {
     }
 
     fn lower_const_let(&mut self, def_id: DefId) -> Option<(Const, Ty)> {
-        if let Some(result) = self.def_to_const.get(&def_id).cloned() {
+        if let Some(result) = self.consts.get(&def_id).cloned() {
             return Some(result);
         }
 
         self.lower_global_let_by_id(def_id);
-        self.def_to_const.get(&def_id).cloned()
+        self.consts.get(&def_id).cloned()
     }
 
     fn lower_global_let_by_id(&mut self, def_id: DefId) -> Option<GlobalId> {
@@ -432,7 +432,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let ty = name.ty;
 
                 if let Some(const_value) = const_value {
-                    self.cx.def_to_const.insert(name.id, (const_value, ty));
+                    self.cx.consts.insert(name.id, (const_value, ty));
                     None
                 } else {
                     let id = self.cx.mir.globals.insert_with_key(|id| Global {
@@ -517,7 +517,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     });
 
                     let block = self.body.create_block("arm");
-                    let pat = pmatch::Pat::from_hir(&arm.pat);
+                    let pat = pmatch::Pat::from_hir(&arm.pat, &self.cx.consts);
                     let col = pmatch::Col::new(value, pat);
                     let body = pmatch::DecisionBody::new(block, arm.pat.span());
 
@@ -1307,7 +1307,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn lower_name(&mut self, id: DefId, instantiation: &Instantiation) -> ValueId {
-        let value = match self.cx.db[id].kind.as_ref() {
+        let value = match &self.cx.db[id].kind {
             DefKind::Fn(_) => {
                 let id = self.cx.def_to_fn_sig[&id];
                 self.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))

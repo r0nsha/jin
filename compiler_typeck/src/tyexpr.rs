@@ -110,7 +110,7 @@ fn check_path(
         PathLookup::Def(id) => {
             let def = &cx.db[id];
 
-            match def.kind.as_ref() {
+            match &def.kind {
                 DefKind::BuiltinTy(ty) => {
                     if targs.is_some() {
                         Err(Diagnostic::error(format!(
