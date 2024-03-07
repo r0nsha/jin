@@ -34,11 +34,11 @@ type Error* {
 fn Error.from-os-error*(code: i32) -> Error =
 	match code {
 		errors.EPERM -> Error.PermissionDenied
-		2 -> Error.NotFound
-		4 -> Error.Interrupted
-		9 -> Error.BadFileNumber
-		17 -> Error.AlreadyExists
-		22 -> Error.InvalidArgument
+		errors.ENOENT -> Error.NotFound
+		errors.EINTR -> Error.Interrupted
+		errors.EBADF -> Error.BadFileNumber
+		errors.EEXIST -> Error.AlreadyExists
+		errors.EINVAL -> Error.InvalidArgument
 		code -> Error.Other(code)
 	}
 
