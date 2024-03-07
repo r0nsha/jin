@@ -62,7 +62,6 @@ impl<'db> Lower<'db> {
     fn run(&mut self) {
         self.lower_extern_lets();
         self.lower_fn_sigs();
-        self.lower_consts();
         self.lower_lets();
         self.lower_fn_bodies();
     }
@@ -88,10 +87,6 @@ impl<'db> Lower<'db> {
         }
     }
 
-    fn lower_consts(&mut self) {
-        // todo!()
-    }
-
     fn lower_lets(&mut self) {
         for let_ in &self.hir.lets {
             if let_.pat.any(|name| self.def_to_global.get(&name.id).is_some()) {
@@ -106,7 +101,7 @@ impl<'db> Lower<'db> {
     fn lower_fn_bodies(&mut self) {
         for f in self.hir.fns.iter().filter(|f| matches!(f.kind, FnKind::Bare { .. })) {
             let sig = self.def_to_fn_sig[&f.def_id];
-            self.lower_fn_body(sig, f);
+            LowerBody::new(self).lower_fn(sig, f);
         }
     }
 
@@ -115,14 +110,16 @@ impl<'db> Lower<'db> {
             return target_id;
         }
 
-        let let_ =
-            self.hir.lets.iter().find(|let_| matches!(&let_.pat, Pat::Name(n) if n.id == def_id));
+        let let_ = self
+            .hir
+            .lets
+            .iter()
+            .find(|let_| matches!(&let_.pat, Pat::Name(n) if n.id == def_id))
+            .unwrap_or_else(|| {
+                panic!("global let {} not found in hir.lets", self.db[def_id].qpath)
+            });
 
-        if let Some(let_) = let_ {
-            self.lower_global_let(let_).expect("to output a GlobalId")
-        } else {
-            panic!("global let {} not found in hir.lets", self.db[def_id].qpath);
-        }
+        self.lower_global_let(let_).expect("to output a GlobalId")
     }
 
     fn lower_global_let(&mut self, let_: &hir::Let) -> Option<GlobalId> {
@@ -291,10 +288,6 @@ impl<'db> Lower<'db> {
             is_inline: false,
             span: fun.sig.word.span(),
         })
-    }
-
-    fn lower_fn_body(&mut self, sig: FnSigId, f: &hir::Fn) {
-        LowerBody::new(self).lower_fn(sig, f);
     }
 }
 
@@ -1267,6 +1260,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.create_value(self.cx.mir.globals[id].ty, ValueKind::Global(id))
             }
             DefKind::Const => {
+                let id = self.cx.lower_global(id);
                 todo!("resolve const value")
             }
             DefKind::Variable => self.locals[&id],
