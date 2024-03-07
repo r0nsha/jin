@@ -460,7 +460,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let Some((adt_id, targs)) = value_ty.as_adt() else { return };
         let Some(&hook_id) = self.cx.db.hooks.get(&(adt_id, Hook::Destroy)) else { return };
 
-        let sig_id = self.cx.id_to_fn_sig[&hook_id];
+        let sig_id = self.cx.def_to_fn_sig[&hook_id];
         let sig_ty = self.cx.mir.fn_sigs[sig_id].ty;
         let tparams = sig_ty.collect_params();
         let instantiation = Instantiation::from((tparams.as_slice(), targs.as_slice()));

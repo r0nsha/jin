@@ -1,4 +1,3 @@
-use compiler_core::middle::Vis;
 use compiler_data_structures::index_vec::Key;
 use indexmap::IndexSet;
 use ustr::{ustr, Ustr};
@@ -6,10 +5,9 @@ use ustr::{ustr, Ustr};
 use compiler_core::{
     db::{AdtField, AdtKind, Builtin, Db, DefId, DefKind, StructKind, UnionKind, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult},
-    hir,
-    hir::{FnKind, Hir},
+    hir::{self, FnKind, Hir},
     mangle,
-    middle::{BinOp, CmpOp, Mutability, NamePat, Pat},
+    middle::{BinOp, CmpOp, Mutability, NamePat, Pat, Vis},
     span::Spanned,
     sym,
     ty::{
@@ -41,8 +39,8 @@ pub(super) struct Lower<'db> {
     pub(super) hir: &'db Hir,
     pub(super) mir: Mir,
     pub(super) diagnostics: Vec<Diagnostic>,
-    pub(super) id_to_fn_sig: FxHashMap<DefId, FnSigId>,
-    pub(super) id_to_global: FxHashMap<DefId, GlobalId>,
+    pub(super) def_to_fn_sig: FxHashMap<DefId, FnSigId>,
+    pub(super) def_to_global: FxHashMap<DefId, GlobalId>,
     pub(super) struct_ctors: FxHashMap<AdtId, FnSigId>,
     pub(super) variant_ctors: FxHashMap<VariantId, FnSigId>,
 }
@@ -54,8 +52,8 @@ impl<'db> Lower<'db> {
             hir,
             mir: Mir::new(),
             diagnostics: vec![],
-            id_to_fn_sig: FxHashMap::default(),
-            id_to_global: FxHashMap::default(),
+            def_to_fn_sig: FxHashMap::default(),
+            def_to_global: FxHashMap::default(),
             struct_ctors: FxHashMap::default(),
             variant_ctors: FxHashMap::default(),
         }
@@ -79,14 +77,14 @@ impl<'db> Lower<'db> {
                 kind: GlobalKind::Extern,
             });
 
-            self.id_to_global.insert(let_.id, id);
+            self.def_to_global.insert(let_.id, id);
         }
     }
 
     fn lower_fn_sigs(&mut self) {
         for fun in &self.hir.fns {
             let sig = self.lower_fn_sig(fun);
-            self.id_to_fn_sig.insert(fun.def_id, sig);
+            self.def_to_fn_sig.insert(fun.def_id, sig);
         }
     }
 
@@ -96,7 +94,7 @@ impl<'db> Lower<'db> {
 
     fn lower_lets(&mut self) {
         for let_ in &self.hir.lets {
-            if let_.pat.any(|name| self.id_to_global.get(&name.id).is_some()) {
+            if let_.pat.any(|name| self.def_to_global.get(&name.id).is_some()) {
                 // Don't lower this if it has already been lowered...
                 continue;
             }
@@ -107,20 +105,18 @@ impl<'db> Lower<'db> {
 
     fn lower_fn_bodies(&mut self) {
         for f in self.hir.fns.iter().filter(|f| matches!(f.kind, FnKind::Bare { .. })) {
-            let sig = self.id_to_fn_sig[&f.def_id];
+            let sig = self.def_to_fn_sig[&f.def_id];
             self.lower_fn_body(sig, f);
         }
     }
 
     fn lower_global(&mut self, def_id: DefId) -> GlobalId {
-        if let Some(target_id) = self.id_to_global.get(&def_id).copied() {
+        if let Some(target_id) = self.def_to_global.get(&def_id).copied() {
             return target_id;
         }
 
-        let let_ = self.hir.lets.iter().find(|let_| match &let_.pat {
-            Pat::Name(n) => n.id == def_id,
-            Pat::Discard(_) => false,
-        });
+        let let_ =
+            self.hir.lets.iter().find(|let_| matches!(&let_.pat, Pat::Name(n) if n.id == def_id));
 
         if let Some(let_) = let_ {
             self.lower_global_let(let_).expect("to output a GlobalId")
@@ -416,7 +412,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     kind,
                 });
 
-                self.cx.id_to_global.insert(name.id, id);
+                self.cx.def_to_global.insert(name.id, id);
 
                 Some(id)
             }
@@ -1263,7 +1259,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn lower_name(&mut self, id: DefId, instantiation: &Instantiation) -> ValueId {
         let value = match self.cx.db[id].kind.as_ref() {
             DefKind::Fn(_) => {
-                let id = self.cx.id_to_fn_sig[&id];
+                let id = self.cx.def_to_fn_sig[&id];
                 self.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
             }
             DefKind::ExternGlobal | DefKind::Global => {
