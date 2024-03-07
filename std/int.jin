@@ -2,37 +2,37 @@ import std.option.Option
 import std.slice.(?)
 import std.str.StrBuf
 
-let i8-min*: i8 = -128
-let i8-max*: i8 = 127
+const I8-MIN*: i8 = -128
+const I8-MAX*: i8 = 127
  
-let i16-min*: i16 = -32_768
-let i16-max*: i16 = 32_767
+const I16-MIN*: i16 = -32_768
+const I16-MAX*: i16 = 32_767
  
-let i32-min*: i32 = -2_147_483_648
-let i32-max*: i32 = 2_147_483_647
+const I32-MIN*: i32 = -2_147_483_648
+const I32-MAX*: i32 = 2_147_483_647
  
-let i64-min*: i64 = -9_223_372_036_854_775_808
-let i64-max*: i64 = 9_223_372_036_854_775_807
+const I64-MIN*: i64 = -9_223_372_036_854_775_808
+const I64-MAX*: i64 = 9_223_372_036_854_775_807
 
 // TODO: Consider 32bit platforms!
-let int-min*: int = i64-min
-let int-max*: int = i64-max
+const INT-MIN*: int = I64-MIN
+const INT-MAX*: int = I64-MAX
 
-let u8-min*: u8 = 0
-let u8-max*: u8 = 255
+const U8-MIN*: u8 = 0
+const U8-MAX*: u8 = 255
 
-let u16-min*: u16 = 0
-let u16-max*: u16 = 65_535
+const U16-MIN*: u16 = 0
+const U16-MAX*: u16 = 65_535
 
-let u32-min*: u32 = 0
-let u32-max*: u32 = 4_294_967_295
+const U32-MIN*: u32 = 0
+const U32-MAX*: u32 = 4_294_967_295
 
-let u64-min*: u64 = 0
-let u64-max*: u64 = 18_446_744_073_709_551_615
+const U64-MIN*: u64 = 0
+const U64-MAX*: u64 = 18_446_744_073_709_551_615
 
 // TODO: Consider 32bit platforms!
-let uint-min*: uint = u64-min
-let uint-max*: uint = u64-max
+const UINT-MIN*: uint = U64-MIN
+const UINT-MAX*: uint = U64-MAX
 
 fn abs*(self: i8) -> i8 = if self > 0 { self } else { -self }
 fn abs*(self: i16) -> i16 = if self > 0 { self } else { -self }

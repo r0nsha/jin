@@ -1,7 +1,7 @@
 import std.builtin
 import std.option.Option
 
-let min-cap: uint = 4
+let MIN-CAP: uint = 4
 
 type Array*[T](buf: []T)
 
@@ -23,7 +23,7 @@ fn Array.from*[T](slice: []T) -> Array[T] = Array(slice)
 
 fn Array.with-cap*[T](cap: uint) -> Array[T] = {
 	// TODO: use a polymorphic `std.cmp.max` function for this	
-	let c = if cap > min-cap { cap } else { min-cap }
+	let c = if cap > MIN-CAP { cap } else { MIN-CAP }
 	Array([:c])
 }
 
@@ -97,7 +97,7 @@ fn grow[T](self: &mut Array[T], additional: uint) = {
 		let new-cap = max(cap * 2, cap + additional)
 		unsafe builtin.slice-grow(&mut self.buf, new-cap)
 	} else {
-		self.buf = [:max(min-cap, additional)]
+		self.buf = [:max(MIN-CAP, additional)]
 	}
 }
 

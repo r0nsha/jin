@@ -26,25 +26,25 @@ fn extern "c" unlink*(pathname: ptr[c-char]) -> c-int
 fn extern "c" write*(fd: c-int, buf: ptr[c-uchar], count: c-size-t) -> c-ssize-t
 fn extern "c" __errno_location*() -> ptr[c-int]
 
-let O_RDONLY*: c-int = 0
-let O_WRONLY*: c-int = 1
-let O_RDWR*: c-int = 2
+const O_RDONLY*: c-int = 0
+const O_WRONLY*: c-int = 1
+const O_RDWR*: c-int = 2
 
-let O_DIRECT*: c-int = 0x4000;
-let O_DIRECTORY*: c-int = 0x10000;
-let O_NOFOLLOW*: c-int = 0x20000;
+const O_DIRECT*: c-int = 0x4000;
+const O_DIRECTORY*: c-int = 0x10000;
+const O_NOFOLLOW*: c-int = 0x20000;
 
-let O_APPEND*: c-int = 1024;
-let O_CREAT*: c-int = 64;
-let O_EXCL*: c-int = 128;
-let O_NOCTTY*: c-int = 256;
-let O_NONBLOCK*: c-int = 2048;
-let O_SYNC*: c-int = 1052672;
-let O_RSYNC*: c-int = 1052672;
-let O_DSYNC*: c-int = 4096;
-let O_FSYNC*: c-int = 0x101000;
-let O_NOATIME*: c-int = 0o1000000;
-let O_PATH*: c-int = 0o10000000;
-let O_TMPFILE*: c-int = 0o20000000 | O_DIRECTORY;
+const O_APPEND*: c-int = 1024;
+const O_CREAT*: c-int = 64;
+const O_EXCL*: c-int = 128;
+const O_NOCTTY*: c-int = 256;
+const O_NONBLOCK*: c-int = 2048;
+const O_SYNC*: c-int = 1052672;
+const O_RSYNC*: c-int = 1052672;
+const O_DSYNC*: c-int = 4096;
+const O_FSYNC*: c-int = 0x101000;
+const O_NOATIME*: c-int = 0o1000000;
+const O_PATH*: c-int = 0o10000000;
+const O_TMPFILE*: c-int = 0o20000000 | O_DIRECTORY;
 
-let O_TRUNC*: c-int = 512;
+const O_TRUNC*: c-int = 512;

@@ -61,7 +61,7 @@ fn open-impl(path: &str, flags: c.c-int, mode: c.mode-t) -> c.c-int = {
 type RawFd = c.c-int
 type File*(fd: RawFd)
 
-let default-buf-size: uint = 8 * 1024
+let DEFAULT-BUF-SIZE: uint = 8 * 1024
 
 fn read-to-end*(self: &File) -> io.Result[Array[u8]] = {
     // TODO: initialize with-cap to file's size (or 0 if reading size fails)
@@ -69,8 +69,8 @@ fn read-to-end*(self: &File) -> io.Result[Array[u8]] = {
     let mut buf = Array.new[u8]()
 
     // TODO: implement `std.slice.filled(T, uint) where T: Copy`
-    let mut scratch: []u8 = [:default-buf-size]
-    unsafe scratch.len = default-buf-size
+    let mut scratch: []u8 = [:DEFAULT-BUF-SIZE]
+    unsafe scratch.len = DEFAULT-BUF-SIZE
 
     for {
         match self.read(&mut scratch) {
