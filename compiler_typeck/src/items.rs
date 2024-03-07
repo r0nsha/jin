@@ -56,7 +56,15 @@ fn define_let(
 ) {
     attrs::validate(cx, &let_.attrs, attrs::Placement::Let);
     let unknown = cx.db.types.unknown;
-    let pat = cx.define().global_pat(module_id, &let_.pat, unknown);
+    let pat = cx.define().global_pat(
+        module_id,
+        &let_.pat,
+        match &let_.kind {
+            ast::LetKind::Let => DefKind::Global,
+            ast::LetKind::Const => DefKind::Const,
+        },
+        unknown,
+    );
     cx.res_map.item_to_pat.insert(item_id, pat);
 }
 

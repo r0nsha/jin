@@ -347,6 +347,7 @@ pub enum DefKind {
     TyAlias,
     ExternGlobal,
     Global,
+    Const,
     Variable,
 }
 
@@ -376,6 +377,7 @@ impl DefKind {
             Self::TyAlias => "type alias",
             Self::ExternGlobal => "extern let",
             Self::Global => "let",
+            Self::Const => "constant",
             Self::Variable => "variable",
         }
     }

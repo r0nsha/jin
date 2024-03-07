@@ -91,7 +91,7 @@ impl<'db> Lower<'db> {
     }
 
     fn lower_consts(&mut self) {
-        todo!()
+        // todo!()
     }
 
     fn lower_lets(&mut self) {
@@ -1269,6 +1269,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             DefKind::ExternGlobal | DefKind::Global => {
                 let id = self.cx.lower_global(id);
                 self.create_value(self.cx.mir.globals[id].ty, ValueKind::Global(id))
+            }
+            DefKind::Const => {
+                todo!("resolve const value")
             }
             DefKind::Variable => self.locals[&id],
             DefKind::Adt(adt_id) => {

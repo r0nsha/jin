@@ -138,16 +138,16 @@ impl<'db, 'cx> Define<'db, 'cx> {
         id
     }
 
-    pub(crate) fn global_pat(&mut self, module_id: ModuleId, pat: &Pat, ty: Ty) -> Pat {
+    pub(crate) fn global_pat(
+        &mut self,
+        module_id: ModuleId,
+        pat: &Pat,
+        kind: DefKind,
+        ty: Ty,
+    ) -> Pat {
         match pat {
             Pat::Name(name) => {
-                let id = self.new_global(
-                    module_id,
-                    name.vis,
-                    DefKind::Global,
-                    name.word,
-                    name.mutability,
-                );
+                let id = self.new_global(module_id, name.vis, kind, name.word, name.mutability);
                 Pat::Name(NamePat { id, ty, ..name.clone() })
             }
             Pat::Discard(span) => Pat::Discard(*span),
