@@ -71,6 +71,7 @@ impl<'cx, 'db> Eval<'cx, 'db> {
                 Inst::Binary { value, lhs, rhs, op, span, .. } => {
                     let lhs = self.value(*lhs, *span)?;
                     let rhs = self.value(*rhs, *span)?;
+
                     let result = match op {
                         BinOp::Add => lhs.add(rhs),
                         BinOp::Sub => lhs.sub(rhs),
