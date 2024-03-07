@@ -21,13 +21,13 @@ fn char.from-digit*(num: u32, radix: u32) -> Option[char] = {
 }
 
 // The low-level UTF8 implementation was taken from rust's `core::char` module
-let TAG-CONT: u8 = 0b1000_0000;
-let TAG-TWO-B: u8 = 0b1100_0000;
-let TAG-THREE-B: u8 = 0b1110_0000;
-let TAG-FOUR-B: u8 = 0b1111_0000;
-let MAX-ONE-B: u32 = 0x80;
-let MAX-TWO-B: u32 = 0x800;
-let MAX-THREE-B: u32 = 0x10000;
+const TAG-CONT: u8 = 0b1000_0000;
+const TAG-TWO-B: u8 = 0b1100_0000;
+const TAG-THREE-B: u8 = 0b1110_0000;
+const TAG-FOUR-B: u8 = 0b1111_0000;
+const MAX-ONE-B: u32 = 0x80;
+const MAX-TWO-B: u32 = 0x800;
+const MAX-THREE-B: u32 = 0x10000;
 
 fn len-utf8*(self: char) -> uint = len-utf8(u32(self))
 

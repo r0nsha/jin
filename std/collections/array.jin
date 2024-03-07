@@ -1,7 +1,7 @@
 import std.builtin
 import std.option.Option
 
-let MIN-CAP: uint = 4
+const MIN-CAP: uint = 4
 
 type Array*[T](buf: []T)
 

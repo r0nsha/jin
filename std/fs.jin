@@ -61,7 +61,7 @@ fn open-impl(path: &str, flags: c.c-int, mode: c.mode-t) -> c.c-int = {
 type RawFd = c.c-int
 type File*(fd: RawFd)
 
-let DEFAULT-BUF-SIZE: uint = 8 * 1024
+const DEFAULT-BUF-SIZE: uint = 8 * 1024
 
 fn read-to-end*(self: &File) -> io.Result[Array[u8]] = {
     // TODO: initialize with-cap to file's size (or 0 if reading size fails)
