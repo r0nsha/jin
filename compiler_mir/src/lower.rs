@@ -64,6 +64,7 @@ impl<'db> Lower<'db> {
     fn run(&mut self) {
         self.lower_extern_lets();
         self.lower_fn_sigs();
+        self.lower_consts();
         self.lower_lets();
         self.lower_fn_bodies();
     }
@@ -89,11 +90,18 @@ impl<'db> Lower<'db> {
         }
     }
 
+    fn lower_consts(&mut self) {
+        todo!()
+    }
+
     fn lower_lets(&mut self) {
         for let_ in &self.hir.lets {
-            if !let_.pat.any(|name| self.id_to_global.get(&name.id).is_some()) {
-                self.lower_global_let(let_);
+            if let_.pat.any(|name| self.id_to_global.get(&name.id).is_some()) {
+                // Don't lower this if it has already been lowered...
+                continue;
             }
+
+            self.lower_global_let(let_);
         }
     }
 
