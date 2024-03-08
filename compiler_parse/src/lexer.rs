@@ -51,12 +51,12 @@ impl<'a> Lexer<'a> {
         let mut tokens = vec![];
 
         while let Some(tok) = self.eat_token()? {
-            self.auto_insert_semi(&mut tokens, &tok);
+            // self.auto_insert_semi(&mut tokens, &tok);
             tokens.push(tok);
             self.encountered_nl = false;
         }
 
-        Self::auto_insert_semi_eof(&mut tokens);
+        // Self::auto_insert_semi_eof(&mut tokens);
 
         Ok(tokens)
     }
