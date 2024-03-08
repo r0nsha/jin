@@ -37,7 +37,7 @@ impl<'s> Lexer<'s> {
             source_bytes: source.contents().as_bytes(),
             pos: 0,
             encountered_nl: false,
-            modes: vec![],
+            modes: vec![Mode::Default],
             curlies: 0,
             curly_stack: vec![],
         }
