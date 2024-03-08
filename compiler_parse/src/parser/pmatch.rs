@@ -8,6 +8,7 @@ use compiler_core::{
     word::Word,
 };
 
+use crate::parser::SEMI;
 use crate::{
     parser::Parser,
     token::{Kw, TokenKind},
@@ -21,7 +22,7 @@ impl<'a> Parser<'a> {
         let (arms, _) = self.parse_list_with_sep(
             TokenKind::OpenCurly,
             TokenKind::CloseCurly,
-            TokenKind::Semi(false),
+            SEMI,
             |this| this.parse_match_arm().map(ControlFlow::Continue),
         )?;
 

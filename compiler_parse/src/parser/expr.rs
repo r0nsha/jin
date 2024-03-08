@@ -12,6 +12,7 @@ use compiler_data_structures::index_vec::Key as _;
 use ustr::ustr;
 
 use crate::parser::item::AllowVis;
+use crate::parser::SEMI;
 use crate::{
     bin_op_from_assign_op, errors,
     parser::{item::RequireTy, AllowOmitParens, Parser, RequireSigTy},
@@ -388,12 +389,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_block(&mut self) -> DiagnosticResult<Expr> {
-        self.parse_list_with_sep(
-            TokenKind::OpenCurly,
-            TokenKind::CloseCurly,
-            TokenKind::Semi(false),
-            |this| this.parse_stmt().map(ControlFlow::Continue),
-        )
+        self.parse_list_with_sep(TokenKind::OpenCurly, TokenKind::CloseCurly, SEMI, |this| {
+            this.parse_stmt().map(ControlFlow::Continue)
+        })
         .map(|(exprs, span)| Expr::Block { exprs, span })
     }
 
@@ -426,8 +424,7 @@ impl<'a> Parser<'a> {
 
     fn parse_return(&mut self) -> DiagnosticResult<Expr> {
         let start = self.last_span();
-        let expr =
-            if self.is(TokenKind::Semi(false)) { None } else { Some(Box::new(self.parse_expr()?)) };
+        let expr = if self.is(SEMI) { None } else { Some(Box::new(self.parse_expr()?)) };
         let span = expr.as_ref().map_or(start, |e| start.merge(e.span()));
         Ok(Expr::Return { expr, span })
     }

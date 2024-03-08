@@ -27,7 +27,7 @@ use crate::{
     token::{Kw, Token, TokenKind},
 };
 
-const SEMI: TokenKind = TokenKind::Semi(false);
+pub(crate) const SEMI: TokenKind = TokenKind::Semi(false);
 
 pub fn parse(
     db: &Db,
@@ -68,9 +68,9 @@ impl<'a> Parser<'a> {
     ) -> DiagnosticResult<Module> {
         let mut module = Module::new(source_id, name, is_main);
 
-        while !self.eof() {
+        while self.pos < self.tokens.len() {
             let item = self.parse_item()?;
-            self.eat_semi()?;
+            // self.eat_semi()?;
             module.items.push(item);
         }
 
@@ -304,11 +304,6 @@ impl<'a> Parser<'a> {
     #[inline]
     pub(super) fn back(&mut self) {
         self.pos -= 1;
-    }
-
-    #[inline]
-    pub(super) fn eof(&self) -> bool {
-        self.pos == self.tokens.len()
     }
 
     #[inline]

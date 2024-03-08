@@ -1,4 +1,5 @@
 mod errors;
+mod layout;
 mod lexer;
 mod parser;
 mod token;
@@ -20,11 +21,12 @@ use crate::token::TokenKind;
 pub fn parse(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Ast> {
     let mut ast = Ast::new();
 
-    // Std
-    let root_std_file = compiler_helpers::current_exe_dir().join("std/std.jin");
-    let (std_package, _) = db.create_package(ustr("std"), &root_std_file)?;
-    db.std_package_name.set(std_package);
-    parse_package(db, &mut ast, std_package);
+    // TODO: uncomment
+    // // Std
+    // let root_std_file = compiler_helpers::current_exe_dir().join("std/std.jin");
+    // let (std_package, _) = db.create_package(ustr("std"), &root_std_file)?;
+    // db.std_package_name.set(std_package);
+    // parse_package(db, &mut ast, std_package);
 
     // Main package
     let root_file_stem = root_file.file_stem().unwrap();
@@ -55,6 +57,7 @@ fn parse_module(
         let (mut module, submodule_paths) = {
             let source = db.sources.get(source_id).unwrap();
             let tokens = lexer::tokenize(source)?;
+            let tokens = layout::apply(source, tokens);
             parser::parse(db, package, source, tokens)?
         };
 

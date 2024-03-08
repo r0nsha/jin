@@ -10,6 +10,7 @@ use compiler_core::{
     diagnostics::DiagnosticResult,
 };
 
+use crate::parser::SEMI;
 use crate::{
     parser::Parser,
     token::{Kw, TokenKind},
@@ -57,12 +58,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_tydef_union(&mut self, kind: UnionKind) -> DiagnosticResult<TyDefKind> {
-        self.parse_list_with_sep(
-            TokenKind::OpenCurly,
-            TokenKind::CloseCurly,
-            TokenKind::Semi(false),
-            |this| this.parse_tydef_union_variant().map(ControlFlow::Continue),
-        )
+        self.parse_list_with_sep(TokenKind::OpenCurly, TokenKind::CloseCurly, SEMI, |this| {
+            this.parse_tydef_union_variant().map(ControlFlow::Continue)
+        })
         .map(|(variants, _)| TyDefKind::Union(UnionTyDef { kind, variants }))
     }
 
