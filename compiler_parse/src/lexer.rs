@@ -534,7 +534,7 @@ impl<'s> Lexer<'s> {
         while let Some(ch) = self.peek() {
             if ch == '\n' {
                 self.encountered_nl = true;
-                return;
+                break;
             }
 
             self.next();
