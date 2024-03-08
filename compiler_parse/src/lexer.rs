@@ -18,10 +18,10 @@ struct Lexer<'a> {
     source_bytes: &'a [u8],
     pos: u32,
 
-    // State needed for semicolon insertion
+    // Semicolon insertion state
     encountered_nl: bool,
 
-    // State needed for string interpolation
+    // String interpolation state
     modes: Vec<Mode>,
     curlies: usize,
     curly_stack: Vec<usize>,
