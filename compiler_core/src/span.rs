@@ -1,7 +1,7 @@
 use std::{fs, io, ops};
 
 use camino::{Utf8Path, Utf8PathBuf};
-use codespan_reporting::files::{self, line_starts};
+use codespan_reporting::files::{self, line_starts, Files, Location};
 use compiler_data_structures::{
     index_vec::{IndexVec, IndexVecExt, Key as _},
     new_key_type,
@@ -148,6 +148,12 @@ impl Source {
     #[inline]
     pub fn contents(&self) -> &str {
         self.contents.as_ref()
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn span_location(&self, span: Span) -> Location {
+        self.location(span.source_id, span.start as usize).unwrap()
     }
 
     fn line_start(&self, line_index: usize) -> Result<usize, files::Error> {

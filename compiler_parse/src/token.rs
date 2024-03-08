@@ -120,6 +120,54 @@ impl TokenKind {
         Self::Ident(ustr(""))
     }
 
+    #[inline]
+    pub fn is_start_cont(self) -> bool {
+        match self {
+            TokenKind::Kw(Kw::Else)
+            | TokenKind::CloseParen
+            | TokenKind::CloseBrack
+            | TokenKind::Comma
+            | TokenKind::OpenCurly
+            | TokenKind::CloseCurly
+            | TokenKind::Eq
+            | TokenKind::EqEq
+            | TokenKind::Bang
+            | TokenKind::BangEq
+            | TokenKind::Star
+            | TokenKind::StarEq
+            | TokenKind::FwSlash
+            | TokenKind::FwSlashEq
+            | TokenKind::Percent
+            | TokenKind::PercentEq
+            | TokenKind::Plus
+            | TokenKind::PlusEq
+            | TokenKind::Minus
+            | TokenKind::MinusEq
+            | TokenKind::Lt
+            | TokenKind::LtEq
+            | TokenKind::LtLt
+            | TokenKind::LtLtEq
+            | TokenKind::Gt
+            | TokenKind::GtEq
+            | TokenKind::GtGt
+            | TokenKind::GtGtEq
+            | TokenKind::Amp
+            | TokenKind::AmpEq
+            | TokenKind::AmpAmp
+            | TokenKind::Caret
+            | TokenKind::CaretEq
+            | TokenKind::Pipe
+            | TokenKind::PipeEq
+            | TokenKind::PipePipe
+            | TokenKind::Walrus
+            | TokenKind::Dot
+            | TokenKind::Colon
+            | TokenKind::Arrow => true,
+
+            _ => false,
+        }
+    }
+
     // Whether this token can come before a semicolon
     #[inline]
     pub fn is_before_semi(self) -> bool {

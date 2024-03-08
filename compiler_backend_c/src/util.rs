@@ -176,8 +176,7 @@ impl<'db> Generator<'db> {
         let root_parent = root_path.parent().unwrap_or(root_path);
         let path = source.path();
         let file = path.strip_prefix(root_parent).unwrap_or(path);
-
-        let loc = source.location(span.source_id(), span.start() as usize).unwrap();
+        let loc = source.span_location(span);
 
         D::text("(struct jinrt_stackframe)").append(D::space()).append(util::struct_lit(vec![
             ("file", str_lit(file)),

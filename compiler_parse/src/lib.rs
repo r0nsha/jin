@@ -57,7 +57,7 @@ fn parse_module(
         let (mut module, submodule_paths) = {
             let source = db.sources.get(source_id).unwrap();
             let tokens = lexer::tokenize(source)?;
-            let tokens = layout::apply(source, tokens);
+            let tokens = layout::apply(source, tokens)?;
             parser::parse(db, package, source, tokens)?
         };
 
