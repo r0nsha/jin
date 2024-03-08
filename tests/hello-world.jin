@@ -1,2 +1,2 @@
 fn main() =
-	std.io.println(msg)
+	std.io.println("Hello, World!")
