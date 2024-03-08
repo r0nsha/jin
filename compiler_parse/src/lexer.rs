@@ -12,12 +12,16 @@ pub fn tokenize(source: &Source) -> DiagnosticResult<Vec<Token>> {
     Lexer::new(source).scan()
 }
 
-struct Lexer<'s> {
+struct Lexer<'a> {
     source_id: SourceId,
-    source_contents: &'s str,
-    source_bytes: &'s [u8],
+    source_contents: &'a str,
+    source_bytes: &'a [u8],
     pos: u32,
+
+    // State needed for semicolon insertion
     encountered_nl: bool,
+
+    // State needed for string interpolation
     modes: Vec<Mode>,
     curlies: usize,
     curly_stack: Vec<usize>,
@@ -29,8 +33,8 @@ enum Mode {
     Str,
 }
 
-impl<'s> Lexer<'s> {
-    fn new(source: &'s Source) -> Self {
+impl<'a> Lexer<'a> {
+    fn new(source: &'a Source) -> Self {
         Self {
             source_id: source.id(),
             source_contents: source.contents(),
