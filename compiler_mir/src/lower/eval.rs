@@ -114,6 +114,9 @@ impl<'cx, 'db> Eval<'cx, 'db> {
                     };
                     self.store(*value, result);
                 }
+                Inst::StrLit { value, lit, .. } => {
+                    self.store(*value, Const::Str(*lit));
+                }
                 Inst::StackAlloc { span, .. }
                 | Inst::Store { span, .. }
                 | Inst::Alloc { span, .. }
@@ -128,9 +131,8 @@ impl<'cx, 'db> Eval<'cx, 'db> {
                 | Inst::Call { span, .. }
                 | Inst::RtCall { span, .. }
                 | Inst::Cast { span, .. }
-                | Inst::StrLit { span, .. }
                 | Inst::Unreachable { span, .. } => {
-                    dbg!(inst);
+                    // dbg!(inst);
                     return Err(EvalError::UnsupportedInst(*span));
                 }
             }
