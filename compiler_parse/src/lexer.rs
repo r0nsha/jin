@@ -104,7 +104,12 @@ impl<'s> Lexer<'s> {
                             self.eat_ident(start)?
                         }
                     }
-                    ch if ch.is_ascii_digit() => self.eat_number(start),
+                    ch if ch.is_ascii_digit() => match (ch, self.peek()) {
+                        ('0', Some('x' | 'X')) => self.eat_number_hex(),
+                        ('0', Some('o' | 'O')) => self.eat_number_octal(),
+                        ('0', Some('b' | 'B')) => self.eat_number_binary(),
+                        _ => self.eat_number(start),
+                    },
                     ch if ch.is_ascii_whitespace() => {
                         if ch == '\n' {
                             self.encountered_nl = true;
@@ -344,15 +349,6 @@ impl<'s> Lexer<'s> {
     }
 
     fn eat_number(&mut self, start: u32) -> TokenKind {
-        if self.peek_offset(-1) == Some('0') {
-            match self.peek() {
-                Some('x' | 'X') => return self.eat_number_hex(),
-                Some('o' | 'O') => return self.eat_number_octal(),
-                Some('b' | 'B') => return self.eat_number_binary(),
-                _ => (),
-            }
-        }
-
         self.eat_number_decimal();
 
         if self.peek() == Some('.') && self.peek_offset(1).map_or(false, |c| c.is_ascii_digit()) {
