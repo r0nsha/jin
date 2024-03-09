@@ -58,8 +58,8 @@ impl<'a> Layout<'a> {
             if is_first_tok || last_tok.map_or(false, |t| t.kind == TokenKind::OpenCurly) {
                 if tok.kind != TokenKind::CloseCurly && column_number < layout_indent {
                     return Err(Diagnostic::error(format!(
-                        "line must be indented more then its\
-                                enclosing layout (column {layout_indent})"
+                        "line must be indented more then its \
+                         enclosing layout (column {layout_indent})"
                     ))
                     .with_label(Label::primary(tok.span, "insufficient indentation")));
                 }
