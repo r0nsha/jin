@@ -43,10 +43,12 @@ impl Span {
         self.end
     }
 
-    pub fn tail(&self) -> Span {
-        let mut new = *self;
-        new.start = self.end;
-        new
+    pub fn head(&self) -> Self {
+        Self { end: self.start, ..*self }
+    }
+
+    pub fn tail(&self) -> Self {
+        Self { start: self.end, ..*self }
     }
 
     #[allow(unused)]

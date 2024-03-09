@@ -70,6 +70,7 @@ impl<'a> Parser<'a> {
 
         while self.pos < self.tokens.len() {
             let item = self.parse_item()?;
+            self.skip_semi();
             module.items.push(item);
         }
 

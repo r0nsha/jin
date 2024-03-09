@@ -164,7 +164,131 @@ impl TokenKind {
             | TokenKind::Colon
             | TokenKind::Arrow => true,
 
-            _ => false,
+            TokenKind::Kw(
+                Kw::Return
+                | Kw::Fn
+                | Kw::Let
+                | Kw::Const
+                | Kw::Type
+                | Kw::Extern
+                | Kw::If
+                | Kw::Match
+                | Kw::True
+                | Kw::False
+                | Kw::As
+                | Kw::Mod
+                | Kw::Import
+                | Kw::For
+                | Kw::Break
+                | Kw::Mut
+                | Kw::Imm
+                | Kw::Ref
+                | Kw::Move
+                | Kw::Unsafe,
+            )
+            | TokenKind::DotDot
+            | TokenKind::Semi(_)
+            | TokenKind::At
+            | TokenKind::QuestionMark
+            | TokenKind::OpenParen
+            | TokenKind::OpenBrack
+            | TokenKind::Ident(_)
+            | TokenKind::Underscore
+            | TokenKind::StrOpen
+            | TokenKind::StrClose
+            | TokenKind::StrText(_)
+            | TokenKind::StrExprOpen
+            | TokenKind::StrExprClose
+            | TokenKind::Int(_)
+            | TokenKind::Float(_)
+            | TokenKind::Char(_)
+            | TokenKind::ByteChar(_) => false,
+        }
+    }
+
+    #[inline]
+    pub fn is_end_cont(self) -> bool {
+        match self {
+            TokenKind::OpenParen
+            | TokenKind::OpenBrack
+            | TokenKind::Comma
+            | TokenKind::OpenCurly
+            | TokenKind::Eq
+            | TokenKind::EqEq
+            | TokenKind::Bang
+            | TokenKind::BangEq
+            | TokenKind::Star
+            | TokenKind::StarEq
+            | TokenKind::FwSlash
+            | TokenKind::FwSlashEq
+            | TokenKind::Percent
+            | TokenKind::PercentEq
+            | TokenKind::Plus
+            | TokenKind::PlusEq
+            | TokenKind::Minus
+            | TokenKind::MinusEq
+            | TokenKind::Lt
+            | TokenKind::LtEq
+            | TokenKind::LtLt
+            | TokenKind::LtLtEq
+            | TokenKind::Gt
+            | TokenKind::GtEq
+            | TokenKind::GtGt
+            | TokenKind::GtGtEq
+            | TokenKind::Amp
+            | TokenKind::AmpEq
+            | TokenKind::AmpAmp
+            | TokenKind::Caret
+            | TokenKind::CaretEq
+            | TokenKind::Pipe
+            | TokenKind::PipeEq
+            | TokenKind::PipePipe
+            | TokenKind::Walrus
+            | TokenKind::Dot => true,
+
+            TokenKind::Kw(
+                Kw::Return
+                | Kw::Fn
+                | Kw::Let
+                | Kw::Const
+                | Kw::Type
+                | Kw::Extern
+                | Kw::If
+                | Kw::Else
+                | Kw::Match
+                | Kw::True
+                | Kw::False
+                | Kw::As
+                | Kw::Mod
+                | Kw::Import
+                | Kw::For
+                | Kw::Break
+                | Kw::Mut
+                | Kw::Imm
+                | Kw::Ref
+                | Kw::Move
+                | Kw::Unsafe,
+            )
+            | TokenKind::DotDot
+            | TokenKind::Semi(_)
+            | TokenKind::At
+            | TokenKind::QuestionMark
+            | TokenKind::CloseParen
+            | TokenKind::CloseBrack
+            | TokenKind::CloseCurly
+            | TokenKind::Colon
+            | TokenKind::Arrow
+            | TokenKind::Ident(_)
+            | TokenKind::Underscore
+            | TokenKind::StrOpen
+            | TokenKind::StrClose
+            | TokenKind::StrText(_)
+            | TokenKind::StrExprOpen
+            | TokenKind::StrExprClose
+            | TokenKind::Int(_)
+            | TokenKind::Float(_)
+            | TokenKind::Char(_)
+            | TokenKind::ByteChar(_) => false,
         }
     }
 
