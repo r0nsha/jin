@@ -387,7 +387,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_block(&mut self) -> DiagnosticResult<Expr> {
+    pub(crate) fn parse_block(&mut self) -> DiagnosticResult<Expr> {
         self.parse_list_with_sep(
             TokenKind::OpenCurly,
             TokenKind::CloseCurly,
