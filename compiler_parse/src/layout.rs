@@ -73,9 +73,7 @@ impl<'a> Layout<'a> {
 
             // Semicolon insertion when encountering the first token in a given line
             if is_line_first_tok {
-                let layout_indent = self.layout_indent();
-
-                match column_number.cmp(&layout_indent) {
+                match column_number.cmp(&self.layout_indent()) {
                     Ordering::Less => {
                         todo!("error: must be equal or larger than the layout indentation")
                     }
