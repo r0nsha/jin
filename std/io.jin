@@ -7,14 +7,25 @@ import std.(
 
 const STDOUT: i32 = 1
 
-fn print*(msg: &str) =
+fn print*(msg: &str) {
 	unsafe write(STDOUT, as[_](msg.ptr), msg.len)
+}
 
-fn print*(msg: str) = print(&msg)
+fn print*(msg: str) {
+	print(&msg)
+}
 
-fn println*() = print("\n")
-fn println*(msg: &str) = print("{msg}\n")
-fn println*(msg: str) = println(&msg)
+fn println*() {
+	print("\n")
+}
+
+fn println*(msg: &str) {
+	print("{msg}\n")
+}
+
+fn println*(msg: str) {
+	println(&msg)
+}
 
 type Result*[T] = std.result.Result[T, Error]
 
@@ -29,7 +40,7 @@ type Error* {
 	Other(code: i32)
 }
 
-fn Error.from-os-error*(code: i32) -> Error =
+fn Error.from-os-error*(code: i32) -> Error {
 	match code {
 		errors.EPERM -> Error.PermissionDenied
 		errors.ENOENT -> Error.NotFound
@@ -39,12 +50,14 @@ fn Error.from-os-error*(code: i32) -> Error =
 		errors.EINVAL -> Error.InvalidArgument
 		code -> Error.Other(code)
 	}
+}
 
 // TODO: cross-platform errno
-fn Error.last-os-error*() -> Error =
+fn Error.last-os-error*() -> Error {
 	Error.from-os-error(unsafe (c.__errno_location().0))
+}
 
-fn fmt*(self: &Error, buf: &mut StrBuf) =
+fn fmt*(self: &Error, buf: &mut StrBuf) {
 	match self {
 		Error.PermissionDenied -> buf.push("Permission denied")
 		Error.NotFound -> buf.push("Not found")
@@ -58,3 +71,4 @@ fn fmt*(self: &Error, buf: &mut StrBuf) =
 		}
 		Error.Other(code) -> buf.push("Other({code})")
 	}
+}

@@ -5,7 +5,7 @@ import std.(
     str.(?),
 )
 
-fn char.from-digit*(num: u32, radix: u32) -> Option[char] = {
+fn char.from-digit*(num: u32, radix: u32) -> Option[char] {
     assert(radix <= 36, "radix is too high (maximum 36)")
 
     if num < radix {
@@ -29,9 +29,11 @@ const MAX-ONE-B: u32 = 0x80;
 const MAX-TWO-B: u32 = 0x800;
 const MAX-THREE-B: u32 = 0x10000;
 
-fn len-utf8*(self: char) -> uint = len-utf8(u32(self))
+fn len-utf8*(self: char) -> uint {
+    len-utf8(u32(self))
+}
 
-fn len-utf8(code: u32) -> uint =
+fn len-utf8(code: u32) -> uint {
     if code < MAX-ONE-B {
 	1
     } else if code < MAX-TWO-B {
@@ -41,11 +43,13 @@ fn len-utf8(code: u32) -> uint =
     } else {
 	4
     }
+}
 
-fn encode-utf8*(self: char, dst: &mut []u8) -> &mut []u8 =
+fn encode-utf8*(self: char, dst: &mut []u8) -> &mut []u8 {
     encode-utf8-raw(u32(self), dst)
+}
 
-fn encode-utf8-raw*(code: u32, dst: &mut []u8) -> &mut []u8 = {
+fn encode-utf8-raw*(code: u32, dst: &mut []u8) -> &mut []u8 {
     let len = code.len-utf8()
     assert(dst.len >= len)
 

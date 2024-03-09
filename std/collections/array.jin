@@ -5,9 +5,11 @@ const MIN-CAP: uint = 4
 
 type Array*[T](buf: []T)
 
-fn Array.new*[T]() -> Array[T] = Array([])
+fn Array.new*[T]() -> Array[T] {
+	Array([])
+}
 
-fn Array.new*[T](len: uint, f: fn(uint) -> T) -> Array[T] = {
+fn Array.new*[T](len: uint, f: fn(uint) -> T) -> Array[T] {
 	let mut array = Array.with-cap(len)
 	let mut i = 0
 
@@ -21,7 +23,7 @@ fn Array.new*[T](len: uint, f: fn(uint) -> T) -> Array[T] = {
 
 fn Array.from*[T](slice: []T) -> Array[T] = Array(slice)
 
-fn Array.with-cap*[T](cap: uint) -> Array[T] = {
+fn Array.with-cap*[T](cap: uint) -> Array[T] {
 	// TODO: use a polymorphic `std.cmp.max` function for this	
 	let c = if cap > MIN-CAP { cap } else { MIN-CAP }
 	Array([:c])
@@ -35,7 +37,7 @@ fn as-ref*[T](self: &Array[T]) -> &[]T = &self.buf
 fn as-mut*[T](self: &mut Array[T]) -> &mut []T = &mut self.buf
 fn take*[T](self: Array[T]) -> []T = self.buf
 
-fn get*[T](self: &Array[T], index: uint) -> Option[&T] = {
+fn get*[T](self: &Array[T], index: uint) -> Option[&T] {
 	if index < self.buf.len {
 		Option.Some(&self.buf.[index])
 	} else {
@@ -43,7 +45,7 @@ fn get*[T](self: &Array[T], index: uint) -> Option[&T] = {
 	}
 }
 
-fn set*[T](self: &mut Array[T], index: uint, value: T) -> Option[T] = {
+fn set*[T](self: &mut Array[T], index: uint, value: T) -> Option[T] {
 	if index < self.buf.len {
 		Option.Some(self.buf.[index] := value)
 	} else {
@@ -51,12 +53,12 @@ fn set*[T](self: &mut Array[T], index: uint, value: T) -> Option[T] = {
 	}
 }
 
-fn push*[T](self: &mut Array[T], value: T) = {
+fn push*[T](self: &mut Array[T], value: T) {
 	self.reserve(1)
 	self.push-unchecked(value)
 }
 
-fn pop*[T](self: &mut Array[T]) -> Option[T] = {
+fn pop*[T](self: &mut Array[T]) -> Option[T] {
 	if self.buf.len == 0 {
 		return Option.None
 	}
@@ -65,24 +67,24 @@ fn pop*[T](self: &mut Array[T]) -> Option[T] = {
 	Option.Some(unsafe (self.buf.ptr + self.buf.len).0)
 }
 
-fn clear*[T](self: &mut Array[T]) = {
+fn clear*[T](self: &mut Array[T]) {
 	self.buf = []
 }
 
-fn reserve*[T](self: &mut Array[T], additional: uint) = {
+fn reserve*[T](self: &mut Array[T], additional: uint) {
 	if self.needs-to-grow(additional) {
 		self.grow(additional)
 	}
 }
 
 // TODO: this should be marked `unsafe`
-fn push-unchecked*[T](self: &mut Array[T], value: T) = {
+fn push-unchecked*[T](self: &mut Array[T], value: T) {
 	unsafe self.buf.len += 1
 	self.buf.[self.buf.len - 1] = value
 }
 
 // TODO: this should be marked `unsafe`
-fn set-len*[T](self: &mut Array[T], len: uint) = {
+fn set-len*[T](self: &mut Array[T], len: uint) {
 	unsafe self.buf.len = len
 }
 
@@ -91,7 +93,7 @@ fn needs-to-grow[T](self: &Array[T], additional: uint) -> bool =
 	self.buf.len + additional > self.buf.cap
 
 
-fn grow[T](self: &mut Array[T], additional: uint) = {
+fn grow[T](self: &mut Array[T], additional: uint) {
 	let cap = self.buf.cap 
 	if cap > 0 {
 		let new-cap = max(cap * 2, cap + additional)
