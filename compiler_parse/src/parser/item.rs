@@ -116,7 +116,8 @@ impl<'a> Parser<'a> {
             return Err(errors::invalid_c_variadic(name.span));
         }
 
-        let body = self.parse_block()?;
+        self.eat(TokenKind::Eq)?;
+        let body = self.parse_expr()?;
 
         Ok(Fn { attrs, vis, sig, kind: FnKind::Bare { body: Box::new(body) }, span: name.span })
     }
