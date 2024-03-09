@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use codespan_reporting::files::Location;
 use compiler_core::diagnostics::{Diagnostic, DiagnosticResult, Label};
 use compiler_core::span::{Source, Span};
@@ -17,7 +19,7 @@ struct Layout<'a> {
 
 impl<'a> Layout<'a> {
     fn new(source: &'a Source, len: usize) -> Self {
-        Self { source, new_tokens: Vec::with_capacity(len * 2), indents: vec![1], line: 0 }
+        Self { source, new_tokens: Vec::with_capacity(len * 2), indents: vec![0], line: 0 }
     }
 
     fn apply(mut self, input: Vec<Token>) -> DiagnosticResult<Vec<Token>> {
@@ -30,25 +32,25 @@ impl<'a> Layout<'a> {
         for (i, tok) in input.iter().enumerate() {
             let Location { line_number, column_number } = self.source.span_location(tok.span);
             let is_first_tok = i == 0;
-            let is_first_line_tok = is_first_tok || line_number > self.line;
+            let mut is_line_first_tok = is_first_tok || line_number > self.line;
+            let is_expr_cont = is_line_first_tok
+                && (tok.kind.is_start_cont()
+                    || self.last_token().map_or(false, |t| t.kind.is_end_cont()));
 
-            let layout_indent = self.indents.last().copied().unwrap();
+            let layout_indent = self.layout_indent();
 
-            // Brace insertion
-            if is_first_line_tok {
+            // Brace insertion when encountering the first token in a given line
+            if is_line_first_tok && !is_first_tok {
                 // Open curly insertion
-                if column_number > layout_indent {
-                    let is_expr_cont = tok.kind.is_start_cont()
-                        || self.last_token().map_or(false, |t| t.kind.is_end_cont());
-
-                    if !is_expr_cont {
-                        is_curly_balanced = false;
-                        self.push_open_curly(tok.span);
-                    }
+                if column_number > layout_indent && !is_expr_cont {
+                    is_line_first_tok = false;
+                    is_curly_balanced = false;
+                    self.push_open_curly(tok.span);
                 }
 
                 // Close curly insertion
                 if column_number < layout_indent && tok.kind != TokenKind::CloseCurly {
+                    is_line_first_tok = false;
                     is_curly_balanced = true;
                     self.push_close_curly(tok.span);
                 }
@@ -72,18 +74,32 @@ impl<'a> Layout<'a> {
                 self.indents.pop();
             }
 
-            // TODO: semicolon insertion
-            // TODO: insert semicolon before any curly
-            // TODO: insert semicolon after all tokens
+            // Semicolon insertion when encountering the first token in a given line
+            if is_line_first_tok {
+                let layout_indent = self.layout_indent();
+
+                match column_number.cmp(&layout_indent) {
+                    Ordering::Less => {
+                        todo!("error: must be equal or larger than the layout indentation")
+                    }
+                    Ordering::Equal if !is_first_tok && !is_expr_cont => {
+                        self.push_semi(self.last_token().map_or(tok.span.head(), |t| t.span.tail()))
+                    }
+                    _ => (),
+                }
+            }
 
             self.line = line_number;
             self.new_tokens.push(*tok);
         }
 
+        let last_span = self.last_token().unwrap().span;
+
         if !is_curly_balanced {
-            let span = self.last_token().unwrap().span;
-            self.push_close_curly(span);
+            self.push_close_curly(last_span);
         }
+
+        self.new_tokens.push(Token { kind: TokenKind::Semi(true), span: last_span.tail() });
 
         Ok(self.new_tokens)
     }
@@ -96,7 +112,15 @@ impl<'a> Layout<'a> {
         self.new_tokens.push(Token { kind: TokenKind::CloseCurly, span: span.head() });
     }
 
+    fn push_semi(&mut self, span: Span) {
+        self.new_tokens.push(Token { kind: TokenKind::Semi(true), span });
+    }
+
     fn last_token(&self) -> Option<&Token> {
         self.new_tokens.last()
+    }
+
+    fn layout_indent(&self) -> usize {
+        *self.indents.last().unwrap()
     }
 }

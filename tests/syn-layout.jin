@@ -1,6 +1,6 @@
 fn main() 
 	foo = bar
-	foo = bar
+foo = bar
 
 // fn test() =
 // 	let x = 1;
