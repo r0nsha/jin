@@ -5,18 +5,19 @@ use compiler_core::span::{Source, Span};
 use crate::token::{Token, TokenKind};
 
 pub(crate) fn apply(source: &Source, input: Vec<Token>) -> DiagnosticResult<Vec<Token>> {
-    Layout::new(source).apply(input)
+    Layout::new(source, input.len()).apply(input)
 }
 
 struct Layout<'a> {
     source: &'a Source,
+    new_tokens: Vec<Token>,
     indents: Vec<usize>,
     line: usize,
 }
 
 impl<'a> Layout<'a> {
-    fn new(source: &'a Source) -> Self {
-        Self { source, indents: vec![1], line: 0 }
+    fn new(source: &'a Source, len: usize) -> Self {
+        Self { source, new_tokens: Vec::with_capacity(len * 2), indents: vec![1], line: 0 }
     }
 
     fn apply(mut self, input: Vec<Token>) -> DiagnosticResult<Vec<Token>> {
@@ -24,38 +25,37 @@ impl<'a> Layout<'a> {
             return Ok(input);
         }
 
-        let mut new_tokens = Vec::with_capacity(input.len() * 2);
         let mut is_curly_balanced = true;
 
         for (i, tok) in input.iter().enumerate() {
             let Location { line_number, column_number } = self.source.span_location(tok.span);
-            let last_tok = if i > 0 { input.get(i - 1) } else { None };
             let is_first_tok = i == 0;
             let is_first_line_tok = is_first_tok || line_number > self.line;
 
-            let layout_indent = self.layout_indent();
+            let layout_indent = self.indents.last().copied().unwrap();
 
             // Brace insertion
             if is_first_line_tok {
-                let is_expr_cont = is_first_line_tok
-                    && (tok.kind.is_start_cont()
-                        || last_tok.map_or(false, |t| t.kind.is_end_cont()));
-
                 // Open curly insertion
-                if column_number > layout_indent && !is_expr_cont {
-                    is_curly_balanced = false;
-                    push_open_curly(&mut new_tokens, tok.span);
+                if column_number > layout_indent {
+                    let is_expr_cont = tok.kind.is_start_cont()
+                        || self.last_token().map_or(false, |t| t.kind.is_end_cont());
+
+                    if !is_expr_cont {
+                        is_curly_balanced = false;
+                        self.push_open_curly(tok.span);
+                    }
                 }
 
                 // Close curly insertion
                 if column_number < layout_indent && tok.kind != TokenKind::CloseCurly {
                     is_curly_balanced = true;
-                    push_close_curly(&mut new_tokens, tok.span);
+                    self.push_close_curly(tok.span);
                 }
             }
 
             // Layout indent
-            if is_first_tok || last_tok.map_or(false, |t| t.kind == TokenKind::OpenCurly) {
+            if is_first_tok || self.last_token().map_or(false, |t| t.kind == TokenKind::OpenCurly) {
                 if tok.kind != TokenKind::CloseCurly && column_number < layout_indent {
                     return Err(Diagnostic::error(format!(
                         "line must be indented more then its \
@@ -64,12 +64,12 @@ impl<'a> Layout<'a> {
                     .with_label(Label::primary(tok.span, "insufficient indentation")));
                 }
 
-                self.indent(column_number);
+                self.indents.push(column_number);
             }
 
             // Layout dedent
             if tok.kind == TokenKind::CloseCurly {
-                self.dedent();
+                self.indents.pop();
             }
 
             // TODO: semicolon insertion
@@ -77,35 +77,26 @@ impl<'a> Layout<'a> {
             // TODO: insert semicolon after all tokens
 
             self.line = line_number;
-            new_tokens.push(*tok);
+            self.new_tokens.push(*tok);
         }
 
         if !is_curly_balanced {
-            let span = new_tokens.last().unwrap().span;
-            push_close_curly(&mut new_tokens, span);
+            let span = self.last_token().unwrap().span;
+            self.push_close_curly(span);
         }
 
-        Ok(new_tokens)
+        Ok(self.new_tokens)
     }
 
-    #[track_caller]
-    fn layout_indent(&self) -> usize {
-        self.indents.last().copied().unwrap()
+    fn push_open_curly(&mut self, span: Span) {
+        self.new_tokens.push(Token { kind: TokenKind::OpenCurly, span: span.tail() });
     }
 
-    fn indent(&mut self, col: usize) {
-        self.indents.push(col);
+    fn push_close_curly(&mut self, span: Span) {
+        self.new_tokens.push(Token { kind: TokenKind::CloseCurly, span: span.head() });
     }
 
-    fn dedent(&mut self) {
-        self.indents.pop();
+    fn last_token(&self) -> Option<&Token> {
+        self.new_tokens.last()
     }
-}
-
-fn push_open_curly(tokens: &mut Vec<Token>, span: Span) {
-    tokens.push(Token { kind: TokenKind::OpenCurly, span: span.tail() });
-}
-
-fn push_close_curly(tokens: &mut Vec<Token>, span: Span) {
-    tokens.push(Token { kind: TokenKind::CloseCurly, span: span.head() });
 }
