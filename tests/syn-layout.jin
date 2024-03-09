@@ -1,7 +1,7 @@
 fn main() 
 	foo = bar
-foo = bar
+	foo = bar
 
-// fn test() =
-// 	let x = 1;
-// 	let y = if true { false } else { true };
+fn test()
+	let x = 1
+	let y = if true { false } else { true }

@@ -33,10 +33,7 @@ impl<'a> Layout<'a> {
             let Location { line_number, column_number } = self.source.span_location(tok.span);
             let is_first_tok = i == 0;
             let mut is_line_first_tok = is_first_tok || line_number > self.line;
-            let is_expr_cont = is_line_first_tok
-                && (tok.kind.is_start_cont()
-                    || self.last_token().map_or(false, |t| t.kind.is_end_cont()));
-
+            let is_expr_cont = is_line_first_tok && self.is_expr_cont(tok);
             let layout_indent = self.layout_indent();
 
             // Brace insertion when encountering the first token in a given line
@@ -114,6 +111,10 @@ impl<'a> Layout<'a> {
 
     fn push_semi(&mut self, span: Span) {
         self.new_tokens.push(Token { kind: TokenKind::Semi(true), span });
+    }
+
+    fn is_expr_cont(&self, tok: &Token) -> bool {
+        tok.kind.is_start_cont() || self.last_token().map_or(false, |t| t.kind.is_end_cont())
     }
 
     fn last_token(&self) -> Option<&Token> {
