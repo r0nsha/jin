@@ -3,17 +3,20 @@ type Result*[T, E] {
 	Err(error: E)
 }
 
-fn is-ok*[T, E](self: &Result[T, E]) -> bool =
+fn is-ok*[T, E](self: &Result[T, E]) -> bool {
 	match self {
 		Result.Ok(_) -> true
 		Result.Err(_) -> false
 	}
+}
 
-fn is-err*[T, E](self: &Result[T, E]) -> bool =
+fn is-err*[T, E](self: &Result[T, E]) -> bool {
 	!self.is-ok()
+}
 
-fn map*[A, B, E](self: Result[A, E], f: fn(A) -> B) -> Result[B, E] =
+fn map*[A, B, E](self: Result[A, E], f: fn(A) -> B) -> Result[B, E] {
 	match self {
 		Result.Ok(v) -> Result.Ok(f(v))
 		Result.Err(e) -> Result.Err(e)
 	}
+}
