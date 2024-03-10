@@ -84,13 +84,13 @@ impl<'a> Layout<'a> {
             self.new_tokens.push(*tok);
         }
 
-        let last_span = self.last_token().unwrap().span;
+        let last_tok = *self.last_token().unwrap();
 
-        if self.layout_indent() > 1 {
-            self.push_close_curly(last_span);
+        if self.layout_indent() > 1 && last_tok.kind != TokenKind::CloseCurly {
+            self.push_close_curly(last_tok.span);
         }
 
-        self.new_tokens.push(Token { kind: TokenKind::Semi(true), span: last_span.tail() });
+        self.new_tokens.push(Token { kind: TokenKind::Semi(true), span: last_tok.span.tail() });
 
         Ok(self.new_tokens)
     }
