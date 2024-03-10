@@ -71,7 +71,7 @@ impl<'a> Lexer<'a> {
             }
 
             // Layout stack indentation
-            if tokens.len() == 1 || tokens.last().map_or(false, |t| t.kind == TokenKind::OpenCurly)
+            if tokens.is_empty() || tokens.last().map_or(false, |t| t.kind == TokenKind::OpenCurly)
             {
                 if tok.kind != TokenKind::CloseCurly && col < self.layout_indent() {
                     return Err(Diagnostic::error(format!(
