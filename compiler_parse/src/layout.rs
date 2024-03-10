@@ -27,8 +27,6 @@ impl<'a> Layout<'a> {
             return Ok(input);
         }
 
-        let mut is_curly_balanced = true;
-
         for (i, tok) in input.iter().enumerate() {
             let Location { line_number, column_number } = self.source.span_location(tok.span);
             let is_first_tok = i == 0;
@@ -41,14 +39,12 @@ impl<'a> Layout<'a> {
                 // Open curly insertion
                 if column_number > layout_indent && !is_expr_cont {
                     is_line_first_tok = false;
-                    is_curly_balanced = false;
                     self.push_open_curly(tok.span);
                 }
 
                 // Close curly insertion
                 if column_number < layout_indent && tok.kind != TokenKind::CloseCurly {
                     is_line_first_tok = false;
-                    is_curly_balanced = true;
                     self.push_close_curly(tok.span);
                 }
             }
@@ -90,7 +86,7 @@ impl<'a> Layout<'a> {
 
         let last_span = self.last_token().unwrap().span;
 
-        if !is_curly_balanced {
+        if self.layout_indent() > 1 {
             self.push_close_curly(last_span);
         }
 
