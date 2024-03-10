@@ -19,6 +19,9 @@ struct Lexer<'a> {
     pos: u32,
 
     // Layout state
+    indents: Vec<u32>,
+    line: u32,
+    col: u32,
 
     // String interpolation state
     modes: Vec<Mode>,
@@ -39,6 +42,9 @@ impl<'a> Lexer<'a> {
             source_contents: source.contents(),
             source_bytes: source.contents().as_bytes(),
             pos: 0,
+            indents: vec![0],
+            line: 1,
+            col: 1,
             modes: vec![Mode::Default],
             curlies: 0,
             curly_stack: vec![],
@@ -46,19 +52,68 @@ impl<'a> Lexer<'a> {
     }
 
     fn scan(mut self) -> DiagnosticResult<Vec<Token>> {
-        let mut tokens = vec![];
+        let mut tokens = Vec::with_capacity(self.source_contents.len() / 2);
+        let mut last_line = self.line;
 
         while let Some(tok) = self.eat_token()? {
-            // TODO: Brace insertion
-            // TODO: Layout stack indentation
+            let is_new_line = self.line > last_line;
+            let col = self.col - tok.span.len();
+
+            // Brace insertion
+            if is_new_line {
+                if col > self.layout_indent() && !Self::is_expr_cont(&tokens, &tok) {
+                    tokens.push(Token { kind: TokenKind::OpenCurly, span: tok.span.head() })
+                }
+
+                if col < self.layout_indent() && tok.kind != TokenKind::CloseCurly {
+                    tokens.push(Token { kind: TokenKind::CloseCurly, span: tok.span.head() })
+                }
+            }
+
+            // Layout stack indentation
+            if tokens.len() == 1 || tokens.last().map_or(false, |t| t.kind == TokenKind::OpenCurly)
+            {
+                if tok.kind != TokenKind::CloseCurly && col < self.layout_indent() {
+                    return Err(Diagnostic::error(format!(
+                        "line must be indented more then its \
+                         enclosing layout (column {})",
+                        self.layout_indent()
+                    ))
+                    .with_label(Label::primary(tok.span, "insufficient indentation")));
+                }
+
+                dbg!(col);
+                self.indents.push(col);
+            }
+
+            if tok.kind == TokenKind::CloseCurly {
+                self.indents.pop();
+            }
+
             // TODO: Semicolon insertion
+
+            last_line = self.line;
             tokens.push(tok);
         }
 
-        // TODO: Insert semicolon at the end of the source
-        // TODO: Insert semicolon before every brace (?)
+        if let Some(span) = tokens.last().map(|t| t.span) {
+            Self::insert_semi(&mut tokens, span.tail());
+        }
 
         Ok(tokens)
+    }
+
+    fn insert_semi(tokens: &mut Vec<Token>, span: Span) {
+        tokens.push(Token { kind: TokenKind::Semi(true), span });
+    }
+
+    fn is_expr_cont(tokens: &[Token], tok: &Token) -> bool {
+        tok.kind.is_start_cont() || tokens.last().map_or(false, |t| t.kind.is_end_cont())
+    }
+
+    #[track_caller]
+    fn layout_indent(&self) -> u32 {
+        *self.indents.last().unwrap()
     }
 
     fn eat_token(&mut self) -> DiagnosticResult<Option<Token>> {
@@ -511,11 +566,6 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    #[inline]
-    fn next(&mut self) {
-        self.pos += 1;
-    }
-
     fn number_range(&self, start: u32) -> String {
         self.range(start).replace('_', "")
     }
@@ -547,6 +597,17 @@ impl<'a> Lexer<'a> {
         let ch = self.peek();
         self.next();
         ch
+    }
+
+    fn next(&mut self) {
+        match self.peek() {
+            Some('\n') => {
+                self.line += 1;
+                self.col = 1;
+            }
+            _ => self.col += 1,
+        }
+        self.pos += 1;
     }
 
     #[inline]

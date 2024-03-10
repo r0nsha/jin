@@ -65,6 +65,16 @@ impl Span {
             end: self.end.max(other.end),
         }
     }
+
+    #[inline]
+    pub fn len(&self) -> u32 {
+        self.end - self.start
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 impl core::fmt::Debug for Span {
