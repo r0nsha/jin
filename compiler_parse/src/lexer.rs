@@ -82,7 +82,6 @@ impl<'a> Lexer<'a> {
                     .with_label(Label::primary(tok.span, "insufficient indentation")));
                 }
 
-                dbg!(col);
                 self.indents.push(col);
             }
 
@@ -605,7 +604,10 @@ impl<'a> Lexer<'a> {
                 self.line += 1;
                 self.col = 1;
             }
-            _ => self.col += 1,
+            Some(ch) => {
+                self.col += unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0) as u32;
+            }
+            None => (),
         }
         self.pos += 1;
     }
