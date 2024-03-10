@@ -18,8 +18,7 @@ struct Lexer<'a> {
     source_bytes: &'a [u8],
     pos: u32,
 
-    // Semicolon insertion state
-    encountered_nl: bool,
+    // Layout state
 
     // String interpolation state
     modes: Vec<Mode>,
@@ -40,7 +39,6 @@ impl<'a> Lexer<'a> {
             source_contents: source.contents(),
             source_bytes: source.contents().as_bytes(),
             pos: 0,
-            encountered_nl: false,
             modes: vec![Mode::Default],
             curlies: 0,
             curly_stack: vec![],
@@ -51,41 +49,16 @@ impl<'a> Lexer<'a> {
         let mut tokens = vec![];
 
         while let Some(tok) = self.eat_token()? {
-            // self.auto_insert_semi(&mut tokens, &tok);
+            // TODO: Brace insertion
+            // TODO: Layout stack indentation
+            // TODO: Semicolon insertion
             tokens.push(tok);
-            self.encountered_nl = false;
         }
 
-        // Self::auto_insert_semi_eof(&mut tokens);
+        // TODO: Insert semicolon at the end of the source
+        // TODO: Insert semicolon before every brace (?)
 
         Ok(tokens)
-    }
-
-    #[inline]
-    fn auto_insert_semi(&self, tokens: &mut Vec<Token>, tok: &Token) {
-        if self.encountered_nl && tok.kind.is_after_semi() {
-            if let Some(before_tok) = Self::can_auto_insert_semi_after_last(tokens) {
-                Self::insert_semi(tokens, before_tok.span)
-            }
-        }
-    }
-
-    #[inline]
-    fn auto_insert_semi_eof(tokens: &mut Vec<Token>) {
-        if let Some(before_tok) = Self::can_auto_insert_semi_after_last(tokens) {
-            Self::insert_semi(tokens, before_tok.span.tail());
-        }
-    }
-
-    #[inline]
-    fn insert_semi(tokens: &mut Vec<Token>, span: Span) {
-        let semi = Token { kind: TokenKind::Semi(true), span: span.tail() };
-        tokens.push(semi);
-    }
-
-    #[inline]
-    fn can_auto_insert_semi_after_last(tokens: &[Token]) -> Option<&Token> {
-        tokens.last().and_then(|t| t.kind.is_before_semi().then_some(t))
     }
 
     fn eat_token(&mut self) -> DiagnosticResult<Option<Token>> {
@@ -114,12 +87,7 @@ impl<'a> Lexer<'a> {
                         ('0', Some('b' | 'B')) => self.eat_number_binary(),
                         _ => self.eat_number(start),
                     },
-                    ch if ch.is_ascii_whitespace() => {
-                        if ch == '\n' {
-                            self.encountered_nl = true;
-                        }
-                        return self.eat_token();
-                    }
+                    ch if ch.is_ascii_whitespace() => return self.eat_token(),
                     '`' => self.eat_raw_ident()?,
                     '"' => {
                         self.modes.push(Mode::Str);
@@ -537,10 +505,8 @@ impl<'a> Lexer<'a> {
     fn eat_comment(&mut self) {
         while let Some(ch) = self.peek() {
             if ch == '\n' {
-                self.encountered_nl = true;
                 break;
             }
-
             self.next();
         }
     }

@@ -69,12 +69,13 @@ impl<'a> Layout<'a> {
 
             // Semicolon insertion when encountering the first token in a given line
             if is_line_first_tok {
-                match column_number.cmp(&self.layout_indent()) {
+                match column_number.cmp(&layout_indent) {
                     Ordering::Less => {
                         todo!("error: must be equal or larger than the layout indentation")
                     }
                     Ordering::Equal if !is_first_tok && !is_expr_cont => {
-                        self.push_semi(self.last_token().map_or(tok.span.head(), |t| t.span.tail()))
+                        let span = self.last_token().map_or(tok.span.head(), |t| t.span.tail());
+                        self.push_semi(span);
                     }
                     _ => (),
                 }
@@ -84,13 +85,13 @@ impl<'a> Layout<'a> {
             self.new_tokens.push(*tok);
         }
 
-        let last_tok = *self.last_token().unwrap();
+        let last_span = self.last_token().unwrap().span;
 
-        if self.layout_indent() > 1 && last_tok.kind != TokenKind::CloseCurly {
-            self.push_close_curly(last_tok.span);
+        if self.layout_indent() > 1 {
+            self.push_close_curly(last_span);
         }
 
-        self.new_tokens.push(Token { kind: TokenKind::Semi(true), span: last_tok.span.tail() });
+        self.new_tokens.push(Token { kind: TokenKind::Semi(true), span: last_span.tail() });
 
         Ok(self.new_tokens)
     }

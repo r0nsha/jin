@@ -1,7 +1,6 @@
 use core::fmt;
 use std::iter;
 
-use codespan_reporting::files::Files;
 use compiler_core::{
     db::VariantId,
     span::Span,
