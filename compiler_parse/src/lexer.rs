@@ -96,6 +96,10 @@ impl<'a> Lexer<'a> {
         }
 
         if let Some(span) = tokens.last().map(|t| t.span) {
+            if self.layout_indent() > 1 {
+                tokens.push(Token { kind: TokenKind::CloseCurly, span: span.tail() })
+            }
+
             Self::insert_semi(&mut tokens, span.tail());
         }
 
