@@ -68,7 +68,7 @@ impl<'a> Lexer<'a> {
                 if col > self.layout_indent() && !Self::is_expr_cont(&tokens, &tok) {
                     let t = Token { kind: TokenKind::OpenCurly, span: tok.span.head() };
                     curr_tok = t;
-                    tokens.push(t)
+                    tokens.push(t);
                 }
 
                 if col < self.layout_indent()
@@ -78,7 +78,7 @@ impl<'a> Lexer<'a> {
                     tokens.push(Token { kind: TokenKind::Semi(true), span: tok.span.head() });
                     let t = Token { kind: TokenKind::CloseCurly, span: tok.span.head() };
                     curr_tok = t;
-                    tokens.push(t)
+                    tokens.push(t);
                 }
             }
 
