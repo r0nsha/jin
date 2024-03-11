@@ -44,7 +44,7 @@ impl<'a> Lexer<'a> {
             source_contents: source.contents(),
             source_bytes: source.contents().as_bytes(),
             pos: 0,
-            indents: vec![0],
+            indents: vec![],
             line: 1,
             col: 1,
             modes: vec![Mode::Default],
@@ -71,7 +71,10 @@ impl<'a> Lexer<'a> {
                     tokens.push(t)
                 }
 
-                if col < self.layout_indent() && tok.kind != TokenKind::CloseCurly {
+                if col < self.layout_indent()
+                    && tok.kind != TokenKind::OpenCurly
+                    && tok.kind != TokenKind::CloseCurly
+                {
                     tokens.push(Token { kind: TokenKind::Semi(true), span: tok.span.head() });
                     let t = Token { kind: TokenKind::CloseCurly, span: tok.span.head() };
                     curr_tok = t;
@@ -80,8 +83,7 @@ impl<'a> Lexer<'a> {
             }
 
             // Layout stack indentation
-            if tokens.is_empty() || tokens.last().map_or(false, |t| t.kind == TokenKind::OpenCurly)
-            {
+            if tokens.last().map_or(false, |t| t.kind == TokenKind::OpenCurly) {
                 if curr_tok.kind != TokenKind::CloseCurly && col < self.layout_indent() {
                     return Err(Diagnostic::error(format!(
                         "line must be indented more than its \
@@ -123,8 +125,8 @@ impl<'a> Lexer<'a> {
         }
 
         if let Some(span) = tokens.last().map(|t| t.span) {
-            if self.layout_indent() > 1 {
-                tokens.push(Token { kind: TokenKind::CloseCurly, span: span.tail() })
+            while self.indents.pop().is_some() {
+                tokens.push(Token { kind: TokenKind::CloseCurly, span: span.tail() });
             }
 
             tokens.push(Token { kind: TokenKind::Semi(true), span: span.tail() });
@@ -139,7 +141,7 @@ impl<'a> Lexer<'a> {
 
     #[track_caller]
     fn layout_indent(&self) -> u32 {
-        *self.indents.last().unwrap()
+        self.indents.last().copied().unwrap_or(1)
     }
 
     fn eat_token(&mut self) -> DiagnosticResult<Option<Token>> {
