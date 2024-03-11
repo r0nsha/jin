@@ -35,182 +35,182 @@ const UINT-MIN*: uint = U64-MIN
 const UINT-MAX*: uint = U64-MAX
 
 fn abs*(self: i8) -> i8 {
-	if self > 0 { self } else { -self }
+    if self > 0 { self } else { -self }
 }
 
 fn abs*(self: i16) -> i16 {
-	if self > 0 { self } else { -self }
+    if self > 0 { self } else { -self }
 }
 
 fn abs*(self: i32) -> i32 {
-	if self > 0 { self } else { -self }
+    if self > 0 { self } else { -self }
 }
 
 fn abs*(self: i64) -> i64 {
-	if self > 0 { self } else { -self }
+    if self > 0 { self } else { -self }
 }
 
 fn abs*(self: int) -> int {
-	if self > 0 { self } else { -self }
+    if self > 0 { self } else { -self }
 }
 
 fn to-str*(self: i8) -> str {
-	fmt-impl(uint(self.abs()), self < 0, Format.decimal)
+    fmt-impl(uint(self.abs()), self < 0, Format.decimal)
 }
 
 fn to-str*(self: i8, format: Format) -> str {
-	fmt-impl(uint(self.abs()), self < 0, format)
+    fmt-impl(uint(self.abs()), self < 0, format)
 }
 
 fn fmt*(self: &i8, buf: &mut StrBuf) {
-	buf.push(self.to-str(Format.decimal))
+    buf.push(self.to-str(Format.decimal))
 }
 
 fn to-str*(self: i16) -> str {
-	fmt-impl(uint(self.abs()), self < 0, Format.decimal)
+    fmt-impl(uint(self.abs()), self < 0, Format.decimal)
 }
 
 fn to-str*(self: i16, format: Format) -> str {
-	fmt-impl(uint(self.abs()), self < 0, format)
+    fmt-impl(uint(self.abs()), self < 0, format)
 }
 
 fn fmt*(self: &i16, buf: &mut StrBuf) {
-	buf.push(self.to-str(Format.decimal))
+    buf.push(self.to-str(Format.decimal))
 }
 
 fn to-str*(self: i32) -> str {
-	fmt-impl(uint(self.abs()), self < 0, Format.decimal)
+    fmt-impl(uint(self.abs()), self < 0, Format.decimal)
 }
 
 fn to-str*(self: i32, format: Format) -> str {
-	fmt-impl(uint(self.abs()), self < 0, format)
+    fmt-impl(uint(self.abs()), self < 0, format)
 }
 
 fn fmt*(self: &i32, buf: &mut StrBuf) {
-	buf.push(self.to-str(Format.decimal))
+    buf.push(self.to-str(Format.decimal))
 }
 
 fn to-str*(self: i64) -> str {
-	fmt-impl(uint(self.abs()), self < 0, Format.decimal)
+    fmt-impl(uint(self.abs()), self < 0, Format.decimal)
 }
 
 fn to-str*(self: i64, format: Format) -> str {
-	fmt-impl(uint(self.abs()), self < 0, format)
+    fmt-impl(uint(self.abs()), self < 0, format)
 }
 
 fn fmt*(self: &i64, buf: &mut StrBuf) {
-	buf.push(self.to-str(Format.decimal))
+    buf.push(self.to-str(Format.decimal))
 }
 
 fn to-str*(self: int) -> str {
-	fmt-impl(uint(self.abs()), self < 0, Format.decimal)
+    fmt-impl(uint(self.abs()), self < 0, Format.decimal)
 }
 
 fn to-str*(self: int, format: Format) -> str {
-	fmt-impl(uint(self.abs()), self < 0, format)
+    fmt-impl(uint(self.abs()), self < 0, format)
 }
 
 fn fmt*(self: &int, buf: &mut StrBuf) {
-	buf.push(self.to-str(Format.decimal))
+    buf.push(self.to-str(Format.decimal))
 }
 
 fn to-str*(self: u8) -> str {
-	fmt-impl(self, false, Format.decimal)
+    fmt-impl(self, false, Format.decimal)
 }
 
 fn to-str*(self: u8, format: Format) -> str {
-	fmt-impl(self, false, format)
+    fmt-impl(self, false, format)
 }
 
 fn fmt*(self: &u8, buf: &mut StrBuf) {
-	buf.push(self.to-str(Format.decimal))
+    buf.push(self.to-str(Format.decimal))
 }
 
 fn to-str*(self: u16) -> str {
-	fmt-impl(self, false, Format.decimal)
+    fmt-impl(self, false, Format.decimal)
 }
 
 fn to-str*(self: u16, format: Format) -> str {
-	fmt-impl(self, false, format)
+    fmt-impl(self, false, format)
 }
 
 fn fmt*(self: &u16, buf: &mut StrBuf) {
-	buf.push(self.to-str(Format.decimal))
+    buf.push(self.to-str(Format.decimal))
 }
 
 fn to-str*(self: u32) -> str {
-	fmt-impl(self, false, Format.decimal)
+    fmt-impl(self, false, Format.decimal)
 }
 
 fn to-str*(self: u32, format: Format) -> str {
-	fmt-impl(self, false, format)
+    fmt-impl(self, false, format)
 }
 
 fn fmt*(self: &u32, buf: &mut StrBuf) {
-	buf.push(self.to-str(Format.decimal))
+    buf.push(self.to-str(Format.decimal))
 }
 
 fn to-str*(self: u64) -> str {
-	fmt-impl(self, false, Format.decimal)
+    fmt-impl(self, false, Format.decimal)
 }
 
 fn to-str*(self: u64, format: Format) -> str {
-	fmt-impl(self, false, format)
+    fmt-impl(self, false, format)
 }
 
 fn fmt*(self: &u64, buf: &mut StrBuf) {
-	buf.push(self.to-str(Format.decimal))
+    buf.push(self.to-str(Format.decimal))
 }
 
 fn to-str*(self: uint) -> str {
-	fmt-impl(self, false, Format.decimal)
+    fmt-impl(self, false, Format.decimal)
 }
 
 fn to-str*(self: uint, format: Format) -> str {
-	fmt-impl(self, false, format)
+    fmt-impl(self, false, format)
 }
 
 fn fmt*(self: &uint, buf: &mut StrBuf) {
-	buf.push(self.to-str(Format.decimal))
+    buf.push(self.to-str(Format.decimal))
 }
 
 type Format* {
-	binary
-	decimal
-	hex
+    binary
+    decimal
+    hex
 }
 
 fn base*(f: Format) -> uint {
-	match f {
-		Format.binary -> 2
-		Format.decimal -> 10
-		Format.hex -> 16
-	}
+    match f {
+        Format.binary -> 2
+        Format.decimal -> 10
+        Format.hex -> 16
+    }
 }
 
 // TODO: We can avoid this allocation if we add stack allocated arrays to the language,
 // and stack allocate an uninitialized [u8; 22] instead of using a StrBuf
 fn fmt-impl(mut num: uint, is-neg: bool, format: Format) -> str {
-	let base = format.base()
-	let mut buf = StrBuf.with-cap(22)
+    let base = format.base()
+    let mut buf = StrBuf.with-cap(22)
 
-	// TODO: We should be able to use an early return here,
-	// but the ownership check dictates that `buf` is `MaybeMoved`, hence it can't be used afterwards.
-	if num == 0 {
-		buf.push('0')	
-	} else {
-		for if num > 0 {
-			let ch = char.from-digit(u32(num % base), u32(base)).or-panic()
-			buf.push(ch)
-			num /= base
-		}
+    // TODO: We should be able to use an early return here,
+    // but the ownership check dictates that `buf` is `MaybeMoved`, hence it can't be used afterwards.
+    if num == 0 {
+        buf.push('0')   
+    } else {
+        for if num > 0 {
+            let ch = char.from-digit(u32(num % base), u32(base)).or-panic()
+            buf.push(ch)
+            num /= base
+        }
 
-		if is-neg {
-			buf.push('-')
-		}
-	}
+        if is-neg {
+            buf.push('-')
+        }
+    }
 
-	let mut s = buf.take()
-	s.as-bytes-mut().reverse()
-	s
+    let mut s = buf.take()
+    s.as-bytes-mut().reverse()
+    s
 }
