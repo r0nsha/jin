@@ -72,6 +72,7 @@ impl<'a> Lexer<'a> {
                 }
 
                 if col < self.layout_indent() && tok.kind != TokenKind::CloseCurly {
+                    tokens.push(Token { kind: TokenKind::Semi(true), span: tok.span.head() });
                     let t = Token { kind: TokenKind::CloseCurly, span: tok.span.head() };
                     curr_tok = t;
                     tokens.push(t)
