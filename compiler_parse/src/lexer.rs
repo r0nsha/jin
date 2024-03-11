@@ -110,7 +110,7 @@ impl<'a> Lexer<'a> {
                         .with_label(Label::primary(tok.span, "invalid indentation")));
                     }
                     (Ordering::Equal, Some(TokenKind::Semi(_))) => (),
-                    (Ordering::Equal, _) if !Self::is_expr_cont(&tokens, &curr_tok) => {
+                    (Ordering::Equal, _) if !Self::is_expr_cont(&tokens, &tok) => {
                         let span = tokens.last().map_or(tok.span.head(), |t| t.span.tail());
                         tokens.push(Token { kind: TokenKind::Semi(true), span: span.head() });
                     }
