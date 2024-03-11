@@ -28,20 +28,21 @@ impl<'a> Layout<'a> {
         Self { source, tokens: Vec::with_capacity(capacity), indents: vec![], last_line: 1 }
     }
 
-    fn apply(&mut self, mut input: &[Token]) -> DiagnosticResult<()> {
+    fn apply(&mut self, input: &[Token]) -> DiagnosticResult<()> {
         let mut i = 0;
 
         loop {
             let (tok, insert_tok) = if let Some(tok) = self.tokens.get(i) {
                 print!("from tokens:\t");
-                i += 1;
                 (*tok, false)
-            } else {
+            } else if let Some(tok) = input.get(i - self.tokens.len()) {
                 print!("from input:\t");
-                let Some((tok, rest)) = input.split_first() else { break };
-                input = rest;
                 (*tok, true)
+            } else {
+                break;
             };
+
+            i += 1;
 
             let Location { line_number, column_number } = self.source.span_location(tok.span);
             let (line, col) = (line_number as u32, column_number as u32);
@@ -53,7 +54,6 @@ impl<'a> Layout<'a> {
             if is_new_line {
                 if col > self.layout_indent() && !self.is_expr_cont(&tok) {
                     self.push_open_brace(tok.span);
-                    continue;
                 }
 
                 if col < self.layout_indent()
@@ -61,7 +61,6 @@ impl<'a> Layout<'a> {
                 {
                     self.push_semi(tok.span);
                     self.push_close_brace(tok.span);
-                    continue;
                 }
             }
 
