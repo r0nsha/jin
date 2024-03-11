@@ -3,8 +3,9 @@ fn main()
     println(msg)
 
 fn test() 
-    let x = 1
-    let y = if true
-        false
-    else
-        true
+    1
+    // let x = 1
+    // let y = if true
+    //     false
+    // else
+    //     true

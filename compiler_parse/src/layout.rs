@@ -32,13 +32,9 @@ impl<'a> Layout<'a> {
         let mut i = 0;
 
         loop {
-            let (tok, insert_tok) = if let Some(tok) = self.tokens.get(i) {
-                print!("from tokens:\t");
-                (*tok, false)
-            } else if let Some(tok) = input.get(i - self.tokens.len()) {
-                print!("from input:\t");
-                (*tok, true)
-            } else {
+            let Some(tok) =
+                self.tokens.get(i).or_else(|| input.get(i - self.tokens.len())).copied()
+            else {
                 break;
             };
 
@@ -47,8 +43,6 @@ impl<'a> Layout<'a> {
             let Location { line_number, column_number } = self.source.span_location(tok.span);
             let (line, col) = (line_number as u32, column_number as u32);
             let is_new_line = line > self.last_line;
-
-            println!("{:?}, {} > {}", tok.kind, col, self.layout_indent());
 
             // Brace insertion
             if is_new_line {
@@ -102,8 +96,7 @@ impl<'a> Layout<'a> {
                 }
             }
 
-            if insert_tok {
-                i += 1;
+            if i >= self.tokens.len() {
                 self.last_line = line;
                 self.tokens.push(tok);
             }
