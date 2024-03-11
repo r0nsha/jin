@@ -1,34 +1,34 @@
 fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
 fn main() = {
-	let mut b = StrBuf.new()
-	print-str(&b)
+    let mut b = StrBuf.new()
+    print-str(&b)
 
-	b.push("Hello")
-	print-str(&b)
+    b.push("Hello")
+    print-str(&b)
 
-	b.push(" ")
-	print-str(&b)
+    b.push(" ")
+    print-str(&b)
 
-	b.push("World")
-	print-str(&b)
+    b.push("World")
+    print-str(&b)
 
-	b.clear()
-	print-str(&b)
+    b.clear()
+    print-str(&b)
 
-	b.push('👍')
-	b.push(' ')
-	b.push('👍')
-	print-str(&b)
+    b.push('👍')
+    b.push(' ')
+    b.push('👍')
+    print-str(&b)
 
-	let s = b.as-ref()
-	let mut i = 0
-	for if i < s.len {
-		unsafe printf("%x ".ptr, s.[i])
-		i += 1
-	}
-	unsafe printf("\n".ptr)
+    let s = b.as-ref()
+    let mut i = 0
+    for if i < s.len {
+        unsafe printf("%x ".ptr, s.[i])
+        i += 1
+    }
+    unsafe printf("\n".ptr)
 }
 
 fn print-str(b: &StrBuf) =
-	unsafe printf("str is: '%s'\n".ptr, b.as-ref().ptr)
+    unsafe printf("str is: '%s'\n".ptr, b.as-ref().ptr)

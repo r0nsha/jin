@@ -1,16 +1,16 @@
 fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
 fn main() = {
-	match try-add(1, 2) {
-		Result.Ok(res) -> unsafe printf("res = %d\n".ptr, res)
-		Result.Err(msg) -> unsafe printf(msg.ptr)
-	}
+    match try-add(1, 2) {
+        Result.Ok(res) -> unsafe printf("res = %d\n".ptr, res)
+        Result.Err(msg) -> unsafe printf(msg.ptr)
+    }
 }
 
 fn try-add(a: int, b: int) -> Result[int, &str] = {
-	if a == b {
-		Result.Ok(a + b)
-	} else {
-		Result.Err("`a` and `b` or not equal!\n")
-	}
+    if a == b {
+        Result.Ok(a + b)
+    } else {
+        Result.Err("`a` and `b` or not equal!\n")
+    }
 }

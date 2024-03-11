@@ -6,62 +6,62 @@ fn extern "c" cosf(arg: f32) -> f32
 fn extern "c" sinf(arg: f32) -> f32
 
 fn run*() = unsafe {
-	let screen-width = 800
-	let screen-height = 450
+    let screen-width = 800
+    let screen-height = 450
 
-	InitWindow(screen-width, screen-height, "raylib - following eyes".ptr)
-	SetTargetFPS(60)
+    InitWindow(screen-width, screen-height, "raylib - following eyes".ptr)
+    SetTargetFPS(60)
 
-	let half-screen-height = f32(screen-height / 2)
-	let mut sclera-left-pos = Vector2(f32(screen-width / 2) - 100.0, half-screen-height)
-	let mut sclera-right-pos = Vector2(f32(screen-width / 2) + 100.0, half-screen-height)
-	let sclera-radius = 80.0
+    let half-screen-height = f32(screen-height / 2)
+    let mut sclera-left-pos = Vector2(f32(screen-width / 2) - 100.0, half-screen-height)
+    let mut sclera-right-pos = Vector2(f32(screen-width / 2) + 100.0, half-screen-height)
+    let sclera-radius = 80.0
 
-	let mut iris-left-pos = Vector2(f32(screen-width / 2) - 100.0, half-screen-height)
-	let mut iris-right-pos = Vector2(f32(screen-width / 2) + 100.0, half-screen-height)
-	let iris-radius = 24.0
+    let mut iris-left-pos = Vector2(f32(screen-width / 2) - 100.0, half-screen-height)
+    let mut iris-right-pos = Vector2(f32(screen-width / 2) + 100.0, half-screen-height)
+    let iris-radius = 24.0
 
-	for if !WindowShouldClose() {
-		iris-left-pos = GetMousePosition()
-		iris-right-pos = GetMousePosition()
+    for if !WindowShouldClose() {
+        iris-left-pos = GetMousePosition()
+        iris-right-pos = GetMousePosition()
 
-		if !CheckCollisionPointCircle(iris-left-pos, sclera-left-pos, sclera-radius - 20.0) {
-			let dx = iris-left-pos.x - sclera-left-pos.x
-			let dy = iris-left-pos.y - sclera-left-pos.y
+        if !CheckCollisionPointCircle(iris-left-pos, sclera-left-pos, sclera-radius - 20.0) {
+            let dx = iris-left-pos.x - sclera-left-pos.x
+            let dy = iris-left-pos.y - sclera-left-pos.y
 
-			let angle = atan2f(dy, dx)
+            let angle = atan2f(dy, dx)
 
-			let dxx = {sclera-radius - iris-radius} * cosf(angle)
-			let dyy = {sclera-radius - iris-radius} * sinf(angle)
+            let dxx = {sclera-radius - iris-radius} * cosf(angle)
+            let dyy = {sclera-radius - iris-radius} * sinf(angle)
 
-			iris-left-pos.x = sclera-left-pos.x + dxx
-			iris-left-pos.y = sclera-left-pos.y + dyy
-		}
+            iris-left-pos.x = sclera-left-pos.x + dxx
+            iris-left-pos.y = sclera-left-pos.y + dyy
+        }
 
-		if !CheckCollisionPointCircle(iris-right-pos, sclera-right-pos, sclera-radius - 20.0) {
-			let dx = iris-right-pos.x - sclera-right-pos.x
-			let dy = iris-right-pos.y - sclera-right-pos.y
+        if !CheckCollisionPointCircle(iris-right-pos, sclera-right-pos, sclera-radius - 20.0) {
+            let dx = iris-right-pos.x - sclera-right-pos.x
+            let dy = iris-right-pos.y - sclera-right-pos.y
 
-			let angle = atan2f(dy, dx)
+            let angle = atan2f(dy, dx)
 
-			let dxx = {sclera-radius - iris-radius} * cosf(angle)
-			let dyy = {sclera-radius - iris-radius} * sinf(angle)
+            let dxx = {sclera-radius - iris-radius} * cosf(angle)
+            let dyy = {sclera-radius - iris-radius} * sinf(angle)
 
-			iris-right-pos.x = sclera-right-pos.x + dxx
-			iris-right-pos.y = sclera-right-pos.y + dyy
-		}
+            iris-right-pos.x = sclera-right-pos.x + dxx
+            iris-right-pos.y = sclera-right-pos.y + dyy
+        }
 
-		BeginDrawing()
-		ClearBackground(RAYWHITE)
-		DrawCircleV(sclera-left-pos, sclera-radius, LIGHTGRAY)
-		DrawCircleV(iris-left-pos, iris-radius, BROWN)
-		DrawCircleV(iris-left-pos, 10.0, BLACK)
-		DrawCircleV(sclera-right-pos, sclera-radius, LIGHTGRAY)
-		DrawCircleV(iris-right-pos, iris-radius, DARKGREEN)
-		DrawCircleV(iris-right-pos, 10.0, BLACK)
-		DrawFPS(10, 10)
-		EndDrawing()
-	}
+        BeginDrawing()
+        ClearBackground(RAYWHITE)
+        DrawCircleV(sclera-left-pos, sclera-radius, LIGHTGRAY)
+        DrawCircleV(iris-left-pos, iris-radius, BROWN)
+        DrawCircleV(iris-left-pos, 10.0, BLACK)
+        DrawCircleV(sclera-right-pos, sclera-radius, LIGHTGRAY)
+        DrawCircleV(iris-right-pos, iris-radius, DARKGREEN)
+        DrawCircleV(iris-right-pos, 10.0, BLACK)
+        DrawFPS(10, 10)
+        EndDrawing()
+    }
 
-	CloseWindow()
+    CloseWindow()
 }

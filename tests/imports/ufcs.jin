@@ -1,5 +1,5 @@
 fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
 fn print-int*(value: int) = {
-	unsafe printf("print-int: %d\n".ptr, value)
+    unsafe printf("print-int: %d\n".ptr, value)
 }

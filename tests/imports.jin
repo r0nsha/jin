@@ -6,13 +6,13 @@ import imports.bar.(*)
 import imports.ufcs.(?)
 
 fn main() = {
-	hello()
-	yup()
-	goodbye()
+    hello()
+    yup()
+    goodbye()
 
-	// Ufcs imports
-	1.print-int()
-	//print-int(1) // Error!
+    // Ufcs imports
+    1.print-int()
+    //print-int(1) // Error!
 }
 
 fn get-hello-world*() -> &str = "Hello from bar!\n"

@@ -1,51 +1,51 @@
 fn main() = {
-	println("Reference semantics:")
-	ref-type()
-	println()
+    println("Reference semantics:")
+    ref-type()
+    println()
 
-	println("Value semantics (extern):")
-	ext-type()
+    println("Value semantics (extern):")
+    ext-type()
 }
 
 type Ref(field: int)
 
 fn ref-type() = {
-	let mut r = Ref(1)
-	print(&r) // should be 1
+    let mut r = Ref(1)
+    print(&r) // should be 1
 
-	r.field = 2
-	print(&r) // should be 2
+    r.field = 2
+    print(&r) // should be 2
 
-	r.mutate()
-	print(&r) // should be 3
+    r.mutate()
+    print(&r) // should be 3
 }
 
 fn mutate(r: &mut Ref) = {
-	r.field = 3
+    r.field = 3
 }
 
 fn print(r: &Ref) = {
-	println("Ref(field: {r.field})")
+    println("Ref(field: {r.field})")
 }
 
 type Ext extern(field: int)
 
 fn ext-type() = {
-	let mut ext = Ext(1)
-	print(ext) // should be 1
+    let mut ext = Ext(1)
+    print(ext) // should be 1
 
-	ext.field = 2
-	print(ext) // should be 2
+    ext.field = 2
+    print(ext) // should be 2
 
-	ext.mutate()
-	print(ext) // should still be 2
+    ext.mutate()
+    print(ext) // should still be 2
 }
 
 fn mutate(mut ext: Ext) = {
-	ext.field = 3
+    ext.field = 3
 }
 
 fn print(ext: Ext) = {
-	println("Ext(field: {ext.field})")
+    println("Ext(field: {ext.field})")
 }
 

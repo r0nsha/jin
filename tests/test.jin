@@ -6,23 +6,23 @@ let extern answer: int
 fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
 fn main() = {
-	println("Hello, World!")
-	unsafe hello()
-	run(print-answer)
-	do-add(add, 1, 2)
-	unsafe printf("num = %d\n".ptr, map(1, id))
+    println("Hello, World!")
+    unsafe hello()
+    run(print-answer)
+    do-add(add, 1, 2)
+    unsafe printf("num = %d\n".ptr, map(1, id))
 }
 
 fn print-answer() = {
-	unsafe printf("The answer is %d\n".ptr, answer)
+    unsafe printf("The answer is %d\n".ptr, answer)
 }
 
 fn add(a: int, b: int) -> int = {
-	a + b
+    a + b
 }
 
 fn do-add(f: fn(int, int) -> int, a: int, b: int) = {
-	unsafe printf("a + b = %d\n".ptr, f(a, b))
+    unsafe printf("a + b = %d\n".ptr, f(a, b))
 }
 
 fn run(f: fn()) = f()
@@ -30,4 +30,4 @@ fn run(f: fn()) = f()
 fn id[T](x: T) -> T = x
 
 fn map[A, B](val: A, f: fn(A) -> B) -> B =
-	f(val)
+    f(val)

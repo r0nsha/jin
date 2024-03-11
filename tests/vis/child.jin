@@ -4,6 +4,6 @@ type Priv(num: int)
 type PrivCtor*(num: int)
 
 fn foo() = {
-	Priv(1).num
-	vis.x()
+    Priv(1).num
+    vis.x()
 }

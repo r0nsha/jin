@@ -1,12 +1,12 @@
 fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
 fn main() = {
-	let a = 2.0
-	let b = 6.0
+    let a = 2.0
+    let b = 6.0
 
-	unsafe printf("-a = %f\n".ptr, -a)
-	unsafe printf("a + b = %f\n".ptr, a + b)
-	unsafe printf("a - b = %f\n".ptr, a - b)
-	unsafe printf("a * b = %f\n".ptr, a * b)
-	unsafe printf("a / b = %f\n".ptr, a / b)
+    unsafe printf("-a = %f\n".ptr, -a)
+    unsafe printf("a + b = %f\n".ptr, a + b)
+    unsafe printf("a - b = %f\n".ptr, a - b)
+    unsafe printf("a * b = %f\n".ptr, a * b)
+    unsafe printf("a / b = %f\n".ptr, a / b)
 }

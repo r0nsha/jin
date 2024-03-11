@@ -1,91 +1,91 @@
 fn main() = {
-	int-types()
-	unary()
-	arithmetic()
-	cmp()
-	if-expr()
-	variables()
-	polymorphism()
-	named-args()
-	global-vars()
+    int-types()
+    unary()
+    arithmetic()
+    cmp()
+    if-expr()
+    variables()
+    polymorphism()
+    named-args()
+    global-vars()
 }
 
 fn int-types() = {
-	let id: i8 = 126
-	let promoted = i64(id) + 5555
-	let demoted1 = i32(promoted)
-	let demoted2 = i16(demoted1 - 4000)
-	let int-to-uint = uint(int(663151))
+    let id: i8 = 126
+    let promoted = i64(id) + 5555
+    let demoted1 = i32(promoted)
+    let demoted2 = i16(demoted1 - 4000)
+    let int-to-uint = uint(int(663151))
 }
 
 fn unary() = {
-	-48
-	!true
-	!!false
-	!54878
+    -48
+    !true
+    !!false
+    !54878
 }
 
 fn arithmetic() = {
-	1 + 2
-	3 - 4
-	5 * 6
-	7 / 8
-	9 % 10
+    1 + 2
+    3 - 4
+    5 * 6
+    7 / 8
+    9 % 10
 }
 
 fn cmp() = {
-	true && false
-	false || true
-	100 == 100
-	200 != 150
-	8 < 7
-	42 <= 999
-	2 > 1
-	264 >= 71
+    true && false
+    false || true
+    100 == 100
+    200 != 150
+    8 < 7
+    42 <= 999
+    2 > 1
+    264 >= 71
 }
 
 fn if-expr() = {
-	let cond = true
-	let result = if cond {
-		69
-	} else {
-		420
-	}
+    let cond = true
+    let result = if cond {
+        69
+    } else {
+        420
+    }
 }
 
 fn variables() -> int = {
-	let x = 7 // Inferred to `int`
-	let y: int = 3 // Explicit type annotation
-	let x = 39  // Variables can be shadowed
-	x + y
+    let x = 7 // Inferred to `int`
+    let y: int = 3 // Explicit type annotation
+    let x = 39  // Variables can be shadowed
+    x + y
 }
 
 fn id[T](x: T) -> T = {
-	x
+    x
 }
 
 fn polymorphism() = {
-	// Inferred type arguments
-	id(42)
-	id(true)
+    // Inferred type arguments
+    id(42)
+    id(true)
 
-	// Explicit type arguments
-	id[int](111)
-	id[bool](false)
+    // Explicit type arguments
+    id[int](111)
+    id[bool](false)
 }
 
 fn add-named(first: int, second: int) -> int = {
-	first + second
+    first + second
 }
 
 fn named-args() = {
-	add-named(first: 1, second: 2)
-	add-named(second: 2, first: 1)
-	add-named(1, second: 2)
+    add-named(first: 1, second: 2)
+    add-named(second: 2, first: 1)
+    add-named(1, second: 2)
 }
 
 let global-answer: int = 42
 
 fn global-vars() = {
-	let answer = global-answer
+    let answer = global-answer
 }

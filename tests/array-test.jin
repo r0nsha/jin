@@ -1,63 +1,63 @@
 fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
 fn main() = {
-	let mut array = Array.new[int]()
+    let mut array = Array.new[int]()
 
-	println("Array push:")
-	array.push(1)
-	array.push(2)
-	array.push(3)
-	array.push(4)
-	array.push(5)
-	array.push(6)
-	array.push(7)
+    println("Array push:")
+    array.push(1)
+    array.push(2)
+    array.push(3)
+    array.push(4)
+    array.push(5)
+    array.push(6)
+    array.push(7)
 
-	array.print()
+    array.print()
 
-	array.print-at(0)
-	array.print-at(3)
-	array.print-at(8)
+    array.print-at(0)
+    array.print-at(3)
+    array.print-at(8)
 
-	println("\nArray take:")
-	let slice = array.take()
-	slice.print()
+    println("\nArray take:")
+    let slice = array.take()
+    slice.print()
 
-	println("\nArray pop:")
-	let mut array = Array.new[int](7) fn(idx) { int(idx + 10) }
-	array.print()
+    println("\nArray pop:")
+    let mut array = Array.new[int](7) fn(idx) { int(idx + 10) }
+    array.print()
 
-	match array.pop() {
-		Option.Some(x) -> unsafe printf("popped = Some(%d)\n".ptr, x)
-		Option.None -> unsafe printf("popped = None\n".ptr)
-	}
+    match array.pop() {
+        Option.Some(x) -> unsafe printf("popped = Some(%d)\n".ptr, x)
+        Option.None -> unsafe printf("popped = None\n".ptr)
+    }
 
-	array.print()
+    array.print()
 
-	println("\nArray clear:")
-	array.clear()
-	array.print()
+    println("\nArray clear:")
+    array.clear()
+    array.print()
 }
 
 fn print-at(array: &Array[int], idx: uint) = {
-	match array.get(idx) {
-		Option.Some(x) -> unsafe printf("array[%d] = Some(%d)\n".ptr, idx, x)
-		Option.None -> unsafe printf("array[%d] = None\n".ptr, idx)
-	}
+    match array.get(idx) {
+        Option.Some(x) -> unsafe printf("array[%d] = Some(%d)\n".ptr, idx, x)
+        Option.None -> unsafe printf("array[%d] = None\n".ptr, idx)
+    }
 }
 
 fn print(array: &Array[int]) = {
-	array.as-ref().print()
+    array.as-ref().print()
 }
 
 fn print(slice: &[]int) = {
-	unsafe printf("[".ptr)
-	let mut i = 0
-	for if i < slice.len {
-		unsafe printf("%d".ptr, slice.[i])
-		if i < slice.len - 1 {
-			unsafe printf(", ".ptr)
-		}
-		i += 1
-	}
-	unsafe printf("] | len=%d cap=%d\n".ptr, slice.len, slice.cap)
+    unsafe printf("[".ptr)
+    let mut i = 0
+    for if i < slice.len {
+        unsafe printf("%d".ptr, slice.[i])
+        if i < slice.len - 1 {
+            unsafe printf(", ".ptr)
+        }
+        i += 1
+    }
+    unsafe printf("] | len=%d cap=%d\n".ptr, slice.len, slice.cap)
 }

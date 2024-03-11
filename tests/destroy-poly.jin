@@ -1,6 +1,6 @@
 fn main() = {
-	let box = Box(Bag(Box(1), Box(Box(2))))
-	destroy(box)
+    let box = Box(Bag(Box(1), Box(Box(2))))
+    destroy(box)
 }
 
 type Box[T](v: T)

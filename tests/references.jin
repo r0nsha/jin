@@ -6,38 +6,38 @@ type Mut(box: &mut Box)
 type Bag(a: Box, b: Box)
 
 fn main() = {
-	let mut box = Box(1)
-	box.print() // Coerced to &Box
-	box.set(42) // Coerced to &mut Box
-	box.print() // box.value == 42
+    let mut box = Box(1)
+    box.print() // Coerced to &Box
+    box.set(42) // Coerced to &mut Box
+    box.print() // box.value == 42
 
-	let r = Ref(&box)
-	print(r.box)
+    let r = Ref(&box)
+    print(r.box)
 
-	let mut bag = Bag(Box(2), Box(3)).copy().copy()
-	let ref-a = &mut bag.a
-	let ref-b = &bag.b
-	let ref-a = ref-a
-	let ref-b = ref-b
+    let mut bag = Bag(Box(2), Box(3)).copy().copy()
+    let ref-a = &mut bag.a
+    let ref-b = &bag.b
+    let ref-a = ref-a
+    let ref-b = ref-b
 
-	let ref-bag = &bag
-	let a = &ref-bag.a
-	let b = &ref-bag.b
+    let ref-bag = &bag
+    let a = &ref-bag.a
+    let b = &ref-bag.b
 
-	print(ref-a)
-	print(ref-b)
+    print(ref-a)
+    print(ref-b)
 
-	let mut box = Box(1)
-	let mut rmut = Mut(&mut box)
-	let m = &mut rmut.box
-	rmut.box.value = 2
+    let mut box = Box(1)
+    let mut rmut = Mut(&mut box)
+    let m = &mut rmut.box
+    rmut.box.value = 2
 }
 
 fn print(box: &Box) = {
-	unsafe printf("Box(%d)\n".ptr, box.value)
+    unsafe printf("Box(%d)\n".ptr, box.value)
 }
 
 fn set(self: &mut Box, value: int) =
-	self.value = value
+    self.value = value
 
 fn copy(bag: Bag) -> Bag = Bag(bag.a, bag.b)
