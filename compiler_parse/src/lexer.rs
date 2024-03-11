@@ -18,11 +18,6 @@ struct Lexer<'a> {
     source_bytes: &'a [u8],
     pos: u32,
 
-    // Layout state
-    indents: Vec<u32>,
-    line: u32,
-    col: u32,
-
     // String interpolation state
     modes: Vec<Mode>,
     curlies: usize,
@@ -42,9 +37,6 @@ impl<'a> Lexer<'a> {
             source_contents: source.contents(),
             source_bytes: source.contents().as_bytes(),
             pos: 0,
-            indents: vec![],
-            line: 1,
-            col: 1,
             modes: vec![Mode::Default],
             curlies: 0,
             curly_stack: vec![],
@@ -544,17 +536,8 @@ impl<'a> Lexer<'a> {
         ch
     }
 
+    #[inline]
     fn next(&mut self) {
-        match self.peek() {
-            Some('\n') => {
-                self.line += 1;
-                self.col = 1;
-            }
-            Some(ch) => {
-                self.col += unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0) as u32;
-            }
-            None => (),
-        }
         self.pos += 1;
     }
 

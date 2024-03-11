@@ -388,7 +388,6 @@ dependencies = [
  "path-absolutize",
  "phf",
  "rustc-hash",
- "unicode-width",
  "ustr",
 ]
 

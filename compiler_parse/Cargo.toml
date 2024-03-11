@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-unicode-width = "0.1.11"
 compiler_core = { path = "../compiler_core" }
 compiler_ast = { path = "../compiler_ast" }
 compiler_data_structures = { path = "../compiler_data_structures" }

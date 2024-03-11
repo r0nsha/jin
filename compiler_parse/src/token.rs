@@ -474,7 +474,7 @@ impl fmt::Display for TokenKind {
             Self::Colon => f.write_char(':'),
             Self::Semi(auto) => {
                 if *auto {
-                    f.write_str("automatically inserted ;")
+                    f.write_str("implicit ;")
                 } else {
                     f.write_char(';')
                 }

@@ -7,34 +7,37 @@ use compiler_core::span::{Source, Span};
 use crate::token::{Token, TokenKind};
 
 pub(crate) fn apply(source: &Source, input: Vec<Token>) -> DiagnosticResult<Vec<Token>> {
-    Layout::new(source, input.capacity()).apply(input)
+    if input.is_empty() {
+        return Ok(input);
+    }
+
+    let mut layout = Layout::new(source, input.capacity());
+    layout.apply(&input)?;
+    Ok(layout.tokens)
 }
 
 struct Layout<'a> {
     source: &'a Source,
     tokens: Vec<Token>,
     indents: Vec<u32>,
+    last_line: u32,
 }
 
 impl<'a> Layout<'a> {
     fn new(source: &'a Source, capacity: usize) -> Self {
-        Self { source, tokens: Vec::with_capacity(capacity), indents: vec![] }
+        Self { source, tokens: Vec::with_capacity(capacity), indents: vec![], last_line: 1 }
     }
 
-    fn apply(mut self, input: Vec<Token>) -> DiagnosticResult<Vec<Token>> {
-        if input.is_empty() {
-            return Ok(input);
-        }
-
-        let mut last_line = 1;
-        let mut input = &input[..];
+    fn apply(&mut self, mut input: &[Token]) -> DiagnosticResult<()> {
         let mut i = 0;
 
         loop {
             let (tok, insert_tok) = if let Some(tok) = self.tokens.get(i) {
+                print!("from tokens:\t");
                 i += 1;
                 (*tok, false)
             } else {
+                print!("from input:\t");
                 let Some((tok, rest)) = input.split_first() else { break };
                 input = rest;
                 (*tok, true)
@@ -42,7 +45,9 @@ impl<'a> Layout<'a> {
 
             let Location { line_number, column_number } = self.source.span_location(tok.span);
             let (line, col) = (line_number as u32, column_number as u32);
-            let is_new_line = line > last_line;
+            let is_new_line = line > self.last_line;
+
+            println!("{:?}, {} > {}", tok.kind, col, self.layout_indent());
 
             // Brace insertion
             if is_new_line {
@@ -92,13 +97,15 @@ impl<'a> Layout<'a> {
                     Ordering::Equal if !self.is_expr_cont(&tok) => {
                         let span = self.last_token().map_or(tok.span, |t| t.span);
                         self.push_semi(span);
+                        continue;
                     }
                     _ => (),
                 }
             }
 
             if insert_tok {
-                last_line = line;
+                i += 1;
+                self.last_line = line;
                 self.tokens.push(tok);
             }
         }
@@ -111,7 +118,7 @@ impl<'a> Layout<'a> {
             self.push_semi(span);
         }
 
-        Ok(self.tokens)
+        Ok(())
     }
 
     fn is_expr_cont(&self, tok: &Token) -> bool {
