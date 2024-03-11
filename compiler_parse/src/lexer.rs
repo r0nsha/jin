@@ -133,7 +133,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn is_expr_cont(tokens: &[Token], tok: &Token) -> bool {
-        !tok.kind.is_after_semi() || !tokens.last().map_or(false, |t| t.kind.is_before_semi())
+        tok.kind.is_start_cont() || tokens.last().map_or(false, |t| t.kind.is_end_cont())
     }
 
     #[track_caller]
