@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use phf::phf_map;
 use ustr::ustr;
 
@@ -59,23 +61,29 @@ impl<'a> Lexer<'a> {
             let is_new_line = self.line > last_line;
             let col = self.col - tok.span.len();
 
+            let mut curr_tok = tok;
+
             // Brace insertion
             if is_new_line {
                 if col > self.layout_indent() && !Self::is_expr_cont(&tokens, &tok) {
-                    tokens.push(Token { kind: TokenKind::OpenCurly, span: tok.span.head() })
+                    let t = Token { kind: TokenKind::OpenCurly, span: tok.span.head() };
+                    curr_tok = t;
+                    tokens.push(t)
                 }
 
                 if col < self.layout_indent() && tok.kind != TokenKind::CloseCurly {
-                    tokens.push(Token { kind: TokenKind::CloseCurly, span: tok.span.head() })
+                    let t = Token { kind: TokenKind::CloseCurly, span: tok.span.head() };
+                    curr_tok = t;
+                    tokens.push(t)
                 }
             }
 
             // Layout stack indentation
             if tokens.is_empty() || tokens.last().map_or(false, |t| t.kind == TokenKind::OpenCurly)
             {
-                if tok.kind != TokenKind::CloseCurly && col < self.layout_indent() {
+                if curr_tok.kind != TokenKind::CloseCurly && col < self.layout_indent() {
                     return Err(Diagnostic::error(format!(
-                        "line must be indented more then its \
+                        "line must be indented more than its \
                          enclosing layout (column {})",
                         self.layout_indent()
                     ))
@@ -85,11 +93,29 @@ impl<'a> Lexer<'a> {
                 self.indents.push(col);
             }
 
-            if tok.kind == TokenKind::CloseCurly {
+            if curr_tok.kind == TokenKind::CloseCurly {
                 self.indents.pop();
             }
 
-            // TODO: Semicolon insertion
+            // Semicolon insertion
+            if is_new_line {
+                match (col.cmp(&self.layout_indent()), tokens.last().map(|t| t.kind)) {
+                    (Ordering::Less, _) => {
+                        return Err(Diagnostic::error(format!(
+                            "line must be indented the same as or more \
+                             than its layout (column {})",
+                            self.layout_indent()
+                        ))
+                        .with_label(Label::primary(tok.span, "invalid indentation")));
+                    }
+                    (Ordering::Equal, Some(TokenKind::Semi(_))) => (),
+                    (Ordering::Equal, _) if !Self::is_expr_cont(&tokens, &curr_tok) => {
+                        let span = tokens.last().map_or(tok.span.head(), |t| t.span.tail());
+                        tokens.push(Token { kind: TokenKind::Semi(true), span: span.head() });
+                    }
+                    _ => (),
+                }
+            }
 
             last_line = self.line;
             tokens.push(tok);
@@ -100,14 +126,10 @@ impl<'a> Lexer<'a> {
                 tokens.push(Token { kind: TokenKind::CloseCurly, span: span.tail() })
             }
 
-            Self::insert_semi(&mut tokens, span.tail());
+            tokens.push(Token { kind: TokenKind::Semi(true), span: span.tail() });
         }
 
         Ok(tokens)
-    }
-
-    fn insert_semi(tokens: &mut Vec<Token>, span: Span) {
-        tokens.push(Token { kind: TokenKind::Semi(true), span });
     }
 
     fn is_expr_cont(tokens: &[Token], tok: &Token) -> bool {

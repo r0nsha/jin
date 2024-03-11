@@ -70,7 +70,7 @@ impl<'a> Parser<'a> {
 
         while self.pos < self.tokens.len() {
             let item = self.parse_item()?;
-            self.eat_semi()?;
+            self.skip_semi();
             module.items.push(item);
         }
 
@@ -158,6 +158,7 @@ impl<'a> Parser<'a> {
         Ok((values, open_tok.span.merge(self.last_span())))
     }
 
+    #[allow(unused)]
     #[inline]
     pub(super) fn eat_semi(&mut self) -> DiagnosticResult<()> {
         self.eat(SEMI)?;
