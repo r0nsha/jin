@@ -27,35 +27,42 @@ impl<'a> Layout<'a> {
         }
 
         let mut last_line = 1;
+        let mut input = &input[..];
+        let mut i = 0;
 
-        for tok in input {
+        loop {
+            let (tok, insert_tok) = if let Some(tok) = self.tokens.get(i) {
+                i += 1;
+                (*tok, false)
+            } else {
+                let Some((tok, rest)) = input.split_first() else { break };
+                input = rest;
+                (*tok, true)
+            };
+
             let Location { line_number, column_number } = self.source.span_location(tok.span);
             let (line, col) = (line_number as u32, column_number as u32);
             let is_new_line = line > last_line;
 
-            let mut curr_tok = tok;
-
             // Brace insertion
             if is_new_line {
                 if col > self.layout_indent() && !self.is_expr_cont(&tok) {
-                    let t = Token { kind: TokenKind::OpenCurly, span: tok.span };
-                    curr_tok = t;
-                    self.tokens.push(t);
+                    self.push_open_brace(tok.span);
+                    continue;
                 }
 
                 if col < self.layout_indent()
                     && !matches!(tok.kind, TokenKind::OpenCurly | TokenKind::CloseCurly)
                 {
                     self.push_semi(tok.span);
-                    let t = Token { kind: TokenKind::CloseCurly, span: tok.span };
-                    curr_tok = t;
-                    self.tokens.push(t);
+                    self.push_close_brace(tok.span);
+                    continue;
                 }
             }
 
             // Layout stack indentation
             if self.last_token().map_or(false, |t| t.kind == TokenKind::OpenCurly) {
-                if curr_tok.kind != TokenKind::CloseCurly && col < self.layout_indent() {
+                if tok.kind != TokenKind::CloseCurly && col < self.layout_indent() {
                     return Err(Diagnostic::error(format!(
                         "line must be indented more than its \
                          enclosing layout (column {})",
@@ -67,7 +74,7 @@ impl<'a> Layout<'a> {
                 self.indents.push(col);
             }
 
-            if curr_tok.kind == TokenKind::CloseCurly {
+            if tok.kind == TokenKind::CloseCurly {
                 self.indents.pop();
             }
 
@@ -90,8 +97,10 @@ impl<'a> Layout<'a> {
                 }
             }
 
-            last_line = line;
-            self.tokens.push(tok);
+            if insert_tok {
+                last_line = line;
+                self.tokens.push(tok);
+            }
         }
 
         if let Some(span) = self.last_token().map(|t| t.span) {
