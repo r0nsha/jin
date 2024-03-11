@@ -21,7 +21,9 @@ fn Array.new*[T](len: uint, f: fn(uint) -> T) -> Array[T] {
 	array
 }
 
-fn Array.from*[T](slice: []T) -> Array[T] = Array(slice)
+fn Array.from*[T](slice: []T) -> Array[T] {
+    Array(slice)
+}
 
 fn Array.with-cap*[T](cap: uint) -> Array[T] {
 	// TODO: use a polymorphic `std.cmp.max` function for this	
@@ -29,13 +31,29 @@ fn Array.with-cap*[T](cap: uint) -> Array[T] {
 	Array([:c])
 }
 
-fn len*[T](self: &Array[T]) -> uint = self.buf.len
-fn cap*[T](self: &Array[T]) -> uint = self.buf.cap
-fn is-empty*[T](self: &Array[T]) -> bool = self.len() == 0
+fn len*[T](self: &Array[T]) -> uint {
+    self.buf.len
+}
 
-fn as-ref*[T](self: &Array[T]) -> &[]T = &self.buf
-fn as-mut*[T](self: &mut Array[T]) -> &mut []T = &mut self.buf
-fn take*[T](self: Array[T]) -> []T = self.buf
+fn cap*[T](self: &Array[T]) -> uint {
+    self.buf.cap
+}
+
+fn is-empty*[T](self: &Array[T]) -> bool {
+    self.len() == 0
+}
+
+fn as-ref*[T](self: &Array[T]) -> &[]T {
+    &self.buf
+}
+
+fn as-mut*[T](self: &mut Array[T]) -> &mut []T {
+    &mut self.buf
+}
+
+fn take*[T](self: Array[T]) -> []T {
+    self.buf
+}
 
 fn get*[T](self: &Array[T], index: uint) -> Option[&T] {
 	if index < self.buf.len {
@@ -88,9 +106,10 @@ fn set-len*[T](self: &mut Array[T], len: uint) {
 	unsafe self.buf.len = len
 }
 
-fn needs-to-grow[T](self: &Array[T], additional: uint) -> bool =
+fn needs-to-grow[T](self: &Array[T], additional: uint) -> bool {
 	// TODO: this is prone to overflow, we should implement checked arithmetic
 	self.buf.len + additional > self.buf.cap
+}
 
 
 fn grow[T](self: &mut Array[T], additional: uint) {
@@ -104,5 +123,6 @@ fn grow[T](self: &mut Array[T], additional: uint) {
 }
 
 // TODO: use a polymorphic `std.cmp.max` function instead
-fn max(a: uint, b: uint) -> uint =
+fn max(a: uint, b: uint) -> uint {
 	if a > b { a } else { b }
+}

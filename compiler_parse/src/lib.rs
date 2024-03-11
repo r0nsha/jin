@@ -1,5 +1,4 @@
 mod errors;
-mod layout;
 mod lexer;
 mod parser;
 mod token;

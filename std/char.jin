@@ -9,12 +9,12 @@ fn char.from-digit*(num: u32, radix: u32) -> Option[char] {
     assert(radix <= 36, "radix is too high (maximum 36)")
 
     if num < radix {
-	let num = u8(num)
-	Option.Some(char(if num < 10 {
-	    b'0' + num
-	} else {
-	    b'a' + num - 10
-	}))
+        let num = u8(num)
+        Option.Some(char(if num < 10 {
+            b'0' + num
+        } else {
+            b'a' + num - 10
+        }))
     } else {
         Option.None
     }
@@ -35,13 +35,13 @@ fn len-utf8*(self: char) -> uint {
 
 fn len-utf8(code: u32) -> uint {
     if code < MAX-ONE-B {
-	1
+        1
     } else if code < MAX-TWO-B {
-	2
+        2
     } else if code < MAX-THREE-B {
-	3
+        3
     } else {
-	4
+        4
     }
 }
 
@@ -54,20 +54,20 @@ fn encode-utf8-raw*(code: u32, dst: &mut []u8) -> &mut []u8 {
     assert(dst.len >= len)
 
     if len == 1 {
-	dst.[0] = u8(code)
+        dst.[0] = u8(code)
     } else if len == 2 {
-	dst.[0] = u8(code >> 6 & 0x1f) | TAG-TWO-B
-	dst.[1] = u8(code & 0x3f) | TAG-CONT
+        dst.[0] = u8(code >> 6 & 0x1f) | TAG-TWO-B
+        dst.[1] = u8(code & 0x3f) | TAG-CONT
     } else if len == 3 {
-	dst.[0] = u8(code >> 12 & 0x0f) | TAG-THREE-B
-	dst.[1] = u8(code >> 6 & 0x3f) | TAG-CONT
-	dst.[2] = u8(code & 0x3f) | TAG-CONT
+        dst.[0] = u8(code >> 12 & 0x0f) | TAG-THREE-B
+        dst.[1] = u8(code >> 6 & 0x3f) | TAG-CONT
+        dst.[2] = u8(code & 0x3f) | TAG-CONT
     } else {
-	// len == 4
-	dst.[0] = u8(code >> 18 & 0x07) | TAG-FOUR-B
-	dst.[1] = u8(code >> 12 & 0x3f) | TAG-CONT
-	dst.[2] = u8(code >> 6 & 0x3f) | TAG-CONT
-	dst.[3] = u8(code & 0x3f) | TAG-CONT
+        // len == 4
+        dst.[0] = u8(code >> 18 & 0x07) | TAG-FOUR-B
+        dst.[1] = u8(code >> 12 & 0x3f) | TAG-CONT
+        dst.[2] = u8(code >> 6 & 0x3f) | TAG-CONT
+        dst.[3] = u8(code & 0x3f) | TAG-CONT
     }
 
     &mut dst.[..len]

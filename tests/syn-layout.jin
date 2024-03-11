@@ -1,6 +1,6 @@
 fn main()
-    foo = bar
-    foo = bar
+    let msg = "Hello, Layout!"
+    println(msg)
 
 fn test() 
     let x = 1
