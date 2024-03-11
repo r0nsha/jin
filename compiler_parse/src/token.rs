@@ -133,7 +133,6 @@ impl TokenKind {
             | TokenKind::EqEq
             | TokenKind::Bang
             | TokenKind::BangEq
-            | TokenKind::Star
             | TokenKind::StarEq
             | TokenKind::FwSlash
             | TokenKind::FwSlashEq
@@ -151,7 +150,6 @@ impl TokenKind {
             | TokenKind::GtEq
             | TokenKind::GtGt
             | TokenKind::GtGtEq
-            | TokenKind::Amp
             | TokenKind::AmpEq
             | TokenKind::AmpAmp
             | TokenKind::Caret
@@ -194,6 +192,8 @@ impl TokenKind {
             | TokenKind::OpenBrack
             | TokenKind::Ident(_)
             | TokenKind::Underscore
+            | TokenKind::Star
+            | TokenKind::Amp
             | TokenKind::StrOpen
             | TokenKind::StrClose
             | TokenKind::StrText(_)
@@ -217,7 +217,6 @@ impl TokenKind {
             | TokenKind::EqEq
             | TokenKind::Bang
             | TokenKind::BangEq
-            | TokenKind::Star
             | TokenKind::StarEq
             | TokenKind::FwSlash
             | TokenKind::FwSlashEq
@@ -235,7 +234,6 @@ impl TokenKind {
             | TokenKind::GtEq
             | TokenKind::GtGt
             | TokenKind::GtGtEq
-            | TokenKind::Amp
             | TokenKind::AmpEq
             | TokenKind::AmpAmp
             | TokenKind::Caret
@@ -280,6 +278,8 @@ impl TokenKind {
             | TokenKind::Arrow
             | TokenKind::Ident(_)
             | TokenKind::Underscore
+            | TokenKind::Star
+            | TokenKind::Amp
             | TokenKind::StrOpen
             | TokenKind::StrClose
             | TokenKind::StrText(_)
