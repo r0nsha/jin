@@ -33,20 +33,16 @@ impl<'a> Layout<'a> {
         let mut input_idx = 0;
 
         loop {
-            let (tok, insert) = if let Some(tok) = self.tokens.get(tokens_idx) {
-                println!("tokens: {:?}", tok.kind);
+            let (prev, tok, insert) = if let Some(tok) = self.tokens.get(tokens_idx) {
+                let prev = self.tokens.get(tokens_idx - 1).copied();
                 tokens_idx += 1;
-                (*tok, false)
+                (prev, *tok, false)
             } else if let Some(tok) = input.get(input_idx) {
-                println!("input: {:?}", tok.kind);
-                tokens_idx += 1;
-                input_idx += 1;
-                (*tok, true)
+                let prev = self.last_token().copied();
+                (prev, *tok, true)
             } else {
                 break;
             };
-
-            std::thread::sleep(std::time::Duration::from_millis(100));
 
             let Location { line_number, column_number } = self.source.span_location(tok.span);
             let (line, col) = (line_number as u32, column_number as u32);
@@ -62,14 +58,15 @@ impl<'a> Layout<'a> {
                 if col < self.layout_indent()
                     && !matches!(tok.kind, TokenKind::OpenCurly | TokenKind::CloseCurly)
                 {
-                    self.push_semi(tok.span);
+                    self.push_semi(prev, tok.span);
+                    tokens_idx += 1;
                     self.push_close_brace(tok.span);
                     continue;
                 }
             }
 
             // Layout stack indentation
-            if self.last_token().map_or(false, |t| t.kind == TokenKind::OpenCurly) {
+            if prev.map_or(false, |t| t.kind == TokenKind::OpenCurly) {
                 if tok.kind != TokenKind::CloseCurly && col < self.layout_indent() {
                     return Err(Diagnostic::error(format!(
                         "line must be indented more than its \
@@ -79,12 +76,10 @@ impl<'a> Layout<'a> {
                     .with_label(Label::primary(tok.span, "insufficient indentation")));
                 }
 
-                println!("--push--");
                 self.indents.push(col);
             }
 
             if tok.kind == TokenKind::CloseCurly {
-                println!("--pop--");
                 self.indents.pop();
             }
 
@@ -100,28 +95,28 @@ impl<'a> Layout<'a> {
                         .with_label(Label::primary(tok.span, "invalid indentation")));
                     }
                     Ordering::Equal if !self.is_expr_cont(&tok) => {
-                        let span = self.last_token().map_or(tok.span, |t| t.span);
-                        self.push_semi(span);
+                        let span = prev.map_or(tok.span, |t| t.span);
+                        self.push_semi(prev, span);
                         // continue;
                     }
                     _ => (),
                 }
             }
 
-            self.last_line = line;
-
             if insert {
+                self.last_line = line;
                 tokens_idx += 1;
-                self.tokens.push(tok);
+                input_idx += 1;
+                self.push(tok);
             }
         }
 
-        if let Some(span) = self.last_token().map(|t| t.span) {
+        if let Some(tok) = self.last_token().copied() {
             while self.indents.pop().is_some() {
-                self.push_close_brace(span);
+                self.push_close_brace(tok.span);
             }
 
-            self.push_semi(span);
+            self.push_semi(Some(tok), tok.span);
         }
 
         Ok(())
@@ -142,18 +137,23 @@ impl<'a> Layout<'a> {
     }
 
     fn push_open_brace(&mut self, span: Span) {
-        self.tokens.push(Token { kind: TokenKind::OpenCurly, span });
+        self.push(Token { kind: TokenKind::OpenCurly, span });
     }
 
     fn push_close_brace(&mut self, span: Span) {
-        self.tokens.push(Token { kind: TokenKind::CloseCurly, span });
+        self.push(Token { kind: TokenKind::CloseCurly, span });
     }
 
-    fn push_semi(&mut self, span: Span) {
-        if self.last_token().map_or(false, |t| matches!(t.kind, TokenKind::Semi(_))) {
+    fn push_semi(&mut self, prev: Option<Token>, span: Span) {
+        if prev.map_or(false, |t| matches!(t.kind, TokenKind::Semi(_))) {
             return;
         }
 
-        self.tokens.push(Token { kind: TokenKind::Semi(true), span });
+        self.push(Token { kind: TokenKind::Semi(true), span });
+    }
+
+    #[inline]
+    fn push(&mut self, tok: Token) {
+        self.tokens.push(tok);
     }
 }
