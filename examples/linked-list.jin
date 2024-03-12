@@ -1,9 +1,17 @@
+fn main()
+    let mut list = LinkedList.new()
+    list.push-front(3)
+    list.push-front(2)
+    list.push-front(1)
+    list.print()
+
 type LinkedList[T](
     tail: Option[&mut Node[T]],
     head: Option[Node[T]],
 )
 
-fn LinkedList.new[T]() -> LinkedList[T] = LinkedList(tail: Option.None, head: Option.None)
+fn LinkedList.new[T]() -> LinkedList[T]
+    LinkedList(tail: Option.None, head: Option.None)
 
 type Node[T](
     prev: Option[&mut Node[T]],
@@ -11,46 +19,32 @@ type Node[T](
     next: Option[Node[T]],
 )
 
-fn Node.new[T](data: T) -> Node[T] = Node(prev: Option.None, data: data, next: Option.None)
+fn Node.new[T](data: T) -> Node[T]
+    Node(prev: Option.None, data: data, next: Option.None)
 
-fn push-front[T](self: &mut LinkedList[T], data: T) = {
+fn push-front[T](self: &mut LinkedList[T], data: T)
     let mut node = Node.new(data)
     let node-mut = &mut node
 
-    match self.head := Option.Some(node) {
-        Option.Some(old-head) -> {
+    match self.head := Option.Some(node)
+        Option.Some(old-head) ->
             old-head.prev = Option.Some(node-mut)
             node-mut.next = Option.Some(old-head)
-        }
         Option.None -> self.tail = Option.Some(node-mut)
-    }
-}
 
-fn print(self: &LinkedList[int]) = {
+fn print(self: &LinkedList[int])
     let mut curr = &self.head
 
     print("[")
 
-    for {
-        match curr {
-            Option.Some(v) -> {
+    for
+        match curr
+            Option.Some(v) ->
                 curr = &v.next
                 print("{v.data}")
-                if curr.is-some() {
+                if curr.is-some()
                     print(", ")
-                }
-            }
+
             Option.None -> break
-        }
-    }
 
     println("]")
-}
-
-fn main() = {
-    let mut list = LinkedList.new()
-    list.push-front(3) 
-    list.push-front(2) 
-    list.push-front(1) 
-    list.print() 
-}

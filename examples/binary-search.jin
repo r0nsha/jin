@@ -1,29 +1,23 @@
-fn main() = {
+fn main()
     let slice = [1, 3, 42, 487, 5, 66, 4055, 33]
-    match slice.binary-search(4055) {
+    match slice.binary-search(4055)
         Option.Some(idx) -> println("found: {idx}")
         Option.None -> println("not found")
-    }
-}
 
-fn binary-search(haystack: &[]int, needle: int) -> Option[uint] = {
+fn binary-search(haystack: &[]int, needle: int) -> Option[uint]
     let mut lower = 0
     let mut upper = haystack.len - 1
 
-    for if upper >= lower {
-        let mid = {upper + lower} / 2
+    for if upper >= lower
+        let mid = (upper + lower) / 2
         let elem = haystack.[mid]
 
-        if elem == needle {
+        if elem == needle
             return Option.Some(mid)
-        }
 
-        if needle < elem {
+        if needle < elem
             upper = mid - 1
-        } else {
+        else
             lower = mid + 1
-        }
-    }
 
     Option.None
-}
