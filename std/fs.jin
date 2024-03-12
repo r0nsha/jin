@@ -1,81 +1,63 @@
 import std.(c, io)
 
-fn read*(path: str) -> io.Result[Array[u8]] {
+fn read*(path: str) -> io.Result[Array[u8]]
     read(&path)
-}
 
-fn read*(path: &str) -> io.Result[Array[u8]] {
-    match File.open(path) {
+fn read*(path: &str) -> io.Result[Array[u8]]
+    match File.open(path)
         Result.Ok(file) -> file.read-to-end()
         Result.Err(err) -> Result.Err(err)
-    }
-}
 
-fn read-to-str*(path: str) -> io.Result[str] {
+fn read-to-str*(path: str) -> io.Result[str]
     read-to-str(&path)
-}
 
-fn read-to-str*(path: &str) -> io.Result[str] {
-    match File.open(path) {
+fn read-to-str*(path: &str) -> io.Result[str]
+    match File.open(path)
         Result.Ok(file) -> file.read-to-str()
         Result.Err(err) -> Result.Err(err)
-    }
-}
 
-fn write*(path: str, contents: str) -> io.Result[()] {
+fn write*(path: str, contents: str) -> io.Result[()]
     write(&path, &contents)
-}
 
-fn write*(path: &str, contents: str) -> io.Result[()] {
+fn write*(path: &str, contents: str) -> io.Result[()]
     write(path, &contents)
-}
 
-fn write*(path: str, contents: &str) -> io.Result[()] {
+fn write*(path: str, contents: &str) -> io.Result[()]
     write(&path, contents.as-bytes())
-}
 
-fn write*(path: &str, contents: &str) -> io.Result[()] {
+fn write*(path: &str, contents: &str) -> io.Result[()]
     write(path, contents.as-bytes())
-}
 
-fn write*(path: str, bytes: &[]u8) -> io.Result[()] {
+fn write*(path: str, bytes: &[]u8) -> io.Result[()]
     write(&path, bytes)
-}
 
-fn write*(path: &str, bytes: &[]u8) -> io.Result[()] {
-    match File.create(path) {
+fn write*(path: &str, bytes: &[]u8) -> io.Result[()]
+    match File.create(path)
         Result.Ok(mut file) -> file.write(bytes).map fn(_) {}
         Result.Err(err) -> Result.Err(err)
-    }
-}
 
 // TODO: Add an API for custom file opening with `OpenOptions`
-fn File.open*(path: &str) -> io.Result[File] {
-    match open-impl(path, c.O_RDONLY, 0) {
+fn File.open*(path: &str) -> io.Result[File]
+    match open-impl(path, c.O_RDONLY, 0)
         -1 -> Result.Err(io.Error.last-os-error())
         fd -> Result.Ok(File(fd))
-    }
-}
 
-fn File.create*(path: &str) -> io.Result[File] {
-    match open-impl(path, c.O_WRONLY | c.O_CREAT | c.O_TRUNC, 0o644) {
+fn File.create*(path: &str) -> io.Result[File]
+    match open-impl(path, c.O_WRONLY | c.O_CREAT | c.O_TRUNC, 0o644)
         -1 -> Result.Err(io.Error.last-os-error())
         fd -> Result.Ok(File(fd))
-    }
-}
 
-fn open-impl(path: &str, flags: c.c-int, mode: c.mode-t) -> c.c-int {
+fn open-impl(path: &str, flags: c.c-int, mode: c.mode-t) -> c.c-int
     let pathname = unsafe as[_](path.as-bytes().ptr)
     // TODO: cross-platform open
     unsafe c.open(pathname, flags, mode)
-}
 
 type RawFd = c.c-int
 type File*(fd: RawFd)
 
 const DEFAULT-BUF-SIZE: uint = 8 * 1024
 
-fn read-to-end*(self: &File) -> io.Result[Array[u8]] {
+fn read-to-end*(self: &File) -> io.Result[Array[u8]]
     // TODO: initialize with-cap to file's size (or 0 if reading size fails)
     // TODO: implement `Array.filled(T, uint) where T: Copy`
     let mut buf = Array.new[u8]()
@@ -84,57 +66,43 @@ fn read-to-end*(self: &File) -> io.Result[Array[u8]] {
     let mut scratch: []u8 = [:DEFAULT-BUF-SIZE]
     unsafe scratch.len = DEFAULT-BUF-SIZE
 
-    for {
-        match self.read(&mut scratch) {
+    for
+        match self.read(&mut scratch)
             Result.Ok(0) -> break
-            Result.Ok(len) -> {
+            Result.Ok(len) ->
                 // TODO: Implement `std.array.extend([]T)`
                 buf.reserve(len)
 
                 let mut i = 0
-                for if i < len {
+                for if i < len
                     buf.push-unchecked(scratch.[i])
                     i += 1
-                }
-            }
-            Result.Err(err) -> return Result.Err(err) 
-        }
-    }
+            Result.Err(err) -> return Result.Err(err)
 
     Result.Ok(buf)
-}
 
-fn read-to-str*(self: &File) -> io.Result[str] {
-    match self.read-to-end() {
-        Result.Ok(buf) -> match str.from-utf8(buf.take()) {
-            Result.Ok(s) -> Result.Ok(s) 
-            Result.Err(()) -> Result.Err(io.Error.InvalidData("stream did not contain valid UTF-8")) 
-        }
-        Result.Err(err) -> Result.Err(err) 
-    }
-}
+fn read-to-str*(self: &File) -> io.Result[str]
+    match self.read-to-end()
+        Result.Ok(buf) -> match str.from-utf8(buf.take())
+            Result.Ok(s) -> Result.Ok(s)
+            Result.Err(()) -> Result.Err(io.Error.InvalidData("stream did not contain valid UTF-8"))
 
-fn read*(self: &File, buf: &mut []u8) -> io.Result[uint] {
-    match unsafe c.read(self.fd, buf.ptr, buf.len) {
+        Result.Err(err) -> Result.Err(err)
+
+fn read*(self: &File, buf: &mut []u8) -> io.Result[uint]
+    match unsafe c.read(self.fd, buf.ptr, buf.len)
         -1 -> Result.Err(io.Error.last-os-error())
         len -> Result.Ok(uint(len))
-    }
-}
 
-fn write*(self: &mut File, buf: &[]u8) -> io.Result[uint] {
-    match unsafe c.write(self.fd, buf.ptr, buf.len) {
+fn write*(self: &mut File, buf: &[]u8) -> io.Result[uint]
+    match unsafe c.write(self.fd, buf.ptr, buf.len)
         -1 -> Result.Err(io.Error.last-os-error())
         written -> Result.Ok(uint(written))
-    }
-}
 
-fn remove-file*(path: &str) -> io.Result[()] {
-    match unsafe c.unlink(as[_](path.ptr)) {
+fn remove-file*(path: &str) -> io.Result[()]
+    match unsafe c.unlink(as[_](path.ptr))
         -1 -> Result.Err(io.Error.last-os-error())
         _ -> Result.Ok(())
-    }
-}
 
-fn `=destroy`*(self: &mut File) {
+fn `=destroy`*(self: &mut File)
     unsafe c.close(self.fd)
-}

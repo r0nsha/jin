@@ -131,7 +131,6 @@ impl TokenKind {
             | TokenKind::CloseCurly
             | TokenKind::Eq
             | TokenKind::EqEq
-            | TokenKind::Bang
             | TokenKind::BangEq
             | TokenKind::StarEq
             | TokenKind::FwSlash
@@ -140,7 +139,6 @@ impl TokenKind {
             | TokenKind::PercentEq
             | TokenKind::Plus
             | TokenKind::PlusEq
-            | TokenKind::Minus
             | TokenKind::MinusEq
             | TokenKind::Lt
             | TokenKind::LtEq
@@ -192,6 +190,8 @@ impl TokenKind {
             | TokenKind::OpenBrack
             | TokenKind::Ident(_)
             | TokenKind::Underscore
+            | TokenKind::Bang
+            | TokenKind::Minus
             | TokenKind::Star
             | TokenKind::Amp
             | TokenKind::StrOpen

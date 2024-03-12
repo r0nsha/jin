@@ -1,7 +1,5 @@
-fn null*[T]() -> ptr[T] {
+fn null*[T]() -> ptr[T]
     unsafe as[_](0)
-}
 
-fn is-null*[T](self: ptr[T]) -> bool {
+fn is-null*[T](self: ptr[T]) -> bool
     unsafe uint(self) == 0
-}
