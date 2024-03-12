@@ -127,7 +127,6 @@ impl TokenKind {
             | TokenKind::CloseParen
             | TokenKind::CloseBrack
             | TokenKind::Comma
-            | TokenKind::OpenCurly
             | TokenKind::CloseCurly
             | TokenKind::Eq
             | TokenKind::EqEq
@@ -188,6 +187,7 @@ impl TokenKind {
             | TokenKind::QuestionMark
             | TokenKind::OpenParen
             | TokenKind::OpenBrack
+            | TokenKind::OpenCurly
             | TokenKind::Ident(_)
             | TokenKind::Underscore
             | TokenKind::Bang

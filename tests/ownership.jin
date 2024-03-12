@@ -61,11 +61,11 @@ fn assign-not-moved()
     // `wrapper` is NOT marked as moved since this is a `place` expression.
     // also `wrapper.num` is destroyed here. I also added some weird edge cases...
     wrapper.num = Num(2)
-    // { wrapper }.num = Num(2)
-    // {
-    //     let x = wrapper
-    //     x
-    // }.num = Num(2)
+    { wrapper }.num = Num(2)
+    {
+        let x = wrapper
+        x
+    }.num = Num(2)
 
     let mut wrapper = Wrapper(Num(1))
     wrapper.num = Num(3) // `wrapper.num` destroyed here
