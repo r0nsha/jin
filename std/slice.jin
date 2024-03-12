@@ -12,4 +12,3 @@ fn reverse*[T](self: &mut []T)
         self.swap(i, j)
         i += 1
         j -= 1
-
