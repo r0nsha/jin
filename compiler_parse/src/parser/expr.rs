@@ -438,7 +438,7 @@ impl<'a> Parser<'a> {
             return Err(errors::invalid_c_variadic(start));
         }
 
-        let body = self.parse_block()?;
+        let body = self.parse_expr()?;
         let span = start.merge(body.span());
 
         Ok(Expr::Fn { params, ret, body: Box::new(body), span })

@@ -33,7 +33,7 @@ fn write*(path: str, bytes: &[]u8) -> io.Result[()]
 
 fn write*(path: &str, bytes: &[]u8) -> io.Result[()]
     match File.create(path)
-        Result.Ok(mut file) -> file.write(bytes).map fn(_) {}
+        Result.Ok(mut file) -> file.write(bytes).map fn(_) ()
         Result.Err(err) -> Result.Err(err)
 
 // TODO: Add an API for custom file opening with `OpenOptions`
