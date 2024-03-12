@@ -29,16 +29,24 @@ impl<'a> Layout<'a> {
     }
 
     fn apply(&mut self, input: &[Token]) -> DiagnosticResult<()> {
-        let mut i = 0;
+        let mut tokens_idx = 0;
+        let mut input_idx = 0;
 
         loop {
-            let Some(tok) =
-                self.tokens.get(i).or_else(|| input.get(i - self.tokens.len())).copied()
-            else {
+            let (tok, insert) = if let Some(tok) = self.tokens.get(tokens_idx) {
+                println!("tokens: {:?}", tok.kind);
+                tokens_idx += 1;
+                (*tok, false)
+            } else if let Some(tok) = input.get(input_idx) {
+                println!("input: {:?}", tok.kind);
+                tokens_idx += 1;
+                input_idx += 1;
+                (*tok, true)
+            } else {
                 break;
             };
 
-            i += 1;
+            std::thread::sleep(std::time::Duration::from_millis(100));
 
             let Location { line_number, column_number } = self.source.span_location(tok.span);
             let (line, col) = (line_number as u32, column_number as u32);
@@ -48,6 +56,7 @@ impl<'a> Layout<'a> {
             if is_new_line {
                 if col > self.layout_indent() && !self.is_expr_cont(&tok) {
                     self.push_open_brace(tok.span);
+                    continue;
                 }
 
                 if col < self.layout_indent()
@@ -55,6 +64,7 @@ impl<'a> Layout<'a> {
                 {
                     self.push_semi(tok.span);
                     self.push_close_brace(tok.span);
+                    continue;
                 }
             }
 
@@ -69,10 +79,12 @@ impl<'a> Layout<'a> {
                     .with_label(Label::primary(tok.span, "insufficient indentation")));
                 }
 
+                println!("--push--");
                 self.indents.push(col);
             }
 
             if tok.kind == TokenKind::CloseCurly {
+                println!("--pop--");
                 self.indents.pop();
             }
 
@@ -90,14 +102,16 @@ impl<'a> Layout<'a> {
                     Ordering::Equal if !self.is_expr_cont(&tok) => {
                         let span = self.last_token().map_or(tok.span, |t| t.span);
                         self.push_semi(span);
-                        continue;
+                        // continue;
                     }
                     _ => (),
                 }
             }
 
-            if i >= self.tokens.len() {
-                self.last_line = line;
+            self.last_line = line;
+
+            if insert {
+                tokens_idx += 1;
                 self.tokens.push(tok);
             }
         }
