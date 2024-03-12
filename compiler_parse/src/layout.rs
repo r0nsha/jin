@@ -34,7 +34,7 @@ impl<'a> Layout<'a> {
 
         loop {
             let (prev, tok, insert) = if let Some(tok) = self.tokens.get(tokens_idx) {
-                let prev = self.tokens.get(tokens_idx - 1).copied();
+                let prev = self.tokens.get(tokens_idx.saturating_sub(1)).copied();
                 tokens_idx += 1;
                 (prev, *tok, false)
             } else if let Some(tok) = input.get(input_idx) {
@@ -46,23 +46,22 @@ impl<'a> Layout<'a> {
 
             let Location { line_number, column_number } = self.source.span_location(tok.span);
             let (line, col) = (line_number as u32, column_number as u32);
-            let is_new_line = line > self.last_line;
+            let newline = line > self.last_line;
 
             // Brace insertion
-            if is_new_line {
-                if col > self.layout_indent() && !self.is_expr_cont(&tok) {
-                    self.push_open_brace(tok.span);
-                    continue;
-                }
+            if newline && col > self.layout_indent() && !self.is_expr_cont(&tok) {
+                self.push_open_brace(tok.span);
+                continue;
+            }
 
-                if col < self.layout_indent()
-                    && !matches!(tok.kind, TokenKind::OpenCurly | TokenKind::CloseCurly)
-                {
-                    self.push_semi(prev, tok.span);
-                    tokens_idx += 1;
-                    self.push_close_brace(tok.span);
-                    continue;
-                }
+            if newline
+                && col < self.layout_indent()
+                && !matches!(tok.kind, TokenKind::OpenCurly | TokenKind::CloseCurly)
+            {
+                tokens_idx += 1;
+                self.push_semi(prev, tok.span);
+                self.push_close_brace(tok.span);
+                continue;
             }
 
             // Layout stack indentation
@@ -76,15 +75,17 @@ impl<'a> Layout<'a> {
                     .with_label(Label::primary(tok.span, "insufficient indentation")));
                 }
 
+                println!("--push--");
                 self.indents.push(col);
             }
 
             if tok.kind == TokenKind::CloseCurly {
+                println!("--pop--");
                 self.indents.pop();
             }
 
             // Semicolon insertion
-            if is_new_line {
+            if newline && !self.tokens.is_empty() {
                 match col.cmp(&self.layout_indent()) {
                     Ordering::Less => {
                         return Err(Diagnostic::error(format!(
@@ -94,10 +95,9 @@ impl<'a> Layout<'a> {
                         ))
                         .with_label(Label::primary(tok.span, "invalid indentation")));
                     }
-                    Ordering::Equal if !self.is_expr_cont(&tok) => {
+                    Ordering::Equal | Ordering::Greater if !self.is_expr_cont(&tok) => {
                         let span = prev.map_or(tok.span, |t| t.span);
                         self.push_semi(prev, span);
-                        // continue;
                     }
                     _ => (),
                 }
@@ -154,6 +154,7 @@ impl<'a> Layout<'a> {
 
     #[inline]
     fn push(&mut self, tok: Token) {
+        println!("pushed {:?}", tok.kind);
         self.tokens.push(tok);
     }
 }
