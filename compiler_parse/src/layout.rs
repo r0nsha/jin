@@ -12,7 +12,7 @@ pub(crate) fn apply(source: &Source, input: Vec<Token>) -> DiagnosticResult<Vec<
     }
 
     let mut layout = Layout::new(source, input.capacity());
-    layout.apply(&input)?;
+    layout.apply(input)?;
     Ok(layout.tokens)
 }
 
@@ -28,7 +28,7 @@ impl<'a> Layout<'a> {
         Self { source, tokens: Vec::with_capacity(capacity), indents: vec![], last_line: 1 }
     }
 
-    fn apply(&mut self, input: &[Token]) -> DiagnosticResult<()> {
+    fn apply(&mut self, input: Vec<Token>) -> DiagnosticResult<()> {
         let mut tokens_idx = 0;
         let mut input_idx = 0;
 
