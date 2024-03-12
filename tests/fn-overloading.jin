@@ -4,7 +4,7 @@ import fn-overloading.child.(*)
 
 fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
-fn main() = {
+fn main()
     unsafe printf("Function overload matching:\n".ptr)
     add(int(1), int(1)) // exact int
     add(1, 1) // untyped int matching
@@ -19,7 +19,7 @@ fn main() = {
     1.add(1)
     8.add(13, 9)
     f32(1.0).add(f32(2.5))
-    {1.0}.add(2.5)
+    (1.0).add(2.5)
     5.add(2.25)
     unsafe printf("\n".ptr)
 
@@ -39,24 +39,18 @@ fn main() = {
     unsafe printf("\n".ptr)
 
     child.poly[int](1) // picking a module function with type application
-}
 
-fn add-one(x: int) -> int = {
+fn add-one(x: int) -> int
     x + 1
-}
 
-fn named(x: int) = {
+fn named(x: int)
     unsafe printf("named: x = %d\n".ptr, x)
-}
 
-fn named(x: int, y: int) = {
+fn named(x: int, y: int)
     unsafe printf("named: x = %d, y = %d\n".ptr, x, y)
-}
 
-fn named(z: int) = {
+fn named(z: int)
     unsafe printf("named: z = %d\n".ptr, z)
-}
 
-fn named[T](x: T) = {
+fn named[T](x: T)
     unsafe printf("named[a]: x = %d\n".ptr, x)
-}

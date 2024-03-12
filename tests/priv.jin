@@ -4,4 +4,5 @@ mod c
 import priv.b.val as vb
 import priv.c.val as vc
 
-fn main() = {}
+fn main()
+    ()

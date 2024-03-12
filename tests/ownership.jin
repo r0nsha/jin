@@ -3,48 +3,43 @@ fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 type Num(field: int)
 type Wrapper(num: Num)
 
-fn main() = {
-    use-after-move()    
-    // use-after-move-scoped()  
+fn main()
+    use-after-move()
+    // use-after-move-scoped()
     // move-out-of-global()
     // move-into-for()
     // copy()
     // assign-not-moved()
     // destroy-discarded-values(Num(1))
-}
 
-fn use-after-move() = {
-    let n = Num(1)  
+fn use-after-move()
+    let n = Num(1)
     let x = n
     //let y = n // Error!
-}   
 
-fn use-after-move-scoped() = {
-    let n = Num(1)  
+fn use-after-move-scoped()
+    let n = Num(1)
     let x = n
-    if false {
+    if false
+        ()
         //let y = n // Error!
-    }
-}   
 
 let global-int: int = 1
 let global-num: Num = Num(1)
 
-fn move-out-of-global() = {
+fn move-out-of-global()
     let x = global-int // Ok
     //let y = global-num // Error!
-}
 
-fn move-into-for() = {
+fn move-into-for()
     let mut n = Num(1)
 
-    for if n.field < 10 {
+    for if n.field < 10
         n.field += 1
         //let x = n // Error!
-    }
-}
 
-fn copy() = {
+
+fn copy()
     let n = 1
     let a = n
     let b = n // Ok
@@ -56,9 +51,8 @@ fn copy() = {
     let w = { Wrapper(Num(1)) }
     let a = w.num.field
     let b = w.num.field // Ok
-}
 
-fn assign-not-moved() = {
+fn assign-not-moved()
     //let mut num = Num(1)
     //num.field = 1
 
@@ -66,12 +60,12 @@ fn assign-not-moved() = {
 
     // `wrapper` is NOT marked as moved since this is a `place` expression.
     // also `wrapper.num` is destroyed here. I also added some weird edge cases...
-    wrapper.num = Num(2) 
-    { wrapper }.num = Num(2) 
-    {
-        let x = wrapper
-        x
-    }.num = Num(2) 
+    wrapper.num = Num(2)
+    // { wrapper }.num = Num(2)
+    // {
+    //     let x = wrapper
+    //     x
+    // }.num = Num(2)
 
     let mut wrapper = Wrapper(Num(1))
     wrapper.num = Num(3) // `wrapper.num` destroyed here
@@ -80,13 +74,10 @@ fn assign-not-moved() = {
     let n1 = Num(1)
     let n2 = Num(2)
 
-    let x = if true {
+    let x = if true
         n1
-    } else {
+    else
         n2
-    }
-}
 
-fn destroy-discarded-values(_: Num) = {
+fn destroy-discarded-values(_: Num)
     let _ = Num(2)
-}

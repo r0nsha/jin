@@ -1,16 +1,13 @@
-fn main() = {
-    match 20 {
+fn main()
+    match 20
         10 | 20 if false -> println("guard")
         10 -> println("10")
         20 -> println("20")
         _ -> println("other")
-    }
 
-    match true {
+    match true
         x if !x -> println("guard (x)")
         true | false if false -> println("guard (or)")
         true -> println("true")
         false -> println("false")
         _ -> println("other")
-    }
-}

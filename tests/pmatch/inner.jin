@@ -1,3 +1,4 @@
 type Inner*(field: int)
 
-fn get*(field: int) -> Inner = Inner(field)
+fn get*(field: int) -> Inner
+    Inner(field)

@@ -1,8 +1,13 @@
 mod child
 
-fn main() = {}
+fn main()
+    ()
 
-fn a() = child.Priv(1)
-fn b() = child.PrivCtor(1)
+fn a()
+    child.Priv(1)
 
-fn x() = {}
+fn b()
+    child.PrivCtor(1)
+
+fn x()
+    ()

@@ -1,3 +1,4 @@
 import std
 
-fn hello*() = std.io.println("Hello!")
+fn hello*()
+    std.io.println("Hello!")

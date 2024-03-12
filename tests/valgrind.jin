@@ -5,13 +5,13 @@ type Wrapper(num: Num)
 type Duo(n1: Num, n2: Num)
 type WrapperDuo(w1: Wrapper, w2: Wrapper)
 
-fn main() = {
+fn main()
     // Destroy temporary values
     Num(1)
     Wrapper(Num(1))
 
     // Destroy named values
-    let n = Num(1) 
+    let n = Num(1)
     let w = Wrapper(Num(1))
 
     // Moving into specialized functions
@@ -24,21 +24,18 @@ fn main() = {
 
     // Destroy in for & break
     let mut i: uint = 10
-    for {
+    for
         let n = Num(1)
         unsafe printf("i = %d\n".ptr, i)
         i -= 1
-    
-        if i == 0 {
+
+        if i == 0
             let n2 = Num(1)
             break
-        }
-    }
 
     let cond = Wrapper(Num(1)) // Conditionally destroy value
-    if false {
+    if false
         let x = cond
-    }
 
     let duo = Duo(Num(1), Num(2)) // Partial move destroy (only a & c should be destroyed)
     let copy = duo.n1.field // Ok (copy type)
@@ -47,18 +44,16 @@ fn main() = {
     //let c = duo.n1 // Error!
 
     let d2 = Duo(Num(1), Num(2)) // Partial & conditional move destroy
-    if true {
+    if true
         let d2n1 = d2.n1
-    } else {
+    else
         let d2n2 = d2.n2
-    }
 
     let wd = WrapperDuo(Wrapper(Num(1)), Wrapper(Num(2))) // Partial & conditional move destroy (nested structure)
-    if true {
+    if true
         let wd1 = wd.w1
-    } else {
+    else
         let wd2 = wd.w2
-    }
-}
 
-fn destroy-poly[T](arg: T) = {}
+fn destroy-poly[T](arg: T)
+    ()

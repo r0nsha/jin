@@ -2,4 +2,5 @@ mod a
 
 import glob-imports.a.(*)
 
-fn main() = hello()
+fn main()
+    hello()

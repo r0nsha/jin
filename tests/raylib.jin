@@ -3,8 +3,8 @@ mod input-keys
 mod following-eyes
 mod bindings
 
-fn main() = {
+fn main()
+    ()
     // basic-window.run()
     // input-keys.run()
     // following-eyes.run()
-}

@@ -1,23 +1,28 @@
 fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
 type Move()
-type Enum {
+type Enum
     Foo
     Bar
-}
-type HasMove { Has(m: Move) }
-type HasRef { Has(r: &Move) }
-type MoveRef {
+
+type HasMove
+    Has(m: Move)
+
+type HasRef
+    Has(r: &Move)
+
+type MoveRef
     M(m: Move)
     R(r: &Move)
-}
-type Poly[T] { A(a: T) }
-type PolyRef[T] {
+
+type Poly[T]
+    A(a: T)
+
+type PolyRef[T]
     M(m: T)
     R(r: &T)
-}
 
-fn main() = {
+fn main()
     // Copy
     let enum = Enum.Foo
     let enum2 = enum
@@ -51,4 +56,3 @@ fn main() = {
     // Poly (Move + Ref)
     let prr = PolyRef.R(match &pm2 { Poly.A(m) -> m })
     // let prm = PolyRef.M(match pm2 { Poly.A(m) -> m }) // (Ref error: Because this is defined after refs)
-}

@@ -1,9 +1,8 @@
-fn main() = {
+fn main()
     let mut wow = Wow("bye bye!")
     println("hello")
-}
 
 type Wow*(msg: &str)
 
-fn `=destroy`(w: &mut Wow) =
+fn `=destroy`(w: &mut Wow)
     println(w.msg)

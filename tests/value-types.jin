@@ -8,7 +8,7 @@ type Mixed extern(a: Ref)
 
 type Point extern(x: int, y: int)
 
-fn main() = {
+fn main()
     let m = M()
     let m2 = m
     // let m3 = m // Error: use after move
@@ -22,8 +22,6 @@ fn main() = {
     print-point(Point(1, 2))
     print-point(Point(x: 420, y: 69))
     print-point(Point(5, y: 10))
-}
 
-fn print-point(p: Point) = {
+fn print-point(p: Point)
     unsafe printf("Point(%d, %d)\n".ptr, p.x, p.y)
-}

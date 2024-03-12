@@ -1,9 +1,9 @@
 fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
-fn main() = {
+fn main()
     let mut s = "Hello World"
     println(s)
-    
+
     // Indexing
     s.print-at(1)
     s.print-at(10)
@@ -14,8 +14,6 @@ fn main() = {
     println(&s.[1..])
     println(&s.[..4])
     println(&s.[3..10])
-}
 
-fn print-at(s: &str, at: uint) = {
+fn print-at(s: &str, at: uint)
     unsafe printf("s.[%d] = %c\n".ptr, at, s.[at])
-}

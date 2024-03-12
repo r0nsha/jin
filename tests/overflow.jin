@@ -1,12 +1,12 @@
 import std.int.(*)
 
-fn main() = {
+fn main()
     i()
     println()
     u()
-}
 
-fn i() = {
+
+fn i()
     println("signed:")
 
     let a: i64 = 1
@@ -15,9 +15,8 @@ fn i() = {
     // a + b
     // a - b
     // a * b
-}
 
-fn u() = {
+fn u()
     println("unsigned:")
 
     let a: u8 = 2
@@ -26,4 +25,3 @@ fn u() = {
     // a + b
     // a - b
     a * b
-}

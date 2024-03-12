@@ -2,12 +2,11 @@ import std.builtin
 
 fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
-fn main() = {
+fn main()
     ints()
     boxes()
-}
 
-fn ints() = {
+fn ints()
     let a: []int = []
     print(&a)
 
@@ -40,29 +39,26 @@ fn ints() = {
     print(&c.[..])
 }
 
-fn print(s: &[]int) = {
+fn print(s: &[]int)
     print("[")
     let mut i = 0
-    for if i < s.len {
+    for if i < s.len
         print("{s.[i]}")
-        if i < s.len - 1 {
+        if i < s.len - 1
             print(", ")
-        }
+
         i += 1
-    }
+
     unsafe printf("], ptr: %p, len: %d, cap: %d\n".ptr, s.ptr, s.len, s.cap)
-}
 
 type Box(value: int)
 
-fn boxes() = {
+fn boxes()
     let a = [Box(1), Box(2), Box(3)]
     let b = &a.[0]
     let c = &a.[0]
     let nested = [[Box(1), Box(2)], [Box(3)]]
-}
 
-fn push[T](slice: &mut []T, value: T) = {
+fn push[T](slice: &mut []T, value: T)
     unsafe slice.len += 1
     slice.[slice.len - 1] = value
-}

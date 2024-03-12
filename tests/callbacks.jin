@@ -1,23 +1,22 @@
-fn main() = {
+fn main()
     run(print-answer)
     do-add(add, 1, 2)
     println("map: {map(1, int-to-uint)}")
-}
 
-fn run(f: fn()) = f()
+fn run(f: fn())
+    f()
 
-fn print-answer() =
+fn print-answer()
     println("The answer is {42}")
 
-fn add(a: int, b: int) -> int = {
+fn add(a: int, b: int) -> int
     a + b
-}
 
-fn do-add(f: fn(int, int) -> int, a: int, b: int) =
+fn do-add(f: fn(int, int) -> int, a: int, b: int)
     println("a + b = {f(a, b)}")
 
-fn map[A, B](val: A, f: fn(A) -> B) -> B = {
+fn map[A, B](val: A, f: fn(A) -> B) -> B
     f(val)
-}
 
-fn int-to-uint(val: int) -> uint = uint(val)
+fn int-to-uint(val: int) -> uint
+    uint(val)
