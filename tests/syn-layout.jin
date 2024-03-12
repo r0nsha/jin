@@ -1,10 +1,15 @@
-fn main()
-    let msg = "Hello, Layout!"
-    println(msg)
+// fn main()
+//     let msg = "Hello, Layout!"
+//     println(msg)
+
+// fn Error.from-os-error*(code: i32) -> Error
+//     match code
+//         code -> Error.Other(code)
 
 fn test() 
-    let x = 1
-    let y = if true
-        false
-    else
-        true
+    1
+//     let x = 1
+//     let y = if true
+//         false
+//     else
+//         true
