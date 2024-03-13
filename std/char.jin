@@ -15,7 +15,7 @@ fn char.from-digit*(num: u32, radix: u32) -> Option[char]
         else
             b'a' + num - 10
         ))
-     else
+    else
         Option.None
 
 // The low-level UTF8 implementation was taken from rust's `core::char` module

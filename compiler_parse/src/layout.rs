@@ -19,11 +19,13 @@ pub(crate) fn apply(source: &Source, input: Vec<Token>) -> DiagnosticResult<Vec<
 struct Layout<'a> {
     source: &'a Source,
     tokens: Vec<Token>,
-    indents: Vec<u32>,
+    indents: Vec<Indent>,
     last_line: u32,
 }
 
 impl<'a> Layout<'a> {
+    const DEFAULT_COL: u32 = 1;
+
     fn new(source: &'a Source, capacity: usize) -> Self {
         Self { source, tokens: Vec::with_capacity(capacity), indents: vec![], last_line: 1 }
     }
@@ -43,25 +45,26 @@ impl<'a> Layout<'a> {
                 && col < self.layout_indent()
                 && !matches!(tok.kind, TokenKind::OpenCurly | TokenKind::CloseCurly)
             {
+                let mut last_indent = self.layout_indent_with_span();
+
                 while col < self.layout_indent() {
                     self.push_semi(tok.span);
                     self.push_close_brace(tok.span);
-                    self.indents.pop();
+                    last_indent = self.indents.pop().unwrap_or(self.default_indent());
+                }
+
+                if col > self.layout_indent() {
+                    return Err(insufficient_layout(col, last_indent, tok.span));
                 }
             }
 
             // Layout stack indentation
             if self.last_token().map_or(false, |t| t.kind == TokenKind::OpenCurly) {
                 if tok.kind != TokenKind::CloseCurly && col < self.layout_indent() {
-                    return Err(Diagnostic::error(format!(
-                        "line must be indented more than its \
-                         enclosing layout (column {})",
-                        self.layout_indent()
-                    ))
-                    .with_label(Label::primary(tok.span, "insufficient indentation")));
+                    return Err(insufficient_layout(col, self.layout_indent_with_span(), tok.span));
                 }
 
-                self.indents.push(col);
+                self.indents.push((col, tok.span));
             }
 
             if tok.kind == TokenKind::CloseCurly {
@@ -72,12 +75,11 @@ impl<'a> Layout<'a> {
             if newline && !self.tokens.is_empty() {
                 match col.cmp(&self.layout_indent()) {
                     Ordering::Less => {
-                        return Err(Diagnostic::error(format!(
-                            "line must be indented the same as or more \
-                             than its layout (column {})",
-                            self.layout_indent()
-                        ))
-                        .with_label(Label::primary(tok.span, "invalid indentation")));
+                        return Err(insufficient_layout(
+                            col,
+                            self.layout_indent_with_span(),
+                            tok.span,
+                        ));
                     }
                     Ordering::Equal | Ordering::Greater if !self.is_expr_cont(&tok) => {
                         let span = self.last_token().map_or(tok.span, |t| t.span);
@@ -108,7 +110,12 @@ impl<'a> Layout<'a> {
 
     #[track_caller]
     fn layout_indent(&self) -> u32 {
-        self.indents.last().copied().unwrap_or(1)
+        self.indents.last().map(|(i, _)| i).copied().unwrap_or(Self::DEFAULT_COL)
+    }
+
+    #[track_caller]
+    fn layout_indent_with_span(&self) -> Indent {
+        self.indents.last().copied().unwrap_or(self.default_indent())
     }
 
     #[inline]
@@ -136,4 +143,20 @@ impl<'a> Layout<'a> {
     fn push(&mut self, tok: Token) {
         self.tokens.push(tok);
     }
+
+    #[inline]
+    fn default_indent(&self) -> Indent {
+        (Self::DEFAULT_COL, Span::new(self.source.id(), 0, 0))
+    }
+}
+
+type Indent = (u32, Span);
+
+fn insufficient_layout(col: u32, indent: Indent, span: Span) -> Diagnostic {
+    Diagnostic::error(
+        "line must be indented the same as or more \
+             than its enclosing layout",
+    )
+    .with_label(Label::primary(span, format!("too little indentation (column {col})")))
+    .with_label(Label::primary(indent.1, format!("enclosing layout on column {}", indent.0)))
 }
