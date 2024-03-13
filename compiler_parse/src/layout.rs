@@ -38,7 +38,7 @@ impl<'a> Layout<'a> {
 
             // Brace insertion
             if newline && col > self.layout_indent() && !self.is_expr_cont(&tok) {
-                self.push_open_curly(tok.span.lead());
+                self.push_open_curly(tok.span.leading());
             }
 
             if newline
@@ -48,8 +48,8 @@ impl<'a> Layout<'a> {
                 let mut last_indent = self.layout_indent_with_span();
 
                 while col < self.layout_indent() {
-                    self.push_semi(tok.span.lead());
-                    self.push_close_curly(tok.span.lead());
+                    self.push_semi(tok.span.leading());
+                    self.push_close_curly(tok.span.leading());
                     last_indent = self.indents.pop().unwrap_or(self.default_indent());
                 }
 
@@ -83,7 +83,7 @@ impl<'a> Layout<'a> {
                     }
                     Ordering::Equal | Ordering::Greater if !self.is_expr_cont(&tok) => {
                         let span = self.last_token().map_or(tok.span, |t| t.span);
-                        self.push_semi(span);
+                        self.push_semi(span.trailing());
                     }
                     _ => (),
                 }
@@ -95,10 +95,10 @@ impl<'a> Layout<'a> {
 
         if let Some(tok) = self.last_token().copied() {
             while self.indents.pop().is_some() {
-                self.push_close_curly(tok.span);
+                self.push_close_curly(tok.span.trailing());
             }
 
-            self.push_semi(tok.span);
+            self.push_semi(tok.span.trailing());
         }
 
         Ok(())
