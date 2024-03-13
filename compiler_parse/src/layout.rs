@@ -38,18 +38,18 @@ impl<'a> Layout<'a> {
 
             // Brace insertion
             if newline && col > self.layout_indent() && !self.is_expr_cont(&tok) {
-                self.push_open_brace(tok.span);
+                self.push_open_curly(tok.span.lead());
             }
 
             if newline
                 && col < self.layout_indent()
-                && !matches!(tok.kind, TokenKind::OpenCurly | TokenKind::CloseCurly)
+                && !matches!(tok.kind, TokenKind::OpenCurly(_) | TokenKind::CloseCurly(_))
             {
                 let mut last_indent = self.layout_indent_with_span();
 
                 while col < self.layout_indent() {
-                    self.push_semi(tok.span);
-                    self.push_close_brace(tok.span);
+                    self.push_semi(tok.span.lead());
+                    self.push_close_curly(tok.span.lead());
                     last_indent = self.indents.pop().unwrap_or(self.default_indent());
                 }
 
@@ -59,15 +59,15 @@ impl<'a> Layout<'a> {
             }
 
             // Layout stack indentation
-            if self.last_token().map_or(false, |t| t.kind == TokenKind::OpenCurly) {
-                if tok.kind != TokenKind::CloseCurly && col < self.layout_indent() {
+            if self.last_token().map_or(false, |t| matches!(t.kind, TokenKind::OpenCurly(_))) {
+                if !matches!(tok.kind, TokenKind::CloseCurly(_)) && col < self.layout_indent() {
                     return Err(insufficient_layout(col, self.layout_indent_with_span(), tok.span));
                 }
 
                 self.indents.push((col, tok.span));
             }
 
-            if tok.kind == TokenKind::CloseCurly {
+            if matches!(tok.kind, TokenKind::CloseCurly(_)) {
                 self.indents.pop();
             }
 
@@ -95,7 +95,7 @@ impl<'a> Layout<'a> {
 
         if let Some(tok) = self.last_token().copied() {
             while self.indents.pop().is_some() {
-                self.push_close_brace(tok.span);
+                self.push_close_curly(tok.span);
             }
 
             self.push_semi(tok.span);
@@ -123,12 +123,12 @@ impl<'a> Layout<'a> {
         self.tokens.last()
     }
 
-    fn push_open_brace(&mut self, span: Span) {
-        self.push(Token { kind: TokenKind::OpenCurly, span });
+    fn push_open_curly(&mut self, span: Span) {
+        self.push(Token { kind: TokenKind::OpenCurly(true), span });
     }
 
-    fn push_close_brace(&mut self, span: Span) {
-        self.push(Token { kind: TokenKind::CloseCurly, span });
+    fn push_close_curly(&mut self, span: Span) {
+        self.push(Token { kind: TokenKind::CloseCurly(true), span });
     }
 
     fn push_semi(&mut self, span: Span) {
@@ -152,11 +152,11 @@ impl<'a> Layout<'a> {
 
 type Indent = (u32, Span);
 
-fn insufficient_layout(col: u32, indent: Indent, span: Span) -> Diagnostic {
+fn insufficient_layout(col: u32, (indent, layout_span): Indent, span: Span) -> Diagnostic {
     Diagnostic::error(
         "line must be indented the same as or more \
-             than its enclosing layout",
+         than its enclosing layout",
     )
     .with_label(Label::primary(span, format!("too little indentation (column {col})")))
-    .with_label(Label::primary(indent.1, format!("enclosing layout on column {}", indent.0)))
+    .with_label(Label::secondary(layout_span, format!("enclosing layout on column {}", indent)))
 }

@@ -20,8 +20,8 @@ impl<'a> Parser<'a> {
         let expr = self.parse_expr()?;
 
         let (arms, _) = self.parse_list_with_sep(
-            TokenKind::OpenCurly,
-            TokenKind::CloseCurly,
+            TokenKind::OpenCurly(false),
+            TokenKind::CloseCurly(false),
             SEMI,
             |this| this.parse_match_arm().map(ControlFlow::Continue),
         )?;

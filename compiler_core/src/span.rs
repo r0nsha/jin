@@ -43,8 +43,14 @@ impl Span {
         self.end
     }
 
-    pub fn head(&self) -> Self {
-        Self { end: self.start, ..*self }
+    pub fn lead(&self) -> Self {
+        let end = self.start.saturating_sub(1);
+        Self { start: end, end, ..*self }
+    }
+
+    pub fn trail(&self) -> Self {
+        let start = self.end.saturating_add(1);
+        Self { start, end: start, ..*self }
     }
 
     pub fn tail(&self) -> Self {

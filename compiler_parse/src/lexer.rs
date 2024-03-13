@@ -232,7 +232,7 @@ impl<'a> Lexer<'a> {
 
     fn open_curly(&mut self) -> TokenKind {
         self.curlies += 1;
-        TokenKind::OpenCurly
+        TokenKind::OpenCurly(false)
     }
 
     fn close_curly(&mut self) -> TokenKind {
@@ -243,7 +243,7 @@ impl<'a> Lexer<'a> {
             self.modes.pop();
             TokenKind::StrExprClose
         } else {
-            TokenKind::CloseCurly
+            TokenKind::CloseCurly(false)
         }
     }
 

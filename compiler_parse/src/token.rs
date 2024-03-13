@@ -59,8 +59,8 @@ pub enum TokenKind {
     CloseParen,
     OpenBrack,
     CloseBrack,
-    OpenCurly,
-    CloseCurly,
+    OpenCurly(bool),
+    CloseCurly(bool),
 
     // Operators
     Eq,
@@ -127,7 +127,7 @@ impl TokenKind {
             | TokenKind::CloseParen
             | TokenKind::CloseBrack
             | TokenKind::Comma
-            | TokenKind::CloseCurly
+            | TokenKind::CloseCurly(_)
             | TokenKind::Eq
             | TokenKind::EqEq
             | TokenKind::BangEq
@@ -187,7 +187,7 @@ impl TokenKind {
             | TokenKind::QuestionMark
             | TokenKind::OpenParen
             | TokenKind::OpenBrack
-            | TokenKind::OpenCurly
+            | TokenKind::OpenCurly(_)
             | TokenKind::Ident(_)
             | TokenKind::Underscore
             | TokenKind::Bang
@@ -212,7 +212,7 @@ impl TokenKind {
             TokenKind::OpenParen
             | TokenKind::OpenBrack
             | TokenKind::Comma
-            | TokenKind::OpenCurly
+            | TokenKind::OpenCurly(_)
             | TokenKind::Eq
             | TokenKind::EqEq
             | TokenKind::Bang
@@ -273,7 +273,7 @@ impl TokenKind {
             | TokenKind::QuestionMark
             | TokenKind::CloseParen
             | TokenKind::CloseBrack
-            | TokenKind::CloseCurly
+            | TokenKind::CloseCurly(_)
             | TokenKind::Colon
             | TokenKind::Arrow
             | TokenKind::Ident(_)
@@ -300,19 +300,16 @@ impl fmt::Display for TokenKind {
             Self::CloseParen => f.write_char(')'),
             Self::OpenBrack => f.write_char('['),
             Self::CloseBrack => f.write_char(']'),
-            Self::OpenCurly => f.write_char('{'),
-            Self::CloseCurly => f.write_char('}'),
+            Self::OpenCurly(true) => f.write_str("implicit {"),
+            Self::OpenCurly(false) => f.write_char('{'),
+            Self::CloseCurly(true) => f.write_str("implicit }"),
+            Self::CloseCurly(false) => f.write_char('}'),
             Self::Comma => f.write_char(','),
             Self::Dot => f.write_char('.'),
             Self::DotDot => f.write_str(".."),
             Self::Colon => f.write_char(':'),
-            Self::Semi(auto) => {
-                if *auto {
-                    f.write_str("implicit ;")
-                } else {
-                    f.write_char(';')
-                }
-            }
+            Self::Semi(true) => f.write_str("implicit ;"),
+            Self::Semi(false) => f.write_char(';'),
             Self::At => f.write_char('@'),
             Self::Arrow => f.write_str("->"),
             Self::QuestionMark => f.write_char('?'),

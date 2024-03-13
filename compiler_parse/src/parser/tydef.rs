@@ -34,7 +34,7 @@ impl<'a> Parser<'a> {
             self.parse_tydef_struct(StructKind::Ref)
         } else if self.is_kw(Kw::Extern) {
             self.parse_tydef_struct(StructKind::Value)
-        } else if self.peek_is(TokenKind::OpenCurly) {
+        } else if self.peek_is(TokenKind::OpenCurly(false)) {
             self.parse_tydef_union(UnionKind::Value)
         } else if self.is_kw(Kw::Ref) {
             self.parse_tydef_union(UnionKind::Ref)
@@ -58,9 +58,12 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_tydef_union(&mut self, kind: UnionKind) -> DiagnosticResult<TyDefKind> {
-        self.parse_list_with_sep(TokenKind::OpenCurly, TokenKind::CloseCurly, SEMI, |this| {
-            this.parse_tydef_union_variant().map(ControlFlow::Continue)
-        })
+        self.parse_list_with_sep(
+            TokenKind::OpenCurly(false),
+            TokenKind::CloseCurly(false),
+            SEMI,
+            |this| this.parse_tydef_union_variant().map(ControlFlow::Continue),
+        )
         .map(|(variants, _)| TyDefKind::Union(UnionTyDef { kind, variants }))
     }
 

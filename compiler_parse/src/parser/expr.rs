@@ -130,7 +130,7 @@ impl<'a> Parser<'a> {
                     expr
                 }
             }
-            TokenKind::OpenCurly => {
+            TokenKind::OpenCurly(_) => {
                 self.back();
                 self.parse_block()?
             }
@@ -165,7 +165,7 @@ impl<'a> Parser<'a> {
         let then = self.parse_block()?;
 
         let otherwise = if self.is_kw(Kw::Else) {
-            if self.peek_is(TokenKind::OpenCurly) {
+            if self.peek_is(TokenKind::OpenCurly(false)) {
                 Some(Box::new(self.parse_block()?))
             } else if self.is_kw(Kw::If) {
                 Some(Box::new(self.parse_if()?))
@@ -389,9 +389,12 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn parse_block(&mut self) -> DiagnosticResult<Expr> {
-        self.parse_list_with_sep(TokenKind::OpenCurly, TokenKind::CloseCurly, SEMI, |this| {
-            this.parse_stmt().map(ControlFlow::Continue)
-        })
+        self.parse_list_with_sep(
+            TokenKind::OpenCurly(false),
+            TokenKind::CloseCurly(false),
+            SEMI,
+            |this| this.parse_stmt().map(ControlFlow::Continue),
+        )
         .map(|(exprs, span)| Expr::Block { exprs, span })
     }
 
