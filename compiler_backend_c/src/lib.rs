@@ -49,7 +49,7 @@ fn build_exe(db: &mut Db, c_file_path: &Utf8Path) -> Utf8PathBuf {
         output_path.with_extension("")
     };
 
-    db.time("GCC", |db| compile(db, c_file_path, &exe_file_path));
+    db.time("Zig CC", |db| compile(db, c_file_path, &exe_file_path));
 
     if !db.build_options().should_emit(EmitOption::C) {
         let _ = std::fs::remove_file(c_file_path);
@@ -65,7 +65,7 @@ fn compile(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path) {
     let link_flags = match target_metrics.arch {
         Arch::Amd64 => match target_metrics.os {
             Os::Windows => vec!["/machine:x64"],
-            Os::Linux | Os::FreeBSD => vec!["-march=x86-64"],
+            Os::Linux | Os::FreeBSD => vec!["-march=x86_64"],
             _ => vec![],
         },
         Arch::_386 => match target_metrics.os {
@@ -130,9 +130,10 @@ fn compile(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path) {
 
     //     #[cfg(not(windows))]
 
-    let mut cmd = Command::new("gcc");
+    let mut cmd = Command::new("zig");
 
     cmd
+        .arg("cc")
         .arg(c_file_path)
         .arg(format!("-o{exe_file_path}"))
         .arg("-std=c99")
