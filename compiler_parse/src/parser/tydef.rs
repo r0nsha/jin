@@ -10,6 +10,7 @@ use compiler_core::{
     diagnostics::DiagnosticResult,
 };
 
+use crate::parser::WEAK_KW_REC;
 use crate::{
     parser::Parser,
     token::{Kw, TokenKind},
@@ -35,7 +36,7 @@ impl<'a> Parser<'a> {
             self.parse_tydef_struct(StructKind::Value)
         } else if self.peek_is(TokenKind::OpenCurly) {
             self.parse_tydef_union(UnionKind::Value)
-        } else if self.is_kw(Kw::Ref) {
+        } else if self.is_weak_kw(WEAK_KW_REC) {
             self.parse_tydef_union(UnionKind::Ref)
         } else if self.is(TokenKind::Eq) {
             self.parse_tydef_alias()

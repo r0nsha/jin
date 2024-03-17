@@ -5,7 +5,7 @@ type Enum {
     Foo
     Bar
 }
-type HasMove { Has(m: Move) }
+type HasMove rec { Has(m: Move) }
 type HasRef { Has(r: &Move) }
 type MoveRef {
     M(m: Move)
@@ -25,8 +25,8 @@ fn main() = {
 
     // Move
     let hm = HasMove.Has(Move())
-    let hmref = &hm
     let hm2 = hm
+    let hm2ref = &hm2
 
     // Ref
     let hr = HasRef.Has(match &hm2 { HasMove.Has(m) -> m })

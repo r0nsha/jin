@@ -29,6 +29,8 @@ use crate::{
 
 const SEMI: TokenKind = TokenKind::Semi(false);
 
+const WEAK_KW_REC: &str = "rec";
+
 pub fn parse(
     db: &Db,
     package: Ustr,
@@ -254,7 +256,6 @@ impl<'a> Parser<'a> {
         self.is(TokenKind::empty_ident())
     }
 
-    #[allow(unused)]
     #[inline]
     pub(super) fn is_weak_kw(&mut self, kw: &str) -> bool {
         self.is_predicate(|_, tok| matches!(tok.kind, TokenKind::Ident(id) if id == kw))
