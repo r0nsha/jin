@@ -1,7 +1,7 @@
 fn main() = {
-	if Option.Some(1).map-or(false) fn(x) { x == 1 } {
-		call(fn { println("hello") })
-	}
+    if Option.Some(1).map-or(false) fn(x) { x == 1 } {
+        call(fn { println("hello") })
+    }
 }
 
 fn call(f: fn()) = f()

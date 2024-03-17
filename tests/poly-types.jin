@@ -5,30 +5,30 @@ fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 type Box[T](value: T)
 
 fn main() = {
-	print(&Box(1).value) // matches print(int) 
-	print(&Box(3.0).value) // matches print(f32) 
-	print(&Box(42)) // matches print(&Box[int])
-	print(&Box(6.9)) // matches print(&Box[T])
-	print(&Box[int](5)) // matches print(&Box[int]) 
-	print(&inner.Inner[int](30)) // matches print(&inner.Inner[int])
+    print(&Box(1).value) // matches print(int)
+    print(&Box(3.0).value) // matches print(f32)
+    print(&Box(42)) // matches print(&Box[int])
+    print(&Box(6.9)) // matches print(&Box[T])
+    print(&Box[int](5)) // matches print(&Box[int])
+    print(&inner.Inner[int](30)) // matches print(&inner.Inner[int])
 }
 
 fn print(value: int) = {
-	println("{value}")
+    println("{value}")
 }
 
 fn print(value: f32) = {
-	unsafe printf("%f\n".ptr, value)
+    unsafe printf("%f\n".ptr, value)
 }
 
 fn print(box: &Box[int]) = {
-	println("Box({box.value})")
+    println("Box({box.value})")
 }
 
 fn print[T](box: &Box[T]) = {
-	unsafe printf("Box(%f)\n".ptr, &box.value)
+    unsafe printf("Box(%f)\n".ptr, &box.value)
 }
 
 fn print(inner: &inner.Inner[int]) = {
-	println("Inner({inner.value})")
+    println("Inner({inner.value})")
 }

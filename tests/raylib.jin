@@ -4,7 +4,7 @@ mod following-eyes
 mod bindings
 
 fn main() = {
-	// basic-window.run()
-	// input-keys.run()
-	// following-eyes.run()
+    // basic-window.run()
+    // input-keys.run()
+    // following-eyes.run()
 }

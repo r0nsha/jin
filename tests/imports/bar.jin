@@ -5,9 +5,9 @@ import imports as root
 fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
 fn hello*() = {
-	unsafe printf(root.get-hello-world().ptr)
+    unsafe printf(root.get-hello-world().ptr)
 }
 
 fn goodbye*() = {
-	unsafe printf("Goodbye...\n".ptr)
+    unsafe printf("Goodbye...\n".ptr)
 }

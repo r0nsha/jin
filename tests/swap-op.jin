@@ -1,12 +1,12 @@
 fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
 fn main() = {
-	let mut a = 1
-	print(a)
-	let old = a := 2
-	print(a)
-	print(old)
+    let mut a = 1
+    print(a)
+    let old = a := 2
+    print(a)
+    print(old)
 }
 
 fn print(v: int) =
-	unsafe printf("%d\n".ptr, v)
+    unsafe printf("%d\n".ptr, v)

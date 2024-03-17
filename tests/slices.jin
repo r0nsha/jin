@@ -3,66 +3,66 @@ import std.builtin
 fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
 fn main() = {
-	ints()
-	boxes()
+    ints()
+    boxes()
 }
 
 fn ints() = {
-	let a: []int = []
-	print(&a)
+    let a: []int = []
+    print(&a)
 
-	let mut b: []int = [:3]
-	b.push(3)
-	b.push(2)
-	b.push(1)
-	print(&b)
-	unsafe builtin.slice-grow(&mut b, 4)
-	b.push(0)
-	print(&b)
-	unsafe builtin.slice-grow(&mut b, 8)
-	b.push(6)
-	b.push(7)
-	print(&b)
+    let mut b: []int = [:3]
+    b.push(3)
+    b.push(2)
+    b.push(1)
+    print(&b)
+    unsafe builtin.slice-grow(&mut b, 4)
+    b.push(0)
+    print(&b)
+    unsafe builtin.slice-grow(&mut b, 8)
+    b.push(6)
+    b.push(7)
+    print(&b)
 
-	let mut c = [1, 2, 3, 4, 5]
-	print(&c)
-	c.[1] = 69
-	println("old={c.[2] := 42}")
-	print(&c)
-	let c2 = &mut c.[1..3]
-	print(&c2)
-	c2.push(8)
-	c2.push(9)
-	print(&c2)
-	print(&c)
-	print(&c.[..3])
-	print(&c.[2..])
-	print(&c.[..])
+    let mut c = [1, 2, 3, 4, 5]
+    print(&c)
+    c.[1] = 69
+    println("old={c.[2] := 42}")
+    print(&c)
+    let c2 = &mut c.[1..3]
+    print(&c2)
+    c2.push(8)
+    c2.push(9)
+    print(&c2)
+    print(&c)
+    print(&c.[..3])
+    print(&c.[2..])
+    print(&c.[..])
 }
 
 fn print(s: &[]int) = {
-	print("[")
-	let mut i = 0
-	for if i < s.len {
-		print("{s.[i]}")
-		if i < s.len - 1 {
-			print(", ")
-		}
-		i += 1
-	}
-	unsafe printf("], ptr: %p, len: %d, cap: %d\n".ptr, s.ptr, s.len, s.cap)
+    print("[")
+    let mut i = 0
+    for if i < s.len {
+        print("{s.[i]}")
+        if i < s.len - 1 {
+            print(", ")
+        }
+        i += 1
+    }
+    unsafe printf("], ptr: %p, len: %d, cap: %d\n".ptr, s.ptr, s.len, s.cap)
 }
 
 type Box(value: int)
 
 fn boxes() = {
-	let a = [Box(1), Box(2), Box(3)]
-	let b = &a.[0]
-	let c = &a.[0]
-	let nested = [[Box(1), Box(2)], [Box(3)]]
+    let a = [Box(1), Box(2), Box(3)]
+    let b = &a.[0]
+    let c = &a.[0]
+    let nested = [[Box(1), Box(2)], [Box(3)]]
 }
 
 fn push[T](slice: &mut []T, value: T) = {
-	unsafe slice.len += 1
-	slice.[slice.len - 1] = value
+    unsafe slice.len += 1
+    slice.[slice.len - 1] = value
 }

@@ -22,7 +22,7 @@ fn Array.new*[T](len: uint, f: fn(uint) -> T) -> Array[T] = {
 fn Array.from*[T](slice: []T) -> Array[T] = Array(slice)
 
 fn Array.with-cap*[T](cap: uint) -> Array[T] = {
-	// TODO: use a polymorphic `std.cmp.max` function for this	
+	// TODO: use a polymorphic `std.cmp.max` function for this
 	let c = if cap > MIN-CAP { cap } else { MIN-CAP }
 	Array([:c])
 }
@@ -92,7 +92,7 @@ fn needs-to-grow[T](self: &Array[T], additional: uint) -> bool =
 
 
 fn grow[T](self: &mut Array[T], additional: uint) = {
-	let cap = self.buf.cap 
+	let cap = self.buf.cap
 	if cap > 0 {
 		let new-cap = max(cap * 2, cap + additional)
 		unsafe builtin.slice-grow(&mut self.buf, new-cap)
