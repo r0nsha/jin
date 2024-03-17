@@ -125,8 +125,9 @@ impl<'a> Parser<'a> {
                     Expr::UnitLit { span: tok.span.merge(self.last_span()) }
                 } else {
                     let expr = self.parse_expr()?;
-                    self.eat(TokenKind::CloseParen)?;
-                    expr
+                    let close = self.eat(TokenKind::CloseParen)?;
+                    let span = expr.span().merge(close.span);
+                    Expr::Group { expr: Box::new(expr), span }
                 }
             }
             TokenKind::OpenCurly => {

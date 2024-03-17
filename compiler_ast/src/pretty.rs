@@ -131,6 +131,11 @@ impl PrettyPrint for Expr {
                 expr.pretty_print(cx);
                 cx.builder.end_child();
             }
+            Self::Group { expr, .. } => {
+                cx.builder.begin_child("group".to_string());
+                expr.pretty_print(cx);
+                cx.builder.end_child();
+            }
             Self::Call { callee, args, .. } => {
                 print_call(cx, callee, args, None, None);
             }

@@ -219,6 +219,11 @@ pub(crate) fn check_expr(
             let ty = expr.ty;
             Ok(cx.expr(hir::ExprKind::Unsafe(hir::Unsafe { expr: Box::new(expr) }), ty, *span))
         }
+        ast::Expr::Group { expr, span } => {
+            let mut expr = check_expr(cx, env, expr, expected_ty)?;
+            expr.span = *span;
+            Ok(expr)
+        }
         ast::Expr::MethodCall { expr, method, targs, args, span } => {
             let targs = tyexpr::check_optional_targs(cx, env, targs.as_deref(), AllowTyHole::Yes)?;
             let mut args = check_call_args(cx, env, args)?;

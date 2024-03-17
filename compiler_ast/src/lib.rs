@@ -160,6 +160,10 @@ pub enum Expr {
         expr: Box<Self>,
         span: Span,
     },
+    Group {
+        expr: Box<Self>,
+        span: Span,
+    },
     Call {
         callee: Box<Self>,
         args: Vec<CallArg>,
@@ -265,6 +269,7 @@ impl Spanned for Expr {
             | Self::Break { span, .. }
             | Self::Block { span, .. }
             | Self::Unsafe { span, .. }
+            | Self::Group { span, .. }
             | Self::Call { span, .. }
             | Self::MethodCall { span, .. }
             | Self::Unary { span, .. }
