@@ -8,7 +8,7 @@ type Option*[T] {
 fn or-panic*[T](self: Option[T]) -> T =
     match self {
         Option.Some(v) -> v
-        Option.None -> panic("called `get` on a `None` value")
+        Option.None -> panic("called `or-panic` on a `None` value")
     }
 
 fn is-some*[T](self: &Option[T]) -> bool =
