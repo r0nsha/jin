@@ -1,4 +1,4 @@
-import std.(c, io)
+use std.(c, io)
 
 fn read*(path: str) -> io.Result[Array[u8]] =
     read(&path)

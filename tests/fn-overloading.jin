@@ -1,6 +1,6 @@
 mod child
 
-import fn-overloading.child.(*)
+use fn-overloading.child.(*)
 
 fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 

@@ -1,4 +1,4 @@
-import std.int.(Format)
+use std.int.(Format)
 
 fn main() = {
     let letter = "R"

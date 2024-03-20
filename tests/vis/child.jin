@@ -1,4 +1,4 @@
-import vis
+use vis
 
 type Priv(num: int)
 type PrivCtor*(num: int)

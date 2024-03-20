@@ -1,4 +1,4 @@
-import std.(
+use std.(
     c,
     c.write,
     os.errors,

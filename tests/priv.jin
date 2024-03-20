@@ -1,7 +1,7 @@
 mod b
 mod c
 
-import priv.b.val as vb
-import priv.c.val as vc
+use priv.b.val as vb
+use priv.c.val as vc
 
 fn main() = {}

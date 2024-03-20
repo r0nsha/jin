@@ -1,5 +1,5 @@
-import std.builtin
-import std.option.Option
+use std.builtin
+use std.option.Option
 
 const MIN-CAP: uint = 4
 
