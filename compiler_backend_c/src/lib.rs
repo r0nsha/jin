@@ -142,8 +142,8 @@ fn compile(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path) {
         .args(libs.libs.into_iter().map(|path| format!("-l{path}")))
         .args(libs.includes.into_iter().map(|path| format!("-I{path}")))
         .arg("-lc")
-        .arg("-lm")
         .arg("-no-pie")
+        // .arg("-static")
         // .arg("-O1")
         .arg("-g")
         .args(link_flags);
