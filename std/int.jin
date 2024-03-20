@@ -34,51 +34,51 @@ const U64-MAX*: u64 = 18_446_744_073_709_551_615
 const UINT-MIN*: uint = U64-MIN
 const UINT-MAX*: uint = U64-MAX
 
-fn abs*(self: i8) -> i8 = if self > 0 { self } else { -self }
-fn abs*(self: i16) -> i16 = if self > 0 { self } else { -self }
-fn abs*(self: i32) -> i32 = if self > 0 { self } else { -self }
-fn abs*(self: i64) -> i64 = if self > 0 { self } else { -self }
-fn abs*(self: int) -> int = if self > 0 { self } else { -self }
+fn abs*(x: i8) -> i8 = if x > 0 { x } else { -x }
+fn abs*(x: i16) -> i16 = if x > 0 { x } else { -x }
+fn abs*(x: i32) -> i32 = if x > 0 { x } else { -x }
+fn abs*(x: i64) -> i64 = if x > 0 { x } else { -x }
+fn abs*(x: int) -> int = if x > 0 { x } else { -x }
 
-fn to-str*(self: i8) -> str = fmt-impl(uint(self.abs()), self < 0, Format.Decimal)
-fn to-str*(self: i8, format: Format) -> str = fmt-impl(uint(self.abs()), self < 0, format)
-fn fmt*(self: &i8, buf: &mut StrBuf) = buf.push(self.to-str(Format.Decimal))
+fn to-str*(x: i8) -> str = fmt-impl(uint(x.abs()), x < 0, Format.Decimal)
+fn to-str*(x: i8, format: Format) -> str = fmt-impl(uint(x.abs()), x < 0, format)
+fn fmt*(x: &i8, buf: &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
 
-fn to-str*(self: i16) -> str = fmt-impl(uint(self.abs()), self < 0, Format.Decimal)
-fn to-str*(self: i16, format: Format) -> str = fmt-impl(uint(self.abs()), self < 0, format)
-fn fmt*(self: &i16, buf: &mut StrBuf) = buf.push(self.to-str(Format.Decimal))
+fn to-str*(x: i16) -> str = fmt-impl(uint(x.abs()), x < 0, Format.Decimal)
+fn to-str*(x: i16, format: Format) -> str = fmt-impl(uint(x.abs()), x < 0, format)
+fn fmt*(x: &i16, buf: &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
 
-fn to-str*(self: i32) -> str = fmt-impl(uint(self.abs()), self < 0, Format.Decimal)
-fn to-str*(self: i32, format: Format) -> str = fmt-impl(uint(self.abs()), self < 0, format)
-fn fmt*(self: &i32, buf: &mut StrBuf) = buf.push(self.to-str(Format.Decimal))
+fn to-str*(x: i32) -> str = fmt-impl(uint(x.abs()), x < 0, Format.Decimal)
+fn to-str*(x: i32, format: Format) -> str = fmt-impl(uint(x.abs()), x < 0, format)
+fn fmt*(x: &i32, buf: &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
 
-fn to-str*(self: i64) -> str = fmt-impl(uint(self.abs()), self < 0, Format.Decimal)
-fn to-str*(self: i64, format: Format) -> str = fmt-impl(uint(self.abs()), self < 0, format)
-fn fmt*(self: &i64, buf: &mut StrBuf) = buf.push(self.to-str(Format.Decimal))
+fn to-str*(x: i64) -> str = fmt-impl(uint(x.abs()), x < 0, Format.Decimal)
+fn to-str*(x: i64, format: Format) -> str = fmt-impl(uint(x.abs()), x < 0, format)
+fn fmt*(x: &i64, buf: &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
 
-fn to-str*(self: int) -> str = fmt-impl(uint(self.abs()), self < 0, Format.Decimal)
-fn to-str*(self: int, format: Format) -> str = fmt-impl(uint(self.abs()), self < 0, format)
-fn fmt*(self: &int, buf: &mut StrBuf) = buf.push(self.to-str(Format.Decimal))
+fn to-str*(x: int) -> str = fmt-impl(uint(x.abs()), x < 0, Format.Decimal)
+fn to-str*(x: int, format: Format) -> str = fmt-impl(uint(x.abs()), x < 0, format)
+fn fmt*(x: &int, buf: &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
 
-fn to-str*(self: u8) -> str = fmt-impl(self, false, Format.Decimal)
-fn to-str*(self: u8, format: Format) -> str = fmt-impl(self, false, format)
-fn fmt*(self: &u8, buf: &mut StrBuf) = buf.push(self.to-str(Format.Decimal))
+fn to-str*(x: u8) -> str = fmt-impl(x, false, Format.Decimal)
+fn to-str*(x: u8, format: Format) -> str = fmt-impl(x, false, format)
+fn fmt*(x: &u8, buf: &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
 
-fn to-str*(self: u16) -> str = fmt-impl(self, false, Format.Decimal)
-fn to-str*(self: u16, format: Format) -> str = fmt-impl(self, false, format)
-fn fmt*(self: &u16, buf: &mut StrBuf) = buf.push(self.to-str(Format.Decimal))
+fn to-str*(x: u16) -> str = fmt-impl(x, false, Format.Decimal)
+fn to-str*(x: u16, format: Format) -> str = fmt-impl(x, false, format)
+fn fmt*(x: &u16, buf: &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
 
-fn to-str*(self: u32) -> str = fmt-impl(self, false, Format.Decimal)
-fn to-str*(self: u32, format: Format) -> str = fmt-impl(self, false, format)
-fn fmt*(self: &u32, buf: &mut StrBuf) = buf.push(self.to-str(Format.Decimal))
+fn to-str*(x: u32) -> str = fmt-impl(x, false, Format.Decimal)
+fn to-str*(x: u32, format: Format) -> str = fmt-impl(x, false, format)
+fn fmt*(x: &u32, buf: &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
 
-fn to-str*(self: u64) -> str = fmt-impl(self, false, Format.Decimal)
-fn to-str*(self: u64, format: Format) -> str = fmt-impl(self, false, format)
-fn fmt*(self: &u64, buf: &mut StrBuf) = buf.push(self.to-str(Format.Decimal))
+fn to-str*(x: u64) -> str = fmt-impl(x, false, Format.Decimal)
+fn to-str*(x: u64, format: Format) -> str = fmt-impl(x, false, format)
+fn fmt*(x: &u64, buf: &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
 
-fn to-str*(self: uint) -> str = fmt-impl(self, false, Format.Decimal)
-fn to-str*(self: uint, format: Format) -> str = fmt-impl(self, false, format)
-fn fmt*(self: &uint, buf: &mut StrBuf) = buf.push(self.to-str(Format.Decimal))
+fn to-str*(x: uint) -> str = fmt-impl(x, false, Format.Decimal)
+fn to-str*(x: uint, format: Format) -> str = fmt-impl(x, false, format)
+fn fmt*(x: &uint, buf: &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
 
 type Format* {
     Binary

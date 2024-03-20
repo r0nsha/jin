@@ -44,8 +44,8 @@ fn Error.from-os-error*(code: i32) -> Error =
 fn Error.last-os-error*() -> Error =
     Error.from-os-error(unsafe (c.__errno_location().0))
 
-fn fmt*(self: &Error, buf: &mut StrBuf) =
-    match self {
+fn fmt*(err: &Error, buf: &mut StrBuf) =
+    match err {
         Error.PermissionDenied -> buf.push("Permission denied")
         Error.NotFound -> buf.push("Not found")
         Error.Interrupted -> buf.push("Interrupted")

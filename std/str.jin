@@ -28,13 +28,10 @@ fn str.from-utf8-unchecked*(bytes: &[]u8) -> &str =
 fn str.from-utf8-mut-unchecked*(bytes: &mut []u8) -> &mut str =
     unsafe as[_](bytes)
 
-fn as-bytes*(self: &str) -> &[]u8 =
-    unsafe as[_](self)
+fn as-bytes*(s: &str) -> &[]u8 = unsafe as[_](s)
+fn as-bytes-mut*(s: &mut str) -> &mut []u8 = unsafe as[_](s)
 
-fn as-bytes-mut*(self: &mut str) -> &mut []u8 =
-    unsafe as[_](self)
-
-fn fmt*(self: &str, buf: &mut StrBuf) = buf.push(self)
+fn fmt*(s: &str, buf: &mut StrBuf) = buf.push(s)
 
 type StrBuf*(array: Array[u8])
 
@@ -43,29 +40,29 @@ fn StrBuf.new*() -> StrBuf = StrBuf.with-cap(1)
 fn StrBuf.with-cap*(cap: uint) -> StrBuf =
     StrBuf(array-with-nul-byte(cap))
 
-fn len*(self: &StrBuf) -> uint = self.array.len() - 1
-fn cap*(self: &StrBuf) -> uint = self.array.cap()
-fn is-empty*(self: &StrBuf) -> bool = self.len() == 0
+fn len*(sb: &StrBuf) -> uint = sb.array.len() - 1
+fn cap*(sb: &StrBuf) -> uint = sb.array.cap()
+fn is-empty*(sb: &StrBuf) -> bool = sb.len() == 0
 
-fn as-ref*(self: &StrBuf) -> &str =
+fn as-ref*(sb: &StrBuf) -> &str =
     str.from-utf8-unchecked(
-        &self.array.as-ref().[..self.array.len() - 1]
+        &sb.array.as-ref().[..sb.array.len() - 1]
     )
 
-fn as-mut*(self: &mut StrBuf) -> &mut str =
+fn as-mut*(sb: &mut StrBuf) -> &mut str =
     str.from-utf8-mut-unchecked(
-        &mut self.array.as-mut().[..self.array.len() - 1]
+        &mut sb.array.as-mut().[..sb.array.len() - 1]
     )
 
-fn take*(mut self: StrBuf) -> str = {
-    let s = self.array.take()
+fn take*(mut sb: StrBuf) -> str = {
+    let s = sb.array.take()
     unsafe s.len -= 1
     str.from-utf8-unchecked(s)
 }
 
-fn push*(self: &mut StrBuf, s: str) = self.push(&s)
+fn push*(sb: &mut StrBuf, s: str) = sb.push(&s)
 
-fn push*(self: &mut StrBuf, s: &str) = {
+fn push*(sb: &mut StrBuf, s: &str) = {
     if s.len == 0 {
         return
     }
@@ -74,35 +71,35 @@ fn push*(self: &mut StrBuf, s: &str) = {
     let len = bytes.len
 
     // TODO: This is a good use-case for implementing a `push([]T)` function.
-    self.array.reserve(len + 1)
-    self.array.set(self.array.len() - 1, bytes.[0])
+    sb.array.reserve(len + 1)
+    sb.array.set(sb.array.len() - 1, bytes.[0])
 
     let mut i = 1
     for if i < len {
-        self.array.push-unchecked(bytes.[i])
+        sb.array.push-unchecked(bytes.[i])
         i += 1
     }
 
-    self.array.push(b'\0')
+    sb.array.push(b'\0')
 }
 
-fn push*(self: &mut StrBuf, ch: char) = {
-    let len = self.array.len()
+fn push*(sb: &mut StrBuf, ch: char) = {
+    let len = sb.array.len()
     let ch-len = ch.len-utf8()
     let new-len = len + ch-len
 
     // TODO: This is a good use-case for implementing an `extend` function. For this we need:
     //      1. Stack allocated arrays. We then encode the char into an array of 4 elements.
     //      2. Implement `std.array.extend([]T)`
-    self.array.reserve(ch-len + 1)
-    self.array.set-len(new-len - 1)
+    sb.array.reserve(ch-len + 1)
+    sb.array.set-len(new-len - 1)
 
-    ch.encode-utf8(&mut self.array.as-mut().[len - 1..new-len - 1])
-    self.array.push(b'\0')
+    ch.encode-utf8(&mut sb.array.as-mut().[len - 1..new-len - 1])
+    sb.array.push(b'\0')
 }
 
-fn clear*(self: &mut StrBuf) = {
-    self.array = array-with-nul-byte(self.array.cap())
+fn clear*(sb: &mut StrBuf) = {
+    sb.array = array-with-nul-byte(sb.array.cap())
 }
 
 fn array-with-nul-byte(cap: uint) -> Array[u8] = {

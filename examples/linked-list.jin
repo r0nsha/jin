@@ -13,21 +13,21 @@ type Node[T](
 
 fn Node.new[T](data: T) -> Node[T] = Node(prev: Option.None, data: data, next: Option.None)
 
-fn push-front[T](self: &mut LinkedList[T], data: T) = {
+fn push-front[T](list: &mut LinkedList[T], data: T) = {
     let mut node = Node.new(data)
     let node-mut = &mut node
 
-    match self.head := Option.Some(node) {
+    match list.head := Option.Some(node) {
         Option.Some(old-head) -> {
             old-head.prev = Option.Some(node-mut)
             node-mut.next = Option.Some(old-head)
         }
-        Option.None -> self.tail = Option.Some(node-mut)
+        Option.None -> list.tail = Option.Some(node-mut)
     }
 }
 
-fn print(self: &LinkedList[int]) = {
-    let mut curr = &self.head
+fn print(list: &LinkedList[int]) = {
+    let mut curr = &list.head
 
     print("[")
 

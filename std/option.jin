@@ -5,29 +5,29 @@ type Option*[T] {
     None
 }
 
-fn or-panic*[T](self: Option[T]) -> T =
-    match self {
+fn or-panic*[T](opt: Option[T]) -> T =
+    match opt {
         Option.Some(v) -> v
         Option.None -> panic("called `or-panic` on a `None` value")
     }
 
-fn is-some*[T](self: &Option[T]) -> bool =
-    match self {
+fn is-some*[T](opt: &Option[T]) -> bool =
+    match opt {
         Option.Some(_) -> true
         Option.None -> false
     }
 
-fn is-none*[T](self: &Option[T]) -> bool =
-    !self.is-some()
+fn is-none*[T](opt: &Option[T]) -> bool =
+    !opt.is-some()
 
-fn map*[A, B](self: Option[A], f: fn(A) -> B) -> Option[B] =
-    match self {
+fn map*[A, B](opt: Option[A], f: fn(A) -> B) -> Option[B] =
+    match opt {
         Option.Some(v) -> Option.Some(f(v))
         Option.None -> Option.None
     }
 
-fn map-or*[A, B](self: Option[A], default: B, f: fn(A) -> B) -> B =
-    match self {
+fn map-or*[A, B](opt: Option[A], default: B, f: fn(A) -> B) -> B =
+    match opt {
         Option.Some(v) -> f(v)
         Option.None -> default
     }

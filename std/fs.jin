@@ -63,7 +63,7 @@ type File*(fd: RawFd)
 
 const DEFAULT-BUF-SIZE: uint = 8 * 1024
 
-fn read-to-end*(self: &File) -> io.Result[Array[u8]] = {
+fn read-to-end*(file: &File) -> io.Result[Array[u8]] = {
     // TODO: initialize with-cap to file's size (or 0 if reading size fails)
     // TODO: implement `Array.filled(T, uint) where T: Copy`
     let mut buf = Array.new[u8]()
@@ -73,7 +73,7 @@ fn read-to-end*(self: &File) -> io.Result[Array[u8]] = {
     unsafe scratch.len = DEFAULT-BUF-SIZE
 
     for {
-        match self.read(&mut scratch) {
+        match file.read(&mut scratch) {
             Result.Ok(0) -> break
             Result.Ok(len) -> {
                 // TODO: Implement `std.array.extend([]T)`
@@ -92,8 +92,8 @@ fn read-to-end*(self: &File) -> io.Result[Array[u8]] = {
     Result.Ok(buf)
 }
 
-fn read-to-str*(self: &File) -> io.Result[str] =
-    match self.read-to-end() {
+fn read-to-str*(file: &File) -> io.Result[str] =
+    match file.read-to-end() {
         Result.Ok(buf) -> match str.from-utf8(buf.take()) {
             Result.Ok(s) -> Result.Ok(s)
             Result.Err(()) -> Result.Err(io.Error.InvalidData("stream did not contain valid UTF-8"))
@@ -101,14 +101,14 @@ fn read-to-str*(self: &File) -> io.Result[str] =
         Result.Err(err) -> Result.Err(err)
     }
 
-fn read*(self: &File, buf: &mut []u8) -> io.Result[uint] =
-    match unsafe c.read(self.fd, buf.ptr, buf.len) {
+fn read*(file: &File, buf: &mut []u8) -> io.Result[uint] =
+    match unsafe c.read(file.fd, buf.ptr, buf.len) {
         -1 -> Result.Err(io.Error.last-os-error())
         len -> Result.Ok(uint(len))
     }
 
-fn write*(self: &mut File, buf: &[]u8) -> io.Result[uint] =
-    match unsafe c.write(self.fd, buf.ptr, buf.len) {
+fn write*(file: &mut File, buf: &[]u8) -> io.Result[uint] =
+    match unsafe c.write(file.fd, buf.ptr, buf.len) {
         -1 -> Result.Err(io.Error.last-os-error())
         written -> Result.Ok(uint(written))
     }
@@ -119,5 +119,5 @@ fn remove-file*(path: &str) -> io.Result[()] =
         _ -> Result.Ok(())
     }
 
-fn `=destroy`*(self: &mut File) =
-    unsafe c.close(self.fd)
+fn `=destroy`*(file: &mut File) =
+    unsafe c.close(file.fd)

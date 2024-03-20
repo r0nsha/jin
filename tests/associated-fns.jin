@@ -9,6 +9,6 @@ type Box(value: int)
 
 fn Box.default() -> Box = Box(0)
 
-fn print(self: &Box) = {
-    unsafe printf("Box(%d)\n".ptr, self.value)
+fn print(box: &Box) = {
+    unsafe printf("Box(%d)\n".ptr, box.value)
 }

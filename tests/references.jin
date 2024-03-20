@@ -37,7 +37,7 @@ fn print(box: &Box) = {
     unsafe printf("Box(%d)\n".ptr, box.value)
 }
 
-fn set(self: &mut Box, value: int) =
-    self.value = value
+fn set(box: &mut Box, value: int) =
+    box.value = value
 
 fn copy(bag: Bag) -> Bag = Bag(bag.a, bag.b)

@@ -1,15 +1,15 @@
-fn swap*[T](self: &mut []T, a: uint, b: uint) = unsafe {
-    let pa = self.ptr + a
-    let pb = self.ptr + b
+fn swap*[T](s: &mut []T, a: uint, b: uint) = unsafe {
+    let pa = s.ptr + a
+    let pb = s.ptr + b
     pb.0 = pa.0 := pb.0
 }
 
-fn reverse*[T](self: &mut []T) = {
+fn reverse*[T](s: &mut []T) = {
     let mut i = 0
-    let mut j = self.len - 1
+    let mut j = s.len - 1
 
     for if i < j {
-        self.swap(i, j)
+        s.swap(i, j)
         i += 1
         j -= 1
     }

@@ -29,7 +29,7 @@ const MAX-ONE-B: u32 = 0x80;
 const MAX-TWO-B: u32 = 0x800;
 const MAX-THREE-B: u32 = 0x10000;
 
-fn len-utf8*(self: char) -> uint = len-utf8(u32(self))
+fn len-utf8*(ch: char) -> uint = len-utf8(u32(ch))
 
 fn len-utf8(code: u32) -> uint =
     if code < MAX-ONE-B {
@@ -42,8 +42,8 @@ fn len-utf8(code: u32) -> uint =
         4
     }
 
-fn encode-utf8*(self: char, dst: &mut []u8) -> &mut []u8 =
-    encode-utf8-raw(u32(self), dst)
+fn encode-utf8*(ch: char, dst: &mut []u8) -> &mut []u8 =
+    encode-utf8-raw(u32(ch), dst)
 
 fn encode-utf8-raw*(code: u32, dst: &mut []u8) -> &mut []u8 = {
     let len = code.len-utf8()
