@@ -861,7 +861,7 @@ impl<'a> TryFrom<&'a str> for Builtin {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Hook {
-    Destroy,
+    Drop,
 }
 
 impl<'a> TryFrom<&'a str> for Hook {
@@ -869,7 +869,7 @@ impl<'a> TryFrom<&'a str> for Hook {
 
     fn try_from(value: &'a str) -> Result<Self, Self::Error> {
         match value {
-            "=destroy" => Ok(Self::Destroy),
+            "=drop" => Ok(Self::Drop),
             _ => Err(()),
         }
     }

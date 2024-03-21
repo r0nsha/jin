@@ -181,8 +181,8 @@ impl<'a> InstBuilder<'a> {
         self
     }
 
-    pub fn destroy(&mut self, value: ValueId, destroy_glue: bool, span: Span) -> &mut Self {
-        self.inst(Inst::Destroy { value, destroy_glue, span });
+    pub fn drop(&mut self, value: ValueId, drop_glue: bool, span: Span) -> &mut Self {
+        self.inst(Inst::Drop { value, drop_glue, span });
         self
     }
 

@@ -353,7 +353,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         Pat::Name(name) => {
                             let id = name.id;
                             let value = self.create_value(param.ty, ValueKind::Param(id, idx));
-                            self.create_destroy_flag(value, param.pat.span());
+                            self.create_drop_flag(value, param.pat.span());
                             self.locals.insert(id, value);
                         }
                         Pat::Discard(span) => {
@@ -361,13 +361,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                                 param.ty,
                                 ValueKind::Param(DefId::null(), idx),
                             );
-                            self.destroy_value_entirely(value, *span);
+                            self.drop_value_entirely(value, *span);
                         }
                     }
                 }
 
                 let result = self.lower_input_expr(body);
-                let result = self.copy_value_before_destroy(result, body.span);
+                let result = self.copy_value_before_drop(result, body.span);
 
                 self.exit_scope();
 
@@ -468,12 +468,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             self.push_inst_with(let_.ty, ValueKind::Local(name.id), |value| {
                                 Inst::StackAlloc { value, init: Some(init), span: expr.span }
                             });
-                        self.create_destroy_flag(value, name.span());
+                        self.create_drop_flag(value, name.span());
                         self.locals.insert(name.id, value);
                     }
                     Pat::Discard(span) => {
                         let init = self.lower_expr(&let_.value);
-                        self.destroy_value_entirely(init, *span);
+                        self.drop_value_entirely(init, *span);
                         self.try_move(init, let_.value.span);
                     }
                 }
@@ -576,7 +576,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.const_unit()
             }
             hir::ExprKind::Break => {
-                self.destroy_loop_values(expr.span);
+                self.drop_loop_values(expr.span);
                 let end_block =
                     self.closest_loop_scope().expect("to be inside a loop block").end_block;
                 self.ins(self.current_block).br(end_block);
@@ -607,7 +607,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 };
 
                 self.move_out(result, block.exprs.last().map_or(expr.span, |e| e.span));
-                let result = self.copy_value_before_destroy(result, expr.span);
+                let result = self.copy_value_before_drop(result, expr.span);
                 self.exit_scope();
 
                 result
@@ -859,7 +859,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         self.check_assign_mutability(AssignKind::Assign, lhs, span);
 
-        self.destroy_value_entirely(lhs, assign.lhs.span);
+        self.drop_value_entirely(lhs, assign.lhs.span);
         self.set_owned(lhs);
         self.ins(self.current_block).store(rhs, lhs, span);
     }
@@ -876,7 +876,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             init: Some(lhs),
             span,
         });
-        self.create_destroy_flag(old_lhs, span);
+        self.create_drop_flag(old_lhs, span);
         self.ins(self.current_block).store(rhs, lhs, span);
 
         old_lhs
@@ -888,7 +888,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         self.check_slice_assign_mutability(AssignKind::Assign, slice, span);
 
-        self.destroy_value_entirely(elem, idx.expr.span);
+        self.drop_value_entirely(elem, idx.expr.span);
         self.ins(self.current_block).slice_store(slice, index, rhs, assign.lhs.span);
     }
 
@@ -903,7 +903,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             init: Some(elem),
             span,
         });
-        self.create_destroy_flag(old_elem, span);
+        self.create_drop_flag(old_elem, span);
         self.ins(self.current_block).slice_store(slice, index, rhs, swap.lhs.span);
 
         old_elem
@@ -919,7 +919,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let elem = self.create_value(elem_ty, ValueKind::Register(None));
         self.ins(self.current_block).slice_index(elem, slice, index, span);
 
-        // We must set the slice element as moved, so that we don't destroy it
+        // We must set the slice element as moved, so that we don't drop it
         self.set_moved(elem, span);
         self.value_roots.insert(slice, elem);
 
@@ -1028,7 +1028,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             pmatch::Decision::Ok(body) => {
                 self.body.create_edge(parent_block, body.block);
                 self.lower_decision_bindings(state, body.block, body.bindings);
-                self.destroy_match_values(state, values);
+                self.drop_match_values(state, values);
                 self.lower_decision_body(state, self.current_block, body.block);
                 body.block
             }
@@ -1227,7 +1227,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         self.push_inst_with(binding_ty, ValueKind::Local(id), |value| {
                             Inst::StackAlloc { value, init: Some(source), span }
                         });
-                    self.create_destroy_flag(binding_value, span);
+                    self.create_drop_flag(binding_value, span);
                     self.locals.insert(id, binding_value);
 
                     match state.actions.get(&source) {
@@ -1245,14 +1245,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 }
                 pmatch::Binding::Discard(source, span) => match state.actions.get(&source) {
                     Some(&ValueAction::Move(_)) => {
-                        self.destroy_value_entirely(source, span);
+                        self.drop_value_entirely(source, span);
                         self.try_move(source, span);
                     }
                     Some(&ValueAction::IncRef(_)) => {
                         self.set_moved(source, span);
                     }
                     None => {
-                        self.destroy_value_entirely(source, span);
+                        self.drop_value_entirely(source, span);
                         self.set_moved(source, span);
                     }
                 },
@@ -1260,7 +1260,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    fn destroy_match_values(&mut self, state: &DecisionState, mut values: Vec<ValueId>) {
+    fn drop_match_values(&mut self, state: &DecisionState, mut values: Vec<ValueId>) {
         while let Some(value) = values.pop() {
             if matches!(self.value_state(value), ValueState::Moved(..)) {
                 continue;
@@ -1274,7 +1274,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 }
                 _ => {
                     self.set_moved(value, state.span);
-                    self.destroy_and_set_flag(value, false, state.span);
+                    self.drop_and_flag(value, false, state.span);
                 }
             }
         }
@@ -1385,7 +1385,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.ins(guard_join).brif(cond, body.block, Some(fallback_block), state.span);
 
         self.lower_decision_bindings(state, body.block, body.bindings);
-        self.destroy_match_values(state, values);
+        self.drop_match_values(state, values);
         self.lower_decision_body(state, self.current_block, body.block);
 
         guard
@@ -1444,7 +1444,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn push_return(&mut self, value: ValueId, span: Span) {
-        self.destroy_all_values(span);
+        self.drop_all_values(span);
         self.ins(self.current_block).ret(value, span);
     }
 
@@ -1454,9 +1454,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value
     }
 
-    // Used to keep a copy of a value that its parent could potentially be destroyed
-    pub fn copy_value_before_destroy(&mut self, value: ValueId, span: Span) -> ValueId {
-        let any_parent_destroyed = self
+    // Used to keep a copy of a value that its parent could potentially be dropped
+    pub fn copy_value_before_drop(&mut self, value: ValueId, span: Span) -> ValueId {
+        let any_parent_dropped = self
             .walk_parents(value, |this, parent, _| -> Result<(), ()> {
                 if this.value_is_partially_moved(parent) {
                     Err(())
@@ -1466,7 +1466,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             })
             .is_err();
 
-        if !any_parent_destroyed {
+        if !any_parent_dropped {
             return value;
         }
 
@@ -1504,7 +1504,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             span,
         });
 
-        self.create_destroy_flag(ref_value, span);
+        self.create_drop_flag(ref_value, span);
         self.ins(self.current_block).incref(ref_value, span);
 
         self.value_roots.insert(to_clone, ref_value);
@@ -1523,8 +1523,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let instantiation = adt.instantiation(targs);
                 let mut folder = instantiation.folder();
 
-                // In order for fields to be destroyed in field-order,
-                // we must introduce them in reverse order (since values are destroyed in
+                // In order for fields to be dropped in field-order,
+                // we must introduce them in reverse order (since values are dropped in
                 // reverse).
                 let mut fields = FxHashMap::default();
 
@@ -1532,12 +1532,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     let name = f.name.name();
                     let ty = folder.fold(f.ty);
 
-                    let should_destroy = f.ty.is_ref() || f.ty.needs_free(self.cx.db);
+                    let should_drop = f.ty.is_ref() || f.ty.needs_free(self.cx.db);
 
-                    if should_destroy || f.ty.is_value_struct(self.cx.db) {
+                    if should_drop || f.ty.is_value_struct(self.cx.db) {
                         let field_value = self.create_value(ty, ValueKind::Field(value, name));
-                        if should_destroy {
-                            self.create_destroy_flag(field_value, f.name.span());
+                        if should_drop {
+                            self.create_drop_flag(field_value, f.name.span());
                             fields.insert(name, field_value);
                         }
                     }
@@ -1657,7 +1657,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn exit_scope(&mut self) {
-        self.destroy_scope_values();
+        self.drop_scope_values();
         let scope = self.scopes.pop().expect("cannot exit the root scope");
 
         if let Some(curr_scope) = self.scopes.last_mut() {

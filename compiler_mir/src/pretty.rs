@@ -164,8 +164,8 @@ impl<'db> PrettyCx<'db> {
                 .append(D::text("["))
                 .append(self.value(body, *index))
                 .append(D::text("]")),
-            Inst::Destroy { value, .. } => {
-                D::text("destroy").append(D::space()).append(self.value(body, *value))
+            Inst::Drop { value, .. } => {
+                D::text("drop").append(D::space()).append(self.value(body, *value))
             }
             Inst::Free { value, .. } => {
                 D::text("free").append(D::space()).append(self.value(body, *value))

@@ -114,8 +114,8 @@ pub struct Body {
     // A mapping for values to their instantation, used for specialization
     instantations: FxHashMap<ValueId, Instantiation>,
 
-    // A mapping of values to their destroy flags
-    destroy_flags: FxHashMap<ValueId, ValueId>,
+    // A mapping of values to their drop flags
+    drop_flags: FxHashMap<ValueId, ValueId>,
 }
 
 pub type Blocks = IndexVec<BlockId, Block>;
@@ -140,7 +140,7 @@ impl Body {
             blocks: IndexVec::new(),
             values: IndexVec::new(),
             instantations: FxHashMap::default(),
-            destroy_flags: FxHashMap::default(),
+            drop_flags: FxHashMap::default(),
         }
     }
 
@@ -444,7 +444,7 @@ pub enum Inst {
     SliceIndex { value: ValueId, slice: ValueId, index: ValueId, checked: bool, span: Span },
     SliceSlice { value: ValueId, slice: ValueId, low: ValueId, high: ValueId, span: Span },
     SliceStore { slice: ValueId, index: ValueId, value: ValueId, checked: bool, span: Span },
-    Destroy { value: ValueId, destroy_glue: bool, span: Span },
+    Drop { value: ValueId, drop_glue: bool, span: Span },
     Free { value: ValueId, traced: bool, span: Span },
     IncRef { value: ValueId, span: Span },
     DecRef { value: ValueId, span: Span },

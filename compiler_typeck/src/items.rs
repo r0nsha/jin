@@ -595,7 +595,8 @@ pub(crate) fn check_let_body(
     }
 
     let value = if env.in_global_scope() {
-        // We do this so that global variable initialization always includes a block     // (required for destroys)
+        // We do this so that global variable initialization always
+        // includes a block (required for drops)
         cx.expr_or_block(value)
     } else {
         value

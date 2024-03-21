@@ -22,7 +22,7 @@ use crate::{
 
 pub fn monomorphize(db: &Db, mir: &mut Mir) {
     Monomorphize::new(db).run(mir);
-    ExpandDestroys::new(db, mir).run(mir);
+    ExpandDrops::new(db, mir).run(mir);
 }
 
 struct Monomorphize<'db> {
@@ -324,7 +324,7 @@ impl MonoMir {
 }
 
 #[derive(Debug)]
-struct ExpandDestroys<'db> {
+struct ExpandDrops<'db> {
     db: &'db Db,
     mono_mir: MonoMir,
 
@@ -332,7 +332,7 @@ struct ExpandDestroys<'db> {
     free_fns: FxHashMap<Ty, FnSigId>,
 }
 
-impl<'db> ExpandDestroys<'db> {
+impl<'db> ExpandDrops<'db> {
     fn new(db: &'db Db, mir: &Mir) -> Self {
         Self { db, mono_mir: MonoMir::new(mir), free_fns: FxHashMap::default() }
     }
@@ -352,20 +352,20 @@ impl<'db> ExpandDestroys<'db> {
     }
 
     fn body(&mut self, body: &mut Body) {
-        self.remove_unused_destroys(body);
-        self.expand_destroy_glue(body);
+        self.remove_unused_drops(body);
+        self.expand_drop_glue(body);
     }
 
-    fn remove_unused_destroys(&self, body: &mut Body) {
+    fn remove_unused_drops(&self, body: &mut Body) {
         let value_tys: FxHashMap<ValueId, Ty> =
             body.values().iter().map(|v| (v.id, v.ty)).collect();
 
         for block in body.blocks_mut() {
             block.insts.retain_mut(|inst| match inst {
-                Inst::Destroy { value, destroy_glue, span } => {
+                Inst::Drop { value, drop_glue, span } => {
                     let ty = value_tys[&*value];
 
-                    if !self.should_destroy_ty(ty, *destroy_glue) {
+                    if !self.should_drop_ty(ty, *drop_glue) {
                         return false;
                     }
 
@@ -383,12 +383,12 @@ impl<'db> ExpandDestroys<'db> {
         }
     }
 
-    fn should_destroy_ty(&self, ty: Ty, destroy_glue: bool) -> bool {
+    fn should_drop_ty(&self, ty: Ty, drop_glue: bool) -> bool {
         if self.should_refcount_ty(ty) {
             return true;
         }
 
-        if !ty.is_rc(self.db) && !destroy_glue {
+        if !ty.is_rc(self.db) && !drop_glue {
             return false;
         }
 
@@ -399,13 +399,13 @@ impl<'db> ExpandDestroys<'db> {
         matches!(ty.kind(), TyKind::Ref(ty, _) if ty.is_rc(self.db))
     }
 
-    fn expand_destroy_glue(&mut self, body: &mut Body) {
+    fn expand_drop_glue(&mut self, body: &mut Body) {
         let mut expanded: Vec<(BlockId, usize, Option<FnSigId>)> = vec![];
 
         for block in body.blocks() {
             for (idx, inst) in block.insts.iter().enumerate() {
-                if let Inst::Destroy { value, destroy_glue, .. } = inst {
-                    let free_fn = if *destroy_glue {
+                if let Inst::Drop { value, drop_glue, .. } = inst {
+                    let free_fn = if *drop_glue {
                         let ty = body.value(*value).ty;
                         Some(self.get_or_create_free_fn(ty))
                     } else {
@@ -417,7 +417,7 @@ impl<'db> ExpandDestroys<'db> {
         }
 
         for (block, inst_idx, free_fn) in expanded {
-            let Inst::Destroy { value, span, .. } = body.block(block).insts[inst_idx] else {
+            let Inst::Drop { value, span, .. } = body.block(block).insts[inst_idx] else {
                 unreachable!()
             };
 
@@ -481,12 +481,12 @@ impl TyFolder for MonoParamFolder<'_> {
 
 #[derive(Debug)]
 struct CreateAdtFree<'cx, 'db> {
-    cx: &'cx mut ExpandDestroys<'db>,
+    cx: &'cx mut ExpandDrops<'db>,
     body: Body,
 }
 
 impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
-    fn new(cx: &'cx mut ExpandDestroys<'db>) -> Self {
+    fn new(cx: &'cx mut ExpandDrops<'db>) -> Self {
         Self { cx, body: Body::new() }
     }
 
@@ -499,10 +499,9 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
         let adt_span = adt.name.span();
 
         let adt_name = mangle::adt_name(self.cx.db, adt, targs);
-        let mangled_name = ustr(&format!("{adt_name}_destroy"));
-        let display_name =
-            ustr(&self.cx.db[adt.def_id].qpath.clone().child(ustr("$destroy")).join());
-        let sig = create_destroy_sig(self.cx, adt_ty, mangled_name, display_name, adt_span);
+        let mangled_name = ustr(&format!("{adt_name}_drop"));
+        let display_name = ustr(&self.cx.db[adt.def_id].qpath.clone().child(ustr("$drop")).join());
+        let sig = create_drop_sig(self.cx, adt_ty, mangled_name, display_name, adt_span);
 
         let self_value = self.body.create_value(adt_ty, ValueKind::Param(DefId::null(), 0));
 
@@ -604,12 +603,12 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
 
 #[derive(Debug)]
 struct CreateSliceFree<'cx, 'db> {
-    cx: &'cx mut ExpandDestroys<'db>,
+    cx: &'cx mut ExpandDrops<'db>,
     body: Body,
 }
 
 impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
-    fn new(cx: &'cx mut ExpandDestroys<'db>) -> Self {
+    fn new(cx: &'cx mut ExpandDrops<'db>) -> Self {
         Self { cx, body: Body::new() }
     }
 
@@ -619,15 +618,15 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
         let main_span = Span::uniform(self.cx.db.main_source_id(), 0);
 
         let tyname = mangle::ty_name(self.cx.db, ty);
-        let mangled_name = ustr(&format!("{tyname}_destroy"));
-        let display_name = ustr(&format!("{}$destroy", ty.display(self.cx.db)));
-        let sig = create_destroy_sig(self.cx, ty, mangled_name, display_name, main_span);
+        let mangled_name = ustr(&format!("{tyname}_drop"));
+        let display_name = ustr(&format!("{}$drop", ty.display(self.cx.db)));
+        let sig = create_drop_sig(self.cx, ty, mangled_name, display_name, main_span);
 
         let slice = self.body.create_value(ty, ValueKind::Param(DefId::null(), 0));
 
         let start = self.body.create_block("start");
 
-        let end_block = if self.cx.should_destroy_ty(elem_ty, true) {
+        let end_block = if self.cx.should_drop_ty(elem_ty, true) {
             self.free_slice_elems(start, slice, elem_ty, main_span)
         } else {
             start
@@ -642,7 +641,7 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
         sig
     }
 
-    // Generates a loop which goes over all slice elements, destroying them.
+    // Generates a loop which goes over all slice elements, droping them.
     // The generated code in psuedo-code:
     //
     // ```rust
@@ -723,8 +722,8 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
     }
 }
 
-fn create_destroy_sig(
-    cx: &mut ExpandDestroys,
+fn create_drop_sig(
+    cx: &mut ExpandDrops,
     ty: Ty,
     mangled_name: Ustr,
     display_name: Ustr,

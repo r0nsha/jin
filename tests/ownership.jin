@@ -10,7 +10,7 @@ fn main() = {
     // move-into-for()
     // copy()
     // assign-not-moved()
-    // destroy-discarded-values(Num(1))
+    // drop-discarded-values(Num(1))
 }
 
 fn use-after-move() = {
@@ -65,7 +65,7 @@ fn assign-not-moved() = {
     let mut wrapper = Wrapper(Num(1))
 
     // `wrapper` is NOT marked as moved since this is a `place` expression.
-    // also `wrapper.num` is destroyed here. I also added some weird edge cases...
+    // also `wrapper.num` is droped here. I also added some weird edge cases...
     wrapper.num = Num(2)
     { wrapper }.num = Num(2)
     {
@@ -74,7 +74,7 @@ fn assign-not-moved() = {
     }.num = Num(2)
 
     let mut wrapper = Wrapper(Num(1))
-    wrapper.num = Num(3) // `wrapper.num` destroyed here
+    wrapper.num = Num(3) // `wrapper.num` droped here
     wrapper.num.field = 2
 
     let n1 = Num(1)
@@ -87,6 +87,6 @@ fn assign-not-moved() = {
     }
 }
 
-fn destroy-discarded-values(_: Num) = {
+fn drop-discarded-values(_: Num) = {
     let _ = Num(2)
 }

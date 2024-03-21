@@ -124,7 +124,7 @@ impl<'cx, 'db> Eval<'cx, 'db> {
                 | Inst::SliceIndex { span, .. }
                 | Inst::SliceSlice { span, .. }
                 | Inst::SliceStore { span, .. }
-                | Inst::Destroy { span, .. }
+                | Inst::Drop { span, .. }
                 | Inst::Free { span, .. }
                 | Inst::IncRef { span, .. }
                 | Inst::DecRef { span, .. }

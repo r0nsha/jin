@@ -119,5 +119,5 @@ fn remove-file*(path: &str) -> io.Result[()] =
         _ -> Result.Ok(())
     }
 
-fn `=destroy`*(file: &mut File) =
+fn `=drop`*(file: &mut File) =
     unsafe c.close(file.fd)

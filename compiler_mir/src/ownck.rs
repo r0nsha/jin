@@ -50,7 +50,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.insert_loop_move(value, moved_to);
         self.check_move_out_of_global(value, moved_to)?;
 
-        self.set_destroy_flag(value, moved_to);
+        self.set_drop_flag(value, moved_to);
 
         Ok(())
     }
@@ -151,9 +151,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn check_can_partially_move(&self, value: ValueId, moved_to: Span) -> DiagnosticResult<()> {
         let value_ty = self.ty_of(value);
         let Some((adt_id, _)) = value_ty.as_adt() else { return Ok(()) };
-        if let Some(hook_id) = self.cx.db.hooks.get(&(adt_id, Hook::Destroy)) {
+        if let Some(hook_id) = self.cx.db.hooks.get(&(adt_id, Hook::Drop)) {
             Err(Diagnostic::error(format!(
-                "`{}` cannot be partially moved because it's of type `{}`, which has a defined destroy hook",
+                "`{}` cannot be partially moved because it's of type `{}`, which has a defined drop hook",
                 self.value_name(value),
                 value_ty.display(self.cx.db)
             ))
@@ -328,7 +328,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         matches!(self.value_state(value), ValueState::PartiallyMoved(..))
     }
 
-    pub(super) fn destroy_scope_values(&mut self) {
+    pub(super) fn drop_scope_values(&mut self) {
         if !self.in_connected_block() {
             return;
         }
@@ -337,12 +337,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         for idx in (0..self.scope().created_values.len()).rev() {
             let value = self.scope().created_values[idx];
-            self.destroy_value(value, span);
+            self.drop_value(value, span);
         }
     }
 
-    pub(super) fn destroy_loop_values(&mut self, span: Span) {
-        let values_to_destroy = self
+    pub(super) fn drop_loop_values(&mut self, span: Span) {
+        let to_drop = self
             .scopes
             .iter()
             .rev()
@@ -351,13 +351,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             .copied()
             .collect::<Vec<_>>();
 
-        for value in values_to_destroy {
-            self.destroy_value(value, span);
+        for value in to_drop {
+            self.drop_value(value, span);
         }
     }
 
-    pub(super) fn destroy_all_values(&mut self, span: Span) {
-        let values_to_destroy = self
+    pub(super) fn drop_all_values(&mut self, span: Span) {
+        let to_drop = self
             .scopes
             .iter()
             .rev()
@@ -365,55 +365,50 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             .copied()
             .collect::<Vec<_>>();
 
-        for value in values_to_destroy {
-            self.destroy_value(value, span);
+        for value in to_drop {
+            self.drop_value(value, span);
         }
     }
 
-    pub(super) fn destroy_value(&mut self, value: ValueId, span: Span) {
-        if !self.needs_destroy(value) {
+    pub(super) fn drop_value(&mut self, value: ValueId, span: Span) {
+        if !self.needs_drop(value) {
             return;
         }
 
         match self.value_state(value) {
             ValueState::Moved(_) => {
-                // Value has been moved, don't destroy
+                // Value has been moved, don't drop
             }
             ValueState::MaybeMoved(_) => {
-                // Conditional destroy
-                let destroy_flag = self.body.destroy_flags[&value];
+                // Conditional drop
+                let drop_flag = self.body.drop_flags[&value];
 
-                let destroy_block = self.body.create_block("destroy");
-                let no_destroy_block = self.body.create_block("no_destroy");
+                let drop_block = self.body.create_block("drop");
+                let no_drop_block = self.body.create_block("no_drop");
 
-                self.ins(self.current_block).brif(
-                    destroy_flag,
-                    destroy_block,
-                    Some(no_destroy_block),
-                    span,
-                );
+                self.ins(self.current_block).brif(drop_flag, drop_block, Some(no_drop_block), span);
 
-                let destroy_glue = self.needs_destroy_glue(value);
+                let drop_glue = self.needs_drop_glue(value);
 
-                self.position_at(destroy_block);
-                self.destroy_and_set_flag(value, destroy_glue, span);
-                self.ins(destroy_block).br(no_destroy_block);
+                self.position_at(drop_block);
+                self.drop_and_flag(value, drop_glue, span);
+                self.ins(drop_block).br(no_drop_block);
 
-                // Now that the value is destroyed, it has definitely been moved...
-                self.position_at(no_destroy_block);
+                // Now that the value is droped, it has definitely been moved...
+                self.position_at(no_drop_block);
             }
             ValueState::PartiallyMoved { .. } => {
-                self.destroy_and_set_flag(value, false, span);
+                self.drop_and_flag(value, false, span);
             }
             ValueState::Owned => {
-                // Unconditional destroy
-                let destroy_glue = self.needs_destroy_glue(value);
-                self.destroy_and_set_flag(value, destroy_glue, span);
+                // Unconditional drop
+                let drop_glue = self.needs_drop_glue(value);
+                self.drop_and_flag(value, drop_glue, span);
             }
         }
     }
 
-    pub(super) fn needs_destroy_glue(&self, value: ValueId) -> bool {
+    pub(super) fn needs_drop_glue(&self, value: ValueId) -> bool {
         match self.ty_of(value).kind() {
             TyKind::Adt(adt_id, _) => {
                 matches!(self.cx.db[*adt_id].kind, AdtKind::Union(_))
@@ -423,43 +418,42 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    pub(super) fn destroy_fields(&mut self, value: ValueId, span: Span) {
+    pub(super) fn drop_fields(&mut self, value: ValueId, span: Span) {
         self.walk_fields(value, |this, field| {
-            this.destroy_value(field, span);
+            this.drop_value(field, span);
             Ok(())
         })
         .unwrap();
     }
 
-    pub(super) fn destroy_value_entirely(&mut self, value: ValueId, span: Span) {
-        self.destroy_fields(value, span);
-        self.destroy_value(value, span);
+    pub(super) fn drop_value_entirely(&mut self, value: ValueId, span: Span) {
+        self.drop_fields(value, span);
+        self.drop_value(value, span);
     }
 
-    pub(super) fn create_destroy_flag(&mut self, value: ValueId, span: Span) {
-        if !self.needs_destroy(value) {
+    pub(super) fn create_drop_flag(&mut self, value: ValueId, span: Span) {
+        if !self.needs_drop(value) {
             return;
         }
 
         let init = self.const_bool(true);
-        let flag = self.push_inst_with_named_register(
-            self.cx.db.types.bool,
-            ustr("destroy_flag"),
-            |value| Inst::StackAlloc { value, init: Some(init), span },
-        );
-        self.body.destroy_flags.insert(value, flag);
+        let flag =
+            self.push_inst_with_named_register(self.cx.db.types.bool, ustr("drop_flag"), |value| {
+                Inst::StackAlloc { value, init: Some(init), span }
+            });
+        self.body.drop_flags.insert(value, flag);
     }
 
-    pub(super) fn destroy_and_set_flag(&mut self, value: ValueId, destroy_glue: bool, span: Span) {
-        self.call_destroy_hook(value, span);
-        self.ins(self.current_block).destroy(value, destroy_glue, span);
-        self.set_destroy_flag(value, span);
+    pub(super) fn drop_and_flag(&mut self, value: ValueId, drop_glue: bool, span: Span) {
+        self.call_drop_hook(value, span);
+        self.ins(self.current_block).drop(value, drop_glue, span);
+        self.set_drop_flag(value, span);
     }
 
-    pub(super) fn call_destroy_hook(&mut self, value: ValueId, span: Span) {
+    pub(super) fn call_drop_hook(&mut self, value: ValueId, span: Span) {
         let value_ty = self.ty_of(value);
         let Some((adt_id, targs)) = value_ty.as_adt() else { return };
-        let Some(&hook_id) = self.cx.db.hooks.get(&(adt_id, Hook::Destroy)) else { return };
+        let Some(&hook_id) = self.cx.db.hooks.get(&(adt_id, Hook::Drop)) else { return };
 
         let sig_id = self.cx.def_to_fn_sig[&hook_id];
         let sig_ty = self.cx.mir.fn_sigs[sig_id].ty;
@@ -486,19 +480,19 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.body.create_instantation(value, instantiation);
     }
 
-    fn set_destroy_flag(&mut self, value: ValueId, span: Span) {
-        if let Some(destroy_flag) = self.body.destroy_flags.get(&value).copied() {
+    fn set_drop_flag(&mut self, value: ValueId, span: Span) {
+        if let Some(drop_flag) = self.body.drop_flags.get(&value).copied() {
             let const_false = self.const_bool(false);
-            self.ins(self.current_block).store(const_false, destroy_flag, span);
+            self.ins(self.current_block).store(const_false, drop_flag, span);
             self.walk_fields(value, |this, field| {
-                this.set_destroy_flag(field, span);
+                this.set_drop_flag(field, span);
                 Ok(())
             })
             .unwrap();
         }
     }
 
-    pub(super) fn needs_destroy(&self, value: ValueId) -> bool {
+    pub(super) fn needs_drop(&self, value: ValueId) -> bool {
         let ty = self.ty_of(value);
         ty.is_ref() || ty.needs_free(self.cx.db)
     }
@@ -757,7 +751,7 @@ pub(super) enum ValueState {
     MaybeMoved(Span),
 
     // Some of this value's fields have been moved, and the parent value is considered as moved.
-    // The parent value should be destroyed in its scope.
+    // The parent value should be dropped in its scope.
     PartiallyMoved(Span),
 }
 

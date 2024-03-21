@@ -16,17 +16,17 @@ pub(crate) fn check(cx: &mut Typeck, sig: &hir::FnSig, id: DefId) -> DiagnosticR
     };
 
     match hook {
-        Hook::Destroy => check_destroy_hook(cx, sig, id),
+        Hook::Drop => check_drop_hook(cx, sig, id),
     }
 }
 
-fn check_destroy_hook(cx: &mut Typeck, sig: &hir::FnSig, id: DefId) -> DiagnosticResult<()> {
+fn check_drop_hook(cx: &mut Typeck, sig: &hir::FnSig, id: DefId) -> DiagnosticResult<()> {
     let fn_ty = sig.ty.as_fn().unwrap();
 
     let param = if fn_ty.params.len() == 1 {
         &fn_ty.params[0]
     } else {
-        return Err(Diagnostic::error("destroy hook must have exactly 1 parameter").with_label(
+        return Err(Diagnostic::error("drop hook must have exactly 1 parameter").with_label(
             Label::primary(sig.word.span(), format!("has {} parameters", fn_ty.params.len())),
         ));
     };
@@ -36,7 +36,7 @@ fn check_destroy_hook(cx: &mut Typeck, sig: &hir::FnSig, id: DefId) -> Diagnosti
             TyKind::Adt(adt_id, _) => *adt_id,
             ty => {
                 return Err(Diagnostic::error(format!(
-                    "cannot define destroy hook for type `{}`",
+                    "cannot define drop hook for type `{}`",
                     ty.display(cx.db)
                 ))
                 .with_label(Label::primary(sig.params[0].pat.span(), "invalid parameter type")))
@@ -50,14 +50,14 @@ fn check_destroy_hook(cx: &mut Typeck, sig: &hir::FnSig, id: DefId) -> Diagnosti
 
     if !cx.db[adt_id].is_ref() {
         return Err(Diagnostic::error(format!(
-            "cannot define destroy hook for value type `{}`",
+            "cannot define drop hook for value type `{}`",
             cx.db[adt_id].name
         ))
         .with_label(Label::primary(sig.params[0].pat.span(), "parameter is a value type")));
     }
 
     if !fn_ty.ret.is_unit() {
-        return Err(Diagnostic::error("destroy hook must return `()`")
+        return Err(Diagnostic::error("drop hook must return `()`")
             .with_label(Label::primary(sig.ret_span, "invalid return type")));
     }
 
@@ -66,7 +66,7 @@ fn check_destroy_hook(cx: &mut Typeck, sig: &hir::FnSig, id: DefId) -> Diagnosti
 
     if hook_pkg != adt_pkg {
         return Err(Diagnostic::error(format!(
-            "cannot define destroy hook for type `{}` that is defined outside this package",
+            "cannot define drop hook for type `{}` that is defined outside this package",
             cx.db[adt_id].name,
         ))
         .with_label(Label::primary(sig.word.span(), "cannot define hook for foreign type"))
@@ -76,9 +76,9 @@ fn check_destroy_hook(cx: &mut Typeck, sig: &hir::FnSig, id: DefId) -> Diagnosti
         )));
     }
 
-    if let Some(prev_id) = cx.db.hooks.insert((adt_id, Hook::Destroy), id) {
+    if let Some(prev_id) = cx.db.hooks.insert((adt_id, Hook::Drop), id) {
         return Err(Diagnostic::error(format!(
-            "destroy hook is already defined for type `{}`",
+            "drop hook is already defined for type `{}`",
             cx.db[adt_id].name,
         ))
         .with_label(Label::primary(sig.word.span(), "defined here"))

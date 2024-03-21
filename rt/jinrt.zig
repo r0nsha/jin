@@ -312,7 +312,7 @@ inline fn refcheck(backtrace: *Backtrace, refcnt: u32, tyname: cstr, frame: Stac
     if (refcnt > 0) {
         const msg = std.fmt.allocPrint(
             std.heap.c_allocator,
-            "cannot destroy a value of type `{s}` as it still has {} reference(s)",
+            "cannot drop a value of type `{s}` as it still has {} reference(s)",
             .{ tyname, refcnt },
         ) catch unreachable;
         jinrt_panic_raw(backtrace, @ptrCast(msg.ptr), frame);
