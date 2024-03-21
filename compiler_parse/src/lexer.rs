@@ -146,6 +146,7 @@ impl<'s> Lexer<'s> {
                     ';' => TokenKind::Semi(false),
                     '@' => TokenKind::At,
                     '?' => TokenKind::QuestionMark,
+                    '~' => TokenKind::Tilde,
                     '=' => {
                         if self.eat('=') {
                             TokenKind::EqEq

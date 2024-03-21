@@ -9,7 +9,7 @@ use compiler_core::{
     diagnostics::{Diagnostic, DiagnosticResult},
     hir::{self, FnKind, Hir},
     mangle,
-    middle::{BinOp, CmpOp, Mutability, NamePat, Pat, Vis},
+    middle::{BinOp, CmpOp, NamePat, Pat},
     span::Spanned,
     sym,
     ty::{
@@ -261,13 +261,7 @@ impl<'db> Lower<'db> {
         fields
             .iter()
             .map(|field| FnParam {
-                pat: Pat::Name(NamePat {
-                    id: DefId::null(),
-                    word: field.name,
-                    mutability: Mutability::Imm,
-                    vis: Vis::Public,
-                    ty: field.ty,
-                }),
+                pat: Pat::Name(NamePat::new_anon(field.name, field.ty)),
                 ty: field.ty,
             })
             .collect()

@@ -11,7 +11,7 @@ use compiler_core::{
 use compiler_data_structures::index_vec::Key as _;
 use ustr::ustr;
 
-use crate::parser::item::AllowVis;
+use crate::parser::item::{IsFnParam, AllowVis};
 use crate::{
     bin_op_from_assign_op, errors,
     parser::{item::RequireTy, AllowOmitParens, Parser, RequireSigTy},
@@ -367,20 +367,27 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn parse_pat(&mut self, allow_vis: AllowVis) -> DiagnosticResult<Pat> {
+    pub(super) fn parse_pat(
+        &mut self,
+        allow_named: IsFnParam,
+        allow_vis: AllowVis,
+    ) -> DiagnosticResult<Pat> {
         let mutability = self.parse_mutability();
+        let named = allow_named == IsFnParam::Yes && self.is(TokenKind::Tilde);
         let tok = self.eat_any()?;
 
         match tok.kind {
             TokenKind::Ident(_) => {
                 let vis =
                     if allow_vis == AllowVis::Yes { self.parse_vis() } else { Vis::default() };
+
                 Ok(Pat::Name(NamePat {
                     id: DefId::null(),
                     word: tok.word(),
                     mutability,
                     vis,
                     ty: TyKind::Unknown.into(),
+                    named,
                 }))
             }
             TokenKind::Underscore => Ok(Pat::Discard(tok.span)),

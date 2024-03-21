@@ -164,7 +164,7 @@ impl<'a> Parser<'a> {
                 return Ok(ControlFlow::Break(()));
             }
 
-            let pat = this.parse_pat(AllowVis::No)?;
+            let pat = this.parse_pat(IsFnParam::Yes, AllowVis::No)?;
 
             let ty_expr = if require_sig_ty == RequireSigTy::Yes {
                 this.eat(TokenKind::Colon)?;
@@ -227,7 +227,7 @@ impl<'a> Parser<'a> {
         require_ty: RequireTy,
     ) -> DiagnosticResult<Let> {
         let start = self.last_span();
-        let pat = self.parse_pat(allow_vis)?;
+        let pat = self.parse_pat(IsFnParam::No, allow_vis)?;
 
         let ty_expr = if self.is(TokenKind::Colon) {
             Some(self.parse_ty()?)
@@ -267,3 +267,4 @@ impl<'a> Parser<'a> {
 
 create_bool_enum!(RequireTy);
 create_bool_enum!(AllowVis);
+create_bool_enum!(IsFnParam);

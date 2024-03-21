@@ -1,5 +1,6 @@
 use core::fmt;
 
+use compiler_data_structures::index_vec::Key as _;
 use compiler_helpers::create_bool_enum;
 use ustr::Ustr;
 
@@ -228,8 +229,11 @@ impl Pat {
         }
     }
 
-    pub fn name(&self) -> Option<Ustr> {
-        self.word().map(|w| w.name())
+    pub fn param_name(&self) -> Option<Ustr> {
+        match self {
+            Pat::Name(NamePat { word, named: true, .. }) => Some(word.name()),
+            _ => None,
+        }
     }
 }
 
@@ -258,6 +262,20 @@ pub struct NamePat {
     pub mutability: Mutability,
     pub vis: Vis,
     pub ty: Ty,
+    pub named: bool, // Used for named function paramters
+}
+
+impl NamePat {
+    pub fn new_anon(word: Word, ty: Ty) -> Self {
+        Self {
+            id: DefId::null(),
+            word,
+            mutability: Mutability::Imm,
+            vis: Vis::Public,
+            ty,
+            named: false,
+        }
+    }
 }
 
 impl Spanned for NamePat {

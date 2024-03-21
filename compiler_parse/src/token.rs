@@ -53,6 +53,7 @@ pub enum TokenKind {
     At,
     Arrow,
     QuestionMark,
+    Tilde,
 
     // Delimiters
     OpenParen,
@@ -166,6 +167,7 @@ impl TokenKind {
             | TokenKind::OpenParen
             | TokenKind::OpenBrack
             | TokenKind::OpenCurly
+            | TokenKind::Tilde
             | TokenKind::Eq
             | TokenKind::EqEq
             | TokenKind::Bang
@@ -252,6 +254,7 @@ impl TokenKind {
             | TokenKind::Colon
             | TokenKind::Arrow
             | TokenKind::Comma
+            | TokenKind::Tilde
             | TokenKind::Eq
             | TokenKind::EqEq
             | TokenKind::BangEq
@@ -310,6 +313,7 @@ impl fmt::Display for TokenKind {
             Self::At => f.write_char('@'),
             Self::Arrow => f.write_str("->"),
             Self::QuestionMark => f.write_char('?'),
+            Self::Tilde => f.write_char('~'),
             Self::Eq => f.write_char('='),
             Self::EqEq => f.write_str("=="),
             Self::Bang => f.write_str("!"),

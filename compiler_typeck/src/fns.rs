@@ -103,7 +103,7 @@ fn check_fn_sig_params(
     }
 
     let fnty_params =
-        new_params.iter().map(|p| FnTyParam { name: p.pat.name(), ty: p.ty }).collect();
+        new_params.iter().map(|p| FnTyParam { name: p.pat.param_name(), ty: p.ty }).collect();
 
     Ok((new_params, fnty_params))
 }

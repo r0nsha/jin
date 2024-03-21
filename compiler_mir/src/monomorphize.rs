@@ -1,6 +1,5 @@
 use std::{collections::VecDeque, mem};
 
-use compiler_core::middle::Vis;
 use compiler_data_structures::index_vec::Key;
 use rustc_hash::FxHashSet;
 use ustr::{ustr, Ustr};
@@ -8,7 +7,7 @@ use ustr::{ustr, Ustr};
 use compiler_core::{
     db::{AdtField, AdtKind, Db, DefId, StructDef, UnionDef},
     mangle,
-    middle::{BinOp, CallConv, CmpOp, Mutability, NamePat, Pat},
+    middle::{BinOp, CallConv, CmpOp, NamePat, Pat},
     span::{Span, Spanned as _},
     sym,
     ty::{fold::TyFolder, FnTy, FnTyFlags, FnTyParam, Instantiation, Subst, SubstTy, Ty, TyKind},
@@ -730,21 +729,15 @@ fn create_drop_sig(
     span: Span,
 ) -> FnSigId {
     let params = vec![FnParam {
-        pat: Pat::Name(NamePat {
-            id: DefId::null(),
-            word: Word::new(ustr("self"), Span::unknown()),
-            mutability: Mutability::Imm,
-            vis: Vis::Public,
-            ty,
-        }),
+        pat: Pat::Name(NamePat::new_anon(Word::new(ustr("self"), Span::unknown()), ty)),
         ty,
     }];
 
-    let fn_tparams =
-        params.iter().map(|p| FnTyParam { name: Some(p.pat.name().unwrap()), ty: p.ty }).collect();
+    let fn_ty_params =
+        params.iter().map(|p| FnTyParam { name: p.pat.param_name(), ty: p.ty }).collect();
 
     let fn_ty = Ty::new(TyKind::Fn(FnTy {
-        params: fn_tparams,
+        params: fn_ty_params,
         ret: cx.db.types.unit,
         callconv: CallConv::default(),
         flags: FnTyFlags::empty(),

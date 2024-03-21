@@ -1175,6 +1175,7 @@ fn interp_let_buf(
                     mutability: Mutability::Mut,
                     vis: Vis::Private,
                     ty: strbuf_ty,
+                    named: false,
                 }),
                 value: Box::new(call),
                 ty: strbuf_ty,
