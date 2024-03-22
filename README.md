@@ -5,7 +5,7 @@ Jin is a statically typed, procedural and safe programming language.
 ## Hello, World
 
 ```
-fn main() = {
+fn main() unit = {
     println("Hello, World!")
 }
 ```

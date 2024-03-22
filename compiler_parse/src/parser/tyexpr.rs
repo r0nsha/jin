@@ -48,6 +48,21 @@ impl<'a> Parser<'a> {
         Ok(ty)
     }
 
+    pub(super) fn is_ty_start(&self) -> bool {
+        // These pattern must stay in sync with `parse_ty`
+        matches!(
+            self.token().map(|t| t.kind),
+            Some(
+                TokenKind::Ident(..)
+                    | TokenKind::Amp
+                    | TokenKind::OpenBrack
+                    | TokenKind::Kw(Kw::Fn)
+                    | TokenKind::OpenParen
+                    | TokenKind::Underscore,
+            )
+        )
+    }
+
     fn parse_ty_path(&mut self, word: Word) -> DiagnosticResult<TyExpr> {
         let start_span = word.span();
         let mut path = vec![word];
@@ -71,7 +86,7 @@ impl<'a> Parser<'a> {
             (false, CallConv::default())
         };
         let (params, is_c_variadic) = self.parse_fn_tparams()?;
-        let ret = if self.is(TokenKind::Arrow) { Some(Box::new(self.parse_ty()?)) } else { None };
+        let ret = Box::new(self.parse_ty()?);
 
         Ok(TyExprFn {
             params,

@@ -147,7 +147,11 @@ impl<'a> Parser<'a> {
                 self.parse_fn_params(require_sig_ty)?
             };
 
-        let ret = if self.is(TokenKind::Arrow) { Some(self.parse_ty()?) } else { None };
+        let ret = if require_sig_ty == RequireSigTy::Yes || self.is_ty_start() {
+            Some(self.parse_ty()?)
+        } else {
+            None
+        };
 
         Ok((params, ret, is_c_variadic))
     }

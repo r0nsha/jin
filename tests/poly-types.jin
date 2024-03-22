@@ -1,10 +1,10 @@
 mod inner
 
-fn extern "c" printf(fmt: ptr[u8], ..) -> i32
+fn extern "c" printf(fmt: ptr[u8], ..) i32
 
 type Box[T](value: T)
 
-fn main() = {
+fn main() unit = {
     print(&Box(1).value) // matches print(int)
     print(&Box(3.0).value) // matches print(f32)
     print(&Box(42)) // matches print(&Box[int])
@@ -13,22 +13,22 @@ fn main() = {
     print(&inner.Inner[int](30)) // matches print(&inner.Inner[int])
 }
 
-fn print(value: int) = {
+fn print(value: int) unit = {
     println("{value}")
 }
 
-fn print(value: f32) = {
+fn print(value: f32) unit = {
     unsafe printf("%f\n".ptr, value)
 }
 
-fn print(box: &Box[int]) = {
+fn print(box: &Box[int]) unit = {
     println("Box({box.value})")
 }
 
-fn print[T](box: &Box[T]) = {
+fn print[T](box: &Box[T]) unit = {
     unsafe printf("Box(%f)\n".ptr, &box.value)
 }
 
-fn print(inner: &inner.Inner[int]) = {
+fn print(inner: &inner.Inner[int]) unit = {
     println("Inner({inner.value})")
 }

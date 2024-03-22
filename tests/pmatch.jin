@@ -1,8 +1,8 @@
 mod inner
 
-fn extern "c" printf(fmt: ptr[u8], ..) -> i32
+fn extern "c" printf(fmt: ptr[u8], ..) i32
 
-fn main() = {
+fn main() unit = {
     match-vars()
     match-unit()
     match-bool(true)
@@ -27,7 +27,7 @@ fn main() = {
     print-fib(20)
 }
 
-fn match-vars() = {
+fn match-vars() unit = {
     match true {
         mut x -> {
             x = false
@@ -41,14 +41,14 @@ fn match-vars() = {
 }
 
 
-fn match-unit() -> int = {
+fn match-unit() int = {
     match {} {
         {} -> unsafe printf("matched unit!\n".ptr)
         _ -> 1 // This branch is unreachable
     }
 }
 
-fn match-bool(value: bool) = {
+fn match-bool(value: bool) unit = {
     unsafe printf("value = %s\n".ptr, match value {
         true -> "true"
         false -> "false"
@@ -56,7 +56,7 @@ fn match-bool(value: bool) = {
     })
 }
 
-fn match-int(value: int) = {
+fn match-int(value: int) unit = {
     match value {
         42 -> unsafe printf("i'm the answer\n".ptr)
         -3 -> unsafe printf("i'm -3\n".ptr)
@@ -64,7 +64,7 @@ fn match-int(value: int) = {
     }
 }
 
-fn match-uint(value: uint) = {
+fn match-uint(value: uint) unit = {
     match value {
         42 -> unsafe printf("i'm still the answer\n".ptr)
         3 -> unsafe printf("i'm still 3\n".ptr)
@@ -72,7 +72,7 @@ fn match-uint(value: uint) = {
     }
 }
 
-fn match-str(value: &str) = {
+fn match-str(value: &str) unit = {
     match value {
         "foo" -> unsafe printf("i'm 'foo'\n".ptr)
         "bar" -> unsafe printf("i'm 'bar'\n".ptr)
@@ -84,7 +84,7 @@ fn match-str(value: &str) = {
 type Box(value: int)
 type Bag(a: Box, b: Box)
 
-fn match-types() = {
+fn match-types() unit = {
     let box = Box(1)
 
     match box {
@@ -112,11 +112,11 @@ fn match-types() = {
     // }
 }
 
-fn print(box: &Box) = {
+fn print(box: &Box) unit = {
     unsafe printf("Box(%d)\n".ptr, box.value)
 }
 
-fn print(bag: &Bag) = {
+fn print(bag: &Bag) unit = {
     match bag {
         Bag(a, b) -> {
             unsafe printf("Bag(a: Box(%d), b: Box(%d))\n".ptr, a.value, b.value)
@@ -125,13 +125,13 @@ fn print(bag: &Bag) = {
     }
 }
 
-fn print(value: int) = {
+fn print(value: int) unit = {
     unsafe printf("%d\n".ptr, value)
 }
 
-fn drop(box: Box) = {}
+fn drop(box: Box) unit = {}
 
-fn match-guard() = {
+fn match-guard() unit = {
     let foo = true
     match foo {
         _ if foo -> { unsafe printf("foo=true (guard)\n".ptr) }
@@ -141,21 +141,21 @@ fn match-guard() = {
     }
 }
 
-fn print-fac(n: int) = {
-    unsafe printf("fac(%d) = %d\n".ptr, n, fac(n))
+fn print-fac(n: int) unit = {
+    unsafe printf("fac(%d) unit = %d\n".ptr, n, fac(n))
 }
 
-fn fac(n: int) -> int =
+fn fac(n: int) int =
     match n {
         0 | 1 -> 1
         n -> n * fac(n - 1)
     }
 
-fn print-fib(n: int) = {
-    unsafe printf("fib(%d) = %d\n".ptr, n, fib(n))
+fn print-fib(n: int) unit = {
+    unsafe printf("fib(%d) unit = %d\n".ptr, n, fib(n))
 }
 
-fn fib(n: int) -> int =
+fn fib(n: int) int =
     match n {
         0 | 1 -> n
         n -> fib(n - 1) + fib(n - 2)

@@ -7,14 +7,14 @@ use std.(
 
 const STDOUT: i32 = 1
 
-fn print*(msg: &str) =
+fn print*(msg: &str) unit =
     unsafe write(STDOUT, as[_](msg.ptr), msg.len)
 
-fn print*(msg: str) = print(&msg)
+fn print*(msg: str) unit = print(&msg)
 
-fn println*() = print("\n")
-fn println*(msg: &str) = print("{msg}\n")
-fn println*(msg: str) = println(&msg)
+fn println*() unit = print("\n")
+fn println*(msg: &str) unit = print("{msg}\n")
+fn println*(msg: str) unit = println(&msg)
 
 type Result*[T] = std.result.Result[T, Error]
 
@@ -29,7 +29,7 @@ type Error* {
     Other(code: i32)
 }
 
-fn Error.from-os-error*(code: i32) -> Error =
+fn Error.from-os-error*(code: i32) Error =
     match code {
         errors.EPERM -> Error.PermissionDenied
         errors.ENOENT -> Error.NotFound
@@ -41,10 +41,10 @@ fn Error.from-os-error*(code: i32) -> Error =
     }
 
 // TODO: cross-platform errno
-fn Error.last-os-error*() -> Error =
+fn Error.last-os-error*() Error =
     Error.from-os-error(unsafe (c.__errno_location().0))
 
-fn fmt*(err: &Error, buf: &mut StrBuf) =
+fn fmt*(err: &Error, buf: &mut StrBuf) unit =
     match err {
         Error.PermissionDenied -> buf.push("Permission denied")
         Error.NotFound -> buf.push("Not found")

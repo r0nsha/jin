@@ -2,9 +2,9 @@ mod child
 
 use fn-overloading.child.(*)
 
-fn extern "c" printf(fmt: ptr[u8], ..) -> i32
+fn extern "c" printf(fmt: ptr[u8], ..) i32
 
-fn main() = {
+fn main() unit = {
 	unsafe printf("Function overload matching:\n".ptr)
 	add(int(1), int(1)) // exact int
 	add(1, 1) // untyped int matching
@@ -41,22 +41,22 @@ fn main() = {
 	child.poly[int](1) // picking a module function with type application
 }
 
-fn add-one(x: int) -> int = {
+fn add-one(x: int) int = {
 	x + 1
 }
 
-fn named(~x: int) = {
+fn named(~x: int) unit = {
 	unsafe printf("named: x = %d\n".ptr, x)
 }
 
-fn named(~x: int, ~y: int) = {
+fn named(~x: int, ~y: int) unit = {
 	unsafe printf("named: x = %d, y = %d\n".ptr, x, y)
 }
 
-fn named(~z: int) = {
+fn named(~z: int) unit = {
 	unsafe printf("named: z = %d\n".ptr, z)
 }
 
-fn named[T](~x: T) = {
+fn named[T](~x: T) unit = {
 	unsafe printf("named[a]: x = %d\n".ptr, x)
 }

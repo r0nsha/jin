@@ -30,13 +30,7 @@ pub(crate) fn check(
                 params.push(ty);
             }
 
-            let ret = fn_ty
-                .ret
-                .as_ref()
-                .map(|ret| check(cx, env, ret, allow_hole))
-                .transpose()?
-                .unwrap_or(cx.db.types.unit);
-
+            let ret = check(cx, env, &fn_ty.ret, allow_hole)?;
             let mut flags = FnTyFlags::empty();
 
             if fn_ty.is_extern {
