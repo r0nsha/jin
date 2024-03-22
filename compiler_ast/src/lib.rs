@@ -246,9 +246,6 @@ pub enum Expr {
         kind: CharKind,
         span: Span,
     },
-    UnitLit {
-        span: Span,
-    },
 }
 
 impl Spanned for Expr {
@@ -282,8 +279,7 @@ impl Spanned for Expr {
             | Self::FloatLit { span, .. }
             | Self::StrInterp { span, .. }
             | Self::StrLit { span, .. }
-            | Self::CharLit { span, .. }
-            | Self::UnitLit { span, .. } => *span,
+            | Self::CharLit { span, .. } => *span,
         }
     }
 }

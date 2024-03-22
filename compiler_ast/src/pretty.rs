@@ -232,9 +232,6 @@ impl PrettyPrint for Expr {
                     cx.builder.add_empty_child(format!("byte char: {value}"));
                 }
             },
-            Self::UnitLit { .. } => {
-                cx.builder.add_empty_child("unit".to_string());
-            }
         }
     }
 }

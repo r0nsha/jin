@@ -116,7 +116,7 @@ fn write*(file: &mut File, buf: &[]u8) -> io.Result[uint] =
 fn remove-file*(path: &str) -> io.Result[unit] =
     match unsafe c.unlink(as[_](path.ptr)) {
         -1 -> Result.Err(io.Error.last-os-error())
-        _ -> Result.Ok(())
+        _ -> Result.Ok({})
     }
 
 fn `=drop`*(file: &mut File) =

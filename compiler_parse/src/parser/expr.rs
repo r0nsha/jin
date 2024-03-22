@@ -11,7 +11,7 @@ use compiler_core::{
 use compiler_data_structures::index_vec::Key as _;
 use ustr::ustr;
 
-use crate::parser::item::{IsFnParam, AllowVis};
+use crate::parser::item::{AllowVis, IsFnParam};
 use crate::{
     bin_op_from_assign_op, errors,
     parser::{item::RequireTy, AllowOmitParens, Parser, RequireSigTy},
@@ -121,14 +121,10 @@ impl<'a> Parser<'a> {
                 }
             }
             TokenKind::OpenParen => {
-                if self.is(TokenKind::CloseParen) {
-                    Expr::UnitLit { span: tok.span.merge(self.last_span()) }
-                } else {
-                    let expr = self.parse_expr()?;
-                    let close = self.eat(TokenKind::CloseParen)?;
-                    let span = expr.span().merge(close.span);
-                    Expr::Group { expr: Box::new(expr), span }
-                }
+                let expr = self.parse_expr()?;
+                let close = self.eat(TokenKind::CloseParen)?;
+                let span = expr.span().merge(close.span);
+                Expr::Group { expr: Box::new(expr), span }
             }
             TokenKind::OpenCurly => {
                 self.back();
