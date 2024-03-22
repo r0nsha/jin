@@ -15,6 +15,7 @@ fn main() unit = {
 - Automatic, deterministic memory management
 - Pattern matching and tagged union types
 - Parametric polymorphism and distinct typing
+- Local type inference with required top level type annotations
 - Compiled to machine code (Currently compile to C)
 
 ## Goals
