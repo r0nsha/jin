@@ -1,7 +1,7 @@
 type Fd = uint
 type Ref[T] = &T
 
-fn main() = {
+fn main() unit = {
     let x: Fd = Fd(1)
     let r: Ref[int] = &1
 }

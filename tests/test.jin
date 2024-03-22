@@ -1,11 +1,11 @@
 mod extern "./foo"
 
-fn extern "c" hello()
+fn extern "c" hello() unit
 let extern answer: int
 
-fn extern "c" printf(fmt: ptr[u8], ..) -> i32
+fn extern "c" printf(fmt: ptr[u8], ..) i32
 
-fn main() = {
+fn main() unit = {
     println("Hello, World!")
     unsafe hello()
     run(print-answer)
@@ -13,21 +13,21 @@ fn main() = {
     unsafe printf("num = %d\n".ptr, map(1, id))
 }
 
-fn print-answer() = {
+fn print-answer() unit = {
     unsafe printf("The answer is %d\n".ptr, answer)
 }
 
-fn add(a: int, b: int) -> int = {
+fn add(a: int, b: int) int = {
     a + b
 }
 
-fn do-add(f: fn(int, int) -> int, a: int, b: int) = {
+fn do-add(f: fn(int, int) int, a: int, b: int) unit = {
     unsafe printf("a + b = %d\n".ptr, f(a, b))
 }
 
-fn run(f: fn()) = f()
+fn run(f: fn() unit) unit = f()
 
-fn id[T](x: T) -> T = x
+fn id[T](x: T) T = x
 
-fn map[A, B](val: A, f: fn(A) -> B) -> B =
+fn map[A, B](val: A, f: fn(A) B) B =
     f(val)
