@@ -2,14 +2,14 @@ use std.builtin
 use std.char.(encode-utf8-raw, ?)
 use std.collections.Array
 
-fn str.from-utf8*(bytes: []u8) -> Result[str, ()] =
+fn str.from-utf8*(bytes: []u8) -> Result[str, unit] =
     if unsafe builtin.slice-utf8-validate(&bytes) {
         Result.Ok(unsafe as[_](bytes))
     } else {
         Result.Err(())
     }
 
-fn str.from-utf8*(bytes: &[]u8) -> Result[&str, ()] =
+fn str.from-utf8*(bytes: &[]u8) -> Result[&str, unit] =
     if unsafe builtin.slice-utf8-validate(bytes) {
         Result.Ok(unsafe as[_](bytes))
     } else {

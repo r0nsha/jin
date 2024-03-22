@@ -174,11 +174,11 @@ impl UnOp {
 #[derive(Debug, Clone)]
 pub enum TyExpr {
     Fn(TyExprFn),
-    Slice(Box<TyExpr>, Span),
-    Ref(Box<TyExpr>, Mutability, Span),
-    Path(Vec<Word>, Option<Vec<TyExpr>>, Span),
-    Unit(Span),
+    Slice(Box<Self>, Span),
+    Ref(Box<Self>, Mutability, Span),
+    Path(Vec<Word>, Option<Vec<Self>>, Span),
     Hole(Span),
+    Group(Box<Self>, Span),
 }
 
 impl Spanned for TyExpr {
@@ -188,8 +188,8 @@ impl Spanned for TyExpr {
             | Self::Slice(_, span)
             | Self::Ref(_, _, span)
             | Self::Path(_, _, span)
-            | Self::Unit(span)
-            | Self::Hole(span) => *span,
+            | Self::Hole(span)
+            | Self::Group(_, span) => *span,
         }
     }
 }

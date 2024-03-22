@@ -36,13 +36,10 @@ impl<'a> Parser<'a> {
                 TyExpr::Fn(fty)
             }
             TokenKind::OpenParen => {
-                if self.is(TokenKind::CloseParen) {
-                    TyExpr::Unit(tok.span.merge(self.last_span()))
-                } else {
-                    let ty = self.parse_ty()?;
-                    self.eat(TokenKind::CloseParen)?;
-                    ty
-                }
+                let ty = self.parse_ty()?;
+                let close = self.eat(TokenKind::CloseParen)?;
+                let span = ty.span().merge(close.span);
+                TyExpr::Group(Box::new(ty), span)
             }
             TokenKind::Underscore => TyExpr::Hole(tok.span),
             _ => return Err(errors::unexpected_token_err("a type", tok.kind, tok.span)),
