@@ -82,7 +82,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_atom(&mut self) -> DiagnosticResult<Expr> {
-        let tok = self.eat_any()?;
+        let tok = self.eat_any("an expression")?;
 
         let expr = match tok.kind {
             TokenKind::Kw(Kw::Fn) => self.parse_fn_expr()?,
@@ -370,7 +370,7 @@ impl<'a> Parser<'a> {
     ) -> DiagnosticResult<Pat> {
         let mutability = self.parse_mutability();
         let named = allow_named == IsFnParam::Yes && self.is(TokenKind::Tilde);
-        let tok = self.eat_any()?;
+        let tok = self.eat_any("a pattern")?;
 
         match tok.kind {
             TokenKind::Ident(_) => {

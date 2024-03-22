@@ -15,7 +15,7 @@ use crate::{
 
 impl<'a> Parser<'a> {
     pub(super) fn parse_ty(&mut self) -> DiagnosticResult<TyExpr> {
-        let tok = self.eat_any()?;
+        let tok = self.eat_any("a type")?;
 
         let ty = match tok.kind {
             TokenKind::Ident(..) => self.parse_ty_path(tok.word())?,

@@ -63,41 +63,47 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_match_pat_atom(&mut self) -> DiagnosticResult<MatchPat> {
-        if self.is_ident() {
-            let start_word = self.last_token().word();
+        let tok = self.eat_any("a pattern")?;
 
-            if self.peek_is(TokenKind::OpenParen) {
-                self.parse_match_pat_adt_name(start_word)
-            } else if self.is(TokenKind::Dot) {
-                self.parse_match_pat_adt_path(start_word)
-            } else {
-                Ok(MatchPat::Name(start_word, Mutability::Imm))
+        match tok.kind {
+            TokenKind::Ident(id) => {
+                let word = Word::new(id, tok.span);
+
+                if self.peek_is(TokenKind::OpenParen) {
+                    self.parse_match_pat_adt_name(word)
+                } else if self.is(TokenKind::Dot) {
+                    self.parse_match_pat_adt_path(word)
+                } else {
+                    Ok(MatchPat::Name(word, Mutability::Imm))
+                }
             }
-        } else if self.is(TokenKind::Underscore) {
-            Ok(MatchPat::Wildcard(self.last_span()))
-        } else if let Some(mutability) = self.parse_optional_mutability() {
-            let word = self.eat_ident()?.word();
-            Ok(MatchPat::Name(word, mutability))
-        } else if self.is(TokenKind::OpenCurly) {
-            let start_span = self.last_span();
-            let last_span = self.eat(TokenKind::CloseCurly)?.span;
-            Ok(MatchPat::Unit(start_span.merge(last_span)))
-        } else if self.is(TokenKind::Minus) {
-            let start_span = self.last_span();
-            let tok = self.eat(TokenKind::Int(0))?;
-            Ok(MatchPat::Int(-tok.int_value(), start_span.merge(tok.span)))
-        } else if self.is(TokenKind::Int(0)) {
-            let tok = self.last_token();
-            Ok(MatchPat::Int(tok.int_value(), tok.span))
-        } else if self.peek_is(TokenKind::StrOpen) {
-            let s = self.eat_str_lit()?;
-            Ok(MatchPat::Str(s.name(), s.span()))
-        } else if self.is_kw(Kw::True) {
-            Ok(MatchPat::Bool(true, self.last_span()))
-        } else if self.is_kw(Kw::False) {
-            Ok(MatchPat::Bool(false, self.last_span()))
-        } else {
-            Err(self.unexpected_token("a pattern"))
+            TokenKind::Underscore => Ok(MatchPat::Wildcard(tok.span)),
+            TokenKind::OpenCurly => {
+                let last_span = self.eat(TokenKind::CloseCurly)?.span;
+                Ok(MatchPat::Unit(tok.span.merge(last_span)))
+            }
+            TokenKind::Minus => {
+                let int_tok = self.eat(TokenKind::Int(0))?;
+                Ok(MatchPat::Int(-int_tok.int_value(), tok.span.merge(int_tok.span)))
+            }
+            TokenKind::Int(value) => Ok(MatchPat::Int(value, tok.span)),
+            TokenKind::StrOpen => {
+                self.back();
+                let s = self.eat_str_lit()?;
+                Ok(MatchPat::Str(s.name(), s.span()))
+            }
+            TokenKind::Kw(Kw::True) => Ok(MatchPat::Bool(true, tok.span)),
+            TokenKind::Kw(Kw::False) => Ok(MatchPat::Bool(false, tok.span)),
+            _ => {
+                self.back();
+
+                if let Some(mutability) = self.parse_optional_mutability() {
+                    let word = self.eat_ident()?.word();
+                    Ok(MatchPat::Name(word, mutability))
+                } else {
+                    Err(self.unexpected_token("a pattern"))
+                }
+            }
         }
     }
 
