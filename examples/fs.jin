@@ -6,7 +6,7 @@ fn main() = {
         Result.Ok(contents) -> {
             print("--- Read ---\n{contents}")
             match std.fs.write("examples/file2.txt", contents) {
-                Result.Ok(()) -> {}
+                Result.Ok({}) -> {}
                 Result.Err(err) -> println("Error writing to 'examples/file2.txt': {err}")
             }
         }

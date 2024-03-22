@@ -43,7 +43,7 @@ fn match-vars() = {
 
 fn match-unit() -> int = {
     match {} {
-        () -> unsafe printf("matched unit!\n".ptr)
+        {} -> unsafe printf("matched unit!\n".ptr)
         _ -> 1 // This branch is unreachable
     }
 }

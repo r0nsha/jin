@@ -96,7 +96,7 @@ fn read-to-str*(file: &File) -> io.Result[str] =
     match file.read-to-end() {
         Result.Ok(buf) -> match str.from-utf8(buf.take()) {
             Result.Ok(s) -> Result.Ok(s)
-            Result.Err(()) -> Result.Err(io.Error.InvalidData("stream did not contain valid UTF-8"))
+            Result.Err({}) -> Result.Err(io.Error.InvalidData("stream did not contain valid UTF-8"))
         }
         Result.Err(err) -> Result.Err(err)
     }
