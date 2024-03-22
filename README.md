@@ -12,16 +12,16 @@ fn main() unit = {
 
 ## Highlights
 
-- Deterministic, automatic memory management
-- Pattern matching and union types
-- Polymorphic types
-- Compiled
+- Automatic, deterministic memory management
+- Pattern matching and tagged union types
+- Parametric polymorphism and distinct typing
+- Compiled to machine code (Currently compile to C)
 
 ## Goals
 
-- Fast enough for use-cases such as servers and cli applications
-- Simple and orthogonal
+- Simple enough that it can be learned in an afternoon
 - Fast compile times
+- Performance that statisfies use-cases such as servers and applications
 
 ## Prerequisites
 
