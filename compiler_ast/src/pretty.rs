@@ -232,9 +232,6 @@ impl PrettyPrint for Expr {
                     cx.builder.add_empty_child(format!("byte char: {value}"));
                 }
             },
-            Self::UnitLit { .. } => {
-                cx.builder.add_empty_child("unit".to_string());
-            }
         }
     }
 }
@@ -417,11 +414,9 @@ impl PrettyPrint for TyExpr {
                     cx.builder.end_child();
                 }
 
-                if let Some(ret) = &f.ret {
-                    cx.builder.begin_child("ret".to_string());
-                    ret.pretty_print(cx);
-                    cx.builder.end_child();
-                }
+                cx.builder.begin_child("ret".to_string());
+                f.ret.pretty_print(cx);
+                cx.builder.end_child();
 
                 cx.builder.end_child();
             }
@@ -451,11 +446,13 @@ impl PrettyPrint for TyExpr {
 
                 cx.builder.end_child();
             }
-            TyExpr::Unit(_) => {
-                cx.builder.add_empty_child("unit".to_string());
-            }
             TyExpr::Hole(_) => {
                 cx.builder.add_empty_child("_".to_string());
+            }
+            TyExpr::Group(ty, _) => {
+                cx.builder.begin_child("group".to_string());
+                ty.pretty_print(cx);
+                cx.builder.end_child();
             }
         }
     }

@@ -1,18 +1,18 @@
 mod extern "raylib"
 mod extern "m"
 
-fn extern "c" InitWindow*(width: i32, height: i32, title: ptr[u8])
-fn extern "c" CloseWindow*()
-fn extern "c" WindowShouldClose*() -> bool
-fn extern "c" SetTargetFPS*(fps: i32)
-fn extern "c" BeginDrawing*()
-fn extern "c" EndDrawing*()
-fn extern "c" ClearBackground*(color: Color)
-fn extern "c" DrawCircle*(center-x: i32, center-y: i32, radius: f32, color: Color)
-fn extern "c" DrawCircleV*(center: Vector2, radius: f32, color: Color)
-fn extern "c" DrawRectangle*(pos-x: i32, pos-y: i32, width: i32, height: i32, color: Color)
-fn extern "c" DrawFPS*(pos-x: i32, pos-y: i32)
-fn extern "c" DrawText*(text: ptr[u8], pos-x: i32, pos-y: i32, font-size: i32, tint: Color)
+fn extern "c" InitWindow*(width: i32, height: i32, title: ptr[u8]) unit
+fn extern "c" CloseWindow*() unit
+fn extern "c" WindowShouldClose*() bool
+fn extern "c" SetTargetFPS*(fps: i32) unit
+fn extern "c" BeginDrawing*() unit
+fn extern "c" EndDrawing*() unit
+fn extern "c" ClearBackground*(color: Color) unit
+fn extern "c" DrawCircle*(center-x: i32, center-y: i32, radius: f32, color: Color) unit
+fn extern "c" DrawCircleV*(center: Vector2, radius: f32, color: Color) unit
+fn extern "c" DrawRectangle*(pos-x: i32, pos-y: i32, width: i32, height: i32, color: Color) unit
+fn extern "c" DrawFPS*(pos-x: i32, pos-y: i32) unit
+fn extern "c" DrawText*(text: ptr[u8], pos-x: i32, pos-y: i32, font-size: i32, tint: Color) unit
 
 type Color* extern(r*: u8, g*: u8, b*: u8, a*: u8)
 
@@ -26,12 +26,12 @@ let DARKGREEN*: Color = Color(0, 117, 44, 255)
 
 type Vector2* extern(x*: f32, y*: f32)
 
-fn extern "c" GetMousePosition*() -> Vector2
-fn extern "c" IsKeyDown*(key: i32) -> bool
+fn extern "c" GetMousePosition*() Vector2
+fn extern "c" IsKeyDown*(key: i32) bool
 
 let KEY-RIGHT*: i32 = 262
 let KEY-LEFT*: i32 = 263
 let KEY-DOWN*: i32 = 264
 let KEY-UP*: i32 = 265
 
-fn extern "c" CheckCollisionPointCircle*(point: Vector2, center: Vector2, radius: f32) -> bool
+fn extern "c" CheckCollisionPointCircle*(point: Vector2, center: Vector2, radius: f32) bool

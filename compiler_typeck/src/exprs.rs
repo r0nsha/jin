@@ -507,9 +507,6 @@ pub(crate) fn check_expr(
             };
             Ok(cx.expr(hir::ExprKind::CharLit(*value), ty, *span))
         }
-        ast::Expr::UnitLit { span } => {
-            Ok(cx.expr(hir::ExprKind::Block(hir::Block { exprs: vec![] }), cx.db.types.unit, *span))
-        }
     }
 }
 

@@ -18,6 +18,7 @@ pub mod ty {
     pub const STR: &str = "str";
     pub const CHAR: &str = "char";
     pub const BOOL: &str = "bool";
+    pub const UNIT: &str = "unit";
     pub const NEVER: &str = "never";
 }
 

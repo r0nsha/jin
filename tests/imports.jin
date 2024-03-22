@@ -5,7 +5,7 @@ use imports.bar.baz.yup
 use imports.bar.(*)
 use imports.ufcs.(?)
 
-fn main() = {
+fn main() unit = {
     hello()
     yup()
     goodbye()
@@ -15,4 +15,4 @@ fn main() = {
     //print-int(1) // Error!
 }
 
-fn get-hello-world*() -> &str = "Hello from bar!\n"
+fn get-hello-world*() &str = "Hello from bar!\n"

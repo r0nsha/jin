@@ -1,2 +1,2 @@
-fn null*[T]() -> ptr[T] = unsafe as[_](0)
-fn is-null*[T](p: ptr[T]) -> bool = unsafe uint(p) == 0
+fn null*[T]() ptr[T] = unsafe as[_](0)
+fn is-null*[T](p: ptr[T]) bool = unsafe uint(p) == 0

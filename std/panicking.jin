@@ -1,17 +1,17 @@
 use std.builtin
 use std.str.(?)
 
-fn panic*() -> never = panic("explicit panic")
-fn panic*(msg: str) -> never = panic(&msg)
-fn panic*(msg: &str) -> never = unsafe builtin.panic(msg)
+fn panic*() never = panic("explicit panic")
+fn panic*(msg: str) never = panic(&msg)
+fn panic*(msg: &str) never = unsafe builtin.panic(msg)
 
-fn todo*() -> never = panic("not yet implemented")
-fn todo*(msg: str) -> never = todo(&msg)
-fn todo*(msg: &str) -> never = panic("not yet implemented: {msg}")
+fn todo*() never = panic("not yet implemented")
+fn todo*(msg: str) never = todo(&msg)
+fn todo*(msg: &str) never = panic("not yet implemented: {msg}")
 
-fn assert*(cond: bool) =
+fn assert*(cond: bool) unit =
     if !cond { panic("assertion failed") }
 
-fn assert*(cond: bool, msg: str) = assert(cond, &msg)
-fn assert*(cond: bool, msg: &str) =
+fn assert*(cond: bool, msg: str) unit = assert(cond, &msg)
+fn assert*(cond: bool, msg: &str) unit =
     if !cond { panic("assertion failed: {msg}") }

@@ -1,4 +1,4 @@
-fn main() = {
+fn main() unit = {
     match 20 {
         10 | 20 if false -> println("guard")
         10 -> println("10")

@@ -1,4 +1,4 @@
-fn extern "c" printf(fmt: ptr[u8], ..) -> i32
+fn extern "c" printf(fmt: ptr[u8], ..) i32
 
 type M()
 
@@ -8,7 +8,7 @@ type Mixed extern(a: Ref)
 
 type Point extern(x: int, y: int)
 
-fn main() = {
+fn main() unit = {
 	let m = M()
 	let m2 = m
 	// let m3 = m // Error: use after move
@@ -24,6 +24,6 @@ fn main() = {
 	print-point(Point(5, y: 10))
 }
 
-fn print-point(p: Point) = {
+fn print-point(p: Point) unit = {
 	unsafe printf("Point(%d, %d)\n".ptr, p.x, p.y)
 }

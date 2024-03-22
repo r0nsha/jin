@@ -199,25 +199,25 @@ impl<'a> Parser<'a> {
     }
 
     #[inline]
-    pub(super) fn eat_any(&mut self) -> DiagnosticResult<Token> {
-        let tok = self.require()?;
+    pub(super) fn eat_any(&mut self, expected: &str) -> DiagnosticResult<Token> {
+        let tok = self.require(expected)?;
         self.next();
         Ok(tok)
     }
 
     #[inline]
     pub(super) fn unexpected_token(&mut self, expected: &str) -> Diagnostic {
-        match self.require() {
+        match self.require(expected) {
             Ok(tok) => errors::unexpected_token_err(expected, tok.kind, tok.span),
             Err(diag) => diag,
         }
     }
 
     #[inline]
-    fn require(&mut self) -> DiagnosticResult<Token> {
+    fn require(&mut self, expected: &str) -> DiagnosticResult<Token> {
         self.token().ok_or_else(|| {
-            Diagnostic::error("unexpected end of file")
-                .with_label(Label::primary(self.last_span(), "here"))
+            Diagnostic::error(format!("expected {expected}, found end of file"))
+                .with_label(Label::primary(self.last_span(), "found here"))
         })
     }
 

@@ -1,6 +1,6 @@
-fn extern "c" printf(fmt: ptr[u8], ..) -> i32
+fn extern "c" printf(fmt: ptr[u8], ..) i32
 
-fn main() = {
+fn main() unit = {
     let mut array = Array.new[int]()
 
     println("Array push:")
@@ -38,18 +38,18 @@ fn main() = {
     array.print()
 }
 
-fn print-at(array: &Array[int], idx: uint) = {
+fn print-at(array: &Array[int], idx: uint) unit = {
     match array.get(idx) {
         Option.Some(x) -> unsafe printf("array[%d] = Some(%d)\n".ptr, idx, x)
         Option.None -> unsafe printf("array[%d] = None\n".ptr, idx)
     }
 }
 
-fn print(array: &Array[int]) = {
+fn print(array: &Array[int]) unit = {
     array.as-ref().print()
 }
 
-fn print(slice: &[]int) = {
+fn print(slice: &[]int) unit = {
     unsafe printf("[".ptr)
     let mut i = 0
     for if i < slice.len {

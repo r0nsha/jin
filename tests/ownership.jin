@@ -1,9 +1,9 @@
-fn extern "c" printf(fmt: ptr[u8], ..) -> i32
+fn extern "c" printf(fmt: ptr[u8], ..) i32
 
 type Num(field: int)
 type Wrapper(num: Num)
 
-fn main() = {
+fn main() unit = {
     use-after-move()
     // use-after-move-scoped()
     // move-out-of-global()
@@ -13,13 +13,13 @@ fn main() = {
     // drop-discarded-values(Num(1))
 }
 
-fn use-after-move() = {
+fn use-after-move() unit = {
     let n = Num(1)
     let x = n
     //let y = n // Error!
 }
 
-fn use-after-move-scoped() = {
+fn use-after-move-scoped() unit = {
     let n = Num(1)
     let x = n
     if false {
@@ -30,12 +30,12 @@ fn use-after-move-scoped() = {
 let global-int: int = 1
 let global-num: Num = Num(1)
 
-fn move-out-of-global() = {
+fn move-out-of-global() unit = {
     let x = global-int // Ok
     //let y = global-num // Error!
 }
 
-fn move-into-for() = {
+fn move-into-for() unit = {
     let mut n = Num(1)
 
     for if n.field < 10 {
@@ -44,7 +44,7 @@ fn move-into-for() = {
     }
 }
 
-fn copy() = {
+fn copy() unit = {
     let n = 1
     let a = n
     let b = n // Ok
@@ -58,7 +58,7 @@ fn copy() = {
     let b = w.num.field // Ok
 }
 
-fn assign-not-moved() = {
+fn assign-not-moved() unit = {
     //let mut num = Num(1)
     //num.field = 1
 
@@ -87,6 +87,6 @@ fn assign-not-moved() = {
     }
 }
 
-fn drop-discarded-values(_: Num) = {
+fn drop-discarded-values(_: Num) unit = {
     let _ = Num(2)
 }

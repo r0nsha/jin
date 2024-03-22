@@ -15,7 +15,7 @@ use crate::{
 
 impl<'a> Parser<'a> {
     pub(super) fn parse_ty(&mut self) -> DiagnosticResult<TyExpr> {
-        let tok = self.eat_any()?;
+        let tok = self.eat_any("a type")?;
 
         let ty = match tok.kind {
             TokenKind::Ident(..) => self.parse_ty_path(tok.word())?,
@@ -36,19 +36,31 @@ impl<'a> Parser<'a> {
                 TyExpr::Fn(fty)
             }
             TokenKind::OpenParen => {
-                if self.is(TokenKind::CloseParen) {
-                    TyExpr::Unit(tok.span.merge(self.last_span()))
-                } else {
-                    let ty = self.parse_ty()?;
-                    self.eat(TokenKind::CloseParen)?;
-                    ty
-                }
+                let ty = self.parse_ty()?;
+                let close = self.eat(TokenKind::CloseParen)?;
+                let span = ty.span().merge(close.span);
+                TyExpr::Group(Box::new(ty), span)
             }
             TokenKind::Underscore => TyExpr::Hole(tok.span),
             _ => return Err(errors::unexpected_token_err("a type", tok.kind, tok.span)),
         };
 
         Ok(ty)
+    }
+
+    pub(super) fn is_ty_start(&self) -> bool {
+        // These pattern must stay in sync with `parse_ty`
+        matches!(
+            self.token().map(|t| t.kind),
+            Some(
+                TokenKind::Ident(..)
+                    | TokenKind::Amp
+                    | TokenKind::OpenBrack
+                    | TokenKind::Kw(Kw::Fn)
+                    | TokenKind::OpenParen
+                    | TokenKind::Underscore,
+            )
+        )
     }
 
     fn parse_ty_path(&mut self, word: Word) -> DiagnosticResult<TyExpr> {
@@ -74,7 +86,7 @@ impl<'a> Parser<'a> {
             (false, CallConv::default())
         };
         let (params, is_c_variadic) = self.parse_fn_tparams()?;
-        let ret = if self.is(TokenKind::Arrow) { Some(Box::new(self.parse_ty()?)) } else { None };
+        let ret = Box::new(self.parse_ty()?);
 
         Ok(TyExprFn {
             params,

@@ -5,23 +5,24 @@ Jin is a statically typed, procedural and safe programming language.
 ## Hello, World
 
 ```
-fn main() = {
+fn main() unit = {
     println("Hello, World!")
 }
 ```
 
 ## Highlights
 
-- Deterministic, automatic memory management
-- Pattern matching and union types
-- Polymorphic types
-- Compiled
+- Automatic, deterministic memory management
+- Pattern matching and tagged union types
+- Parametric polymorphism and distinct typing
+- Local type inference with required top level type annotations
+- Compiled to machine code (Currently compile to C)
 
 ## Goals
 
-- Fast enough for use-cases such as servers and cli applications
-- Simple and orthogonal
+- Simple enough that it can be learned in an afternoon
 - Fast compile times
+- Performance that statisfies use-cases such as servers and applications
 
 ## Prerequisites
 

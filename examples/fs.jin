@@ -1,12 +1,12 @@
 use std.(fs, io)
 
 // TODO: Some sugar like unwrap and try syntax for `Result` would be nice here
-fn main() = {
+fn main() unit = {
     match std.fs.read-to-str("examples/file.txt") {
         Result.Ok(contents) -> {
             print("--- Read ---\n{contents}")
             match std.fs.write("examples/file2.txt", contents) {
-                Result.Ok(()) -> ()
+                Result.Ok({}) -> {}
                 Result.Err(err) -> println("Error writing to 'examples/file2.txt': {err}")
             }
         }

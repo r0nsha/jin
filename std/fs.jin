@@ -1,58 +1,58 @@
 use std.(c, io)
 
-fn read*(path: str) -> io.Result[Array[u8]] =
+fn read*(path: str) io.Result[Array[u8]] =
     read(&path)
 
-fn read*(path: &str) -> io.Result[Array[u8]] =
+fn read*(path: &str) io.Result[Array[u8]] =
     match File.open(path) {
         Result.Ok(file) -> file.read-to-end()
         Result.Err(err) -> Result.Err(err)
     }
 
-fn read-to-str*(path: str) -> io.Result[str] =
+fn read-to-str*(path: str) io.Result[str] =
     read-to-str(&path)
 
-fn read-to-str*(path: &str) -> io.Result[str] =
+fn read-to-str*(path: &str) io.Result[str] =
     match File.open(path) {
         Result.Ok(file) -> file.read-to-str()
         Result.Err(err) -> Result.Err(err)
     }
 
-fn write*(path: str, contents: str) -> io.Result[()] =
+fn write*(path: str, contents: str) io.Result[unit] =
     write(&path, &contents)
 
-fn write*(path: &str, contents: str) -> io.Result[()] =
+fn write*(path: &str, contents: str) io.Result[unit] =
     write(path, &contents)
 
-fn write*(path: str, contents: &str) -> io.Result[()] =
+fn write*(path: str, contents: &str) io.Result[unit] =
     write(&path, contents.as-bytes())
 
-fn write*(path: &str, contents: &str) -> io.Result[()] =
+fn write*(path: &str, contents: &str) io.Result[unit] =
     write(path, contents.as-bytes())
 
-fn write*(path: str, bytes: &[]u8) -> io.Result[()] =
+fn write*(path: str, bytes: &[]u8) io.Result[unit] =
     write(&path, bytes)
 
-fn write*(path: &str, bytes: &[]u8) -> io.Result[()] =
+fn write*(path: &str, bytes: &[]u8) io.Result[unit] =
     match File.create(path) {
         Result.Ok(mut file) -> file.write(bytes).map fn(_) {}
         Result.Err(err) -> Result.Err(err)
     }
 
 // TODO: Add an API for custom file opening with `OpenOptions`
-fn File.open*(path: &str) -> io.Result[File] =
+fn File.open*(path: &str) io.Result[File] =
     match open-impl(path, c.O_RDONLY, 0) {
         -1 -> Result.Err(io.Error.last-os-error())
         fd -> Result.Ok(File(fd))
     }
 
-fn File.create*(path: &str) -> io.Result[File] =
+fn File.create*(path: &str) io.Result[File] =
     match open-impl(path, c.O_WRONLY | c.O_CREAT | c.O_TRUNC, 0o644) {
         -1 -> Result.Err(io.Error.last-os-error())
         fd -> Result.Ok(File(fd))
     }
 
-fn open-impl(path: &str, flags: c.c-int, mode: c.mode-t) -> c.c-int = {
+fn open-impl(path: &str, flags: c.c-int, mode: c.mode-t) c.c-int = {
     let pathname = unsafe as[_](path.as-bytes().ptr)
     // TODO: cross-platform open
     unsafe c.open(pathname, flags, mode)
@@ -63,7 +63,7 @@ type File*(fd: RawFd)
 
 const DEFAULT-BUF-SIZE: uint = 8 * 1024
 
-fn read-to-end*(file: &File) -> io.Result[Array[u8]] = {
+fn read-to-end*(file: &File) io.Result[Array[u8]] = {
     // TODO: initialize with-cap to file's size (or 0 if reading size fails)
     // TODO: implement `Array.filled(T, uint) where T: Copy`
     let mut buf = Array.new[u8]()
@@ -92,32 +92,32 @@ fn read-to-end*(file: &File) -> io.Result[Array[u8]] = {
     Result.Ok(buf)
 }
 
-fn read-to-str*(file: &File) -> io.Result[str] =
+fn read-to-str*(file: &File) io.Result[str] =
     match file.read-to-end() {
         Result.Ok(buf) -> match str.from-utf8(buf.take()) {
             Result.Ok(s) -> Result.Ok(s)
-            Result.Err(()) -> Result.Err(io.Error.InvalidData("stream did not contain valid UTF-8"))
+            Result.Err({}) -> Result.Err(io.Error.InvalidData("stream did not contain valid UTF-8"))
         }
         Result.Err(err) -> Result.Err(err)
     }
 
-fn read*(file: &File, buf: &mut []u8) -> io.Result[uint] =
+fn read*(file: &File, buf: &mut []u8) io.Result[uint] =
     match unsafe c.read(file.fd, buf.ptr, buf.len) {
         -1 -> Result.Err(io.Error.last-os-error())
         len -> Result.Ok(uint(len))
     }
 
-fn write*(file: &mut File, buf: &[]u8) -> io.Result[uint] =
+fn write*(file: &mut File, buf: &[]u8) io.Result[uint] =
     match unsafe c.write(file.fd, buf.ptr, buf.len) {
         -1 -> Result.Err(io.Error.last-os-error())
         written -> Result.Ok(uint(written))
     }
 
-fn remove-file*(path: &str) -> io.Result[()] =
+fn remove-file*(path: &str) io.Result[unit] =
     match unsafe c.unlink(as[_](path.ptr)) {
         -1 -> Result.Err(io.Error.last-os-error())
-        _ -> Result.Ok(())
+        _ -> Result.Ok({})
     }
 
-fn `=drop`*(file: &mut File) =
+fn `=drop`*(file: &mut File) unit =
     unsafe c.close(file.fd)

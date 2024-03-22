@@ -1,12 +1,12 @@
 use std.int.(*)
 
-fn main() = {
+fn main() unit = {
     i()
     println()
     u()
 }
 
-fn i() = {
+fn i() unit = {
     println("signed:")
 
     let a: i64 = 1
@@ -17,7 +17,7 @@ fn i() = {
     // a * b
 }
 
-fn u() = {
+fn u() unit = {
     println("unsigned:")
 
     let a: u8 = 2

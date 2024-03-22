@@ -1,4 +1,4 @@
-fn extern "c" printf(fmt: ptr[u8], ..) -> i32
+fn extern "c" printf(fmt: ptr[u8], ..) i32
 
 type Move()
 type Enum {
@@ -17,7 +17,7 @@ type PolyRef[T] {
     R(r: &T)
 }
 
-fn main() = {
+fn main() unit = {
     // Copy
     let enum = Enum.Foo
     let enum2 = enum
