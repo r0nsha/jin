@@ -15,8 +15,7 @@ fn main() {
     }
 
     copy_std(ws_dir, &target).expect("copying std failed");
-    build_rt(ws_dir).expect("building rt failed");
-    copy_rt(ws_dir, &target).expect("copying rt failed");
+    build_and_copy_rt(ws_dir, &target).expect("building rt failed");
 }
 
 fn copy_std(pwd: &Path, target: &Path) -> fs_extra::error::Result<()> {
@@ -39,32 +38,36 @@ fn copy_std(pwd: &Path, target: &Path) -> fs_extra::error::Result<()> {
     Ok(())
 }
 
-fn build_rt(pwd: &Path) -> io::Result<()> {
-    let rt = pwd.join("rt");
-    let output = Command::new("zig").current_dir(rt).arg("build").output()?;
+fn build_and_copy_rt(pwd: &Path, target: &Path) -> io::Result<()> {
+    const SUPPORTED_TRIPLES: &[&str] = &["x86_64-linux-musl"];
 
-    if !output.status.success() {
-        eprintln!("{}", String::from_utf8_lossy(&output.stderr));
-        panic!("`zig build` failed");
-    }
-
-    Ok(())
-}
-
-fn copy_rt(pwd: &Path, target: &Path) -> io::Result<()> {
     let rt = pwd.join("rt");
 
-    let target = target.join("rt");
-    let _ = fs::create_dir(&target);
+    let target_dir = target.join("rt");
+    let _ = fs::create_dir(&target_dir);
 
     let header = rt.join("jinrt.h");
-    let lib = rt.join("zig-out/lib/libjinrt.a");
 
-    fs::copy(&header, target.join("jinrt.h"))?;
-    fs::copy(&lib, target.join("libjinrt.a"))?;
-
+    fs::copy(&header, target_dir.join("jinrt.h"))?;
     println!("cargo:rerun-if-changed={}", header.display());
-    println!("cargo:rerun-if-changed={}", lib.display());
+
+    for triple in SUPPORTED_TRIPLES {
+        let output = Command::new("zig")
+            .current_dir(&rt)
+            .arg("build")
+            .arg(format!("-Dtarget={triple}"))
+            .output()?;
+
+        if !output.status.success() {
+            eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+            panic!("`zig build` failed");
+        }
+
+        let lib_name = format!("libjinrt_{triple}.a");
+        let lib_path = rt.join(format!("zig-out/lib/{lib_name}"));
+        fs::copy(&lib_path, target_dir.join(lib_name))?;
+        println!("cargo:rerun-if-changed={}", lib_path.display());
+    }
 
     Ok(())
 }

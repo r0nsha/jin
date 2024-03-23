@@ -21,6 +21,8 @@ use compiler_mir::Mir;
 
 use crate::generate::Generator;
 
+const TARGET: &str = "x86_64-linux-musl";
+
 pub fn codegen(db: &mut Db, mir: &Mir) -> Utf8PathBuf {
     let c_file_path = db.time("Code generation", |db| {
         Generator {
@@ -92,7 +94,8 @@ fn compile(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path) {
         .args(libs.libs.into_iter().map(|path| format!("-l{path}")))
         .args(libs.includes.into_iter().map(|path| format!("-I{path}")))
         .arg("-no-pie")
-        // .arg("-static")
+        .args(["-target", TARGET])
+        .arg("-static")
         // .arg("-O1")
         .arg("-g");
 
@@ -124,7 +127,7 @@ impl Libraries {
         let rt_path = compiler_helpers::current_exe_dir().join("rt");
         this.paths.insert(rt_path.to_string());
         this.includes.insert(rt_path.to_string());
-        this.libs.insert("jinrt".to_string());
+        this.libs.insert(format!("jinrt_{TARGET}"));
 
         // Add libraries included by the user
         for lib in &db.extern_libs {
