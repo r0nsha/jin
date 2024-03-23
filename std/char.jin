@@ -5,11 +5,11 @@ use std.(
     str.(?),
 )
 
-fn char.from-digit*(num u32, radix u32) Option[char] = {
-    assert(radix <= 36, "radix is too high (maximum 36)")
+fn char.from-digit*(num u32, base u32) Option[char] = {
+    assert(base <= 36, "base is too high (maximum 36)")
 
-    if num < radix {
-    let num = u8(num)
+    if num < base {
+        let num = u8(num)
         Option.Some(char(if num < 10 {
             b'0' + num
         } else {

@@ -382,7 +382,7 @@ impl<'s> Lexer<'s> {
             }
         }
 
-        self.int_range_radix(start, 16)
+        self.int_range_base(start, 16)
     }
 
     fn eat_number_octal(&mut self) -> TokenKind {
@@ -396,7 +396,7 @@ impl<'s> Lexer<'s> {
             }
         }
 
-        self.int_range_radix(start, 8)
+        self.int_range_base(start, 8)
     }
 
     fn eat_number_binary(&mut self) -> TokenKind {
@@ -410,11 +410,11 @@ impl<'s> Lexer<'s> {
             }
         }
 
-        self.int_range_radix(start, 2)
+        self.int_range_base(start, 2)
     }
 
-    fn int_range_radix(&self, start: u32, radix: u32) -> TokenKind {
-        let value = i128::from_str_radix(&self.number_range(start), radix).unwrap();
+    fn int_range_base(&self, start: u32, base: u32) -> TokenKind {
+        let value = i128::from_str_radix(&self.number_range(start), base).unwrap();
         TokenKind::Int(value)
     }
 
