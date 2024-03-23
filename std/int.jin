@@ -93,7 +93,7 @@ fn base*(f Format) uint = match f {
 }
 
 // TODO: We can avoid this allocation if we add stack allocated arrays to the language,
-// and stack allocate an uninitialized [u8; 22] instead of using a StrBuf
+// and stack allocate an uninitialized [22]u8 instead of using a StrBuf
 fn fmt-impl(mut num uint, is-neg bool, format Format) str = {
     let base = format.base()
     let mut buf = StrBuf.with-cap(22)
