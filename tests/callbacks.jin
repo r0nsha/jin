@@ -1,19 +1,19 @@
-fn main() unit = {
+fn main() = {
     run(print-answer)
     do-add(add, 1, 2)
     println("map: {map(1, int-to-uint)}")
 }
 
-fn run(f: fn() unit) unit = f()
+fn run(f: fn()) = f()
 
-fn print-answer() unit =
+fn print-answer() =
     println("The answer is {42}")
 
 fn add(a: int, b: int) int = {
     a + b
 }
 
-fn do-add(f: fn(int, int) int, a: int, b: int) unit =
+fn do-add(f: fn(int, int) int, a: int, b: int) =
     println("a + b = {f(a, b)}")
 
 fn map[A, B](val: A, f: fn(A) B) B = {

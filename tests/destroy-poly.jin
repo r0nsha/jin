@@ -1,4 +1,4 @@
-fn main() unit = {
+fn main() = {
 	let box = Box(Bag(Box(1), Box(Box(2))))
 	drop(box)
 }
@@ -6,4 +6,4 @@ fn main() unit = {
 type Box[T](v: T)
 type Bag(a: Box[int], b: Box[Box[int]])
 
-fn drop[T](value: T) unit = {}
+fn drop[T](value: T) = {}

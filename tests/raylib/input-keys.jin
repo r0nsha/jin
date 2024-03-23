@@ -1,6 +1,6 @@
 use raylib.bindings.(*)
 
-fn run*() unit = unsafe {
+fn run*() = unsafe {
 	let screen-width = 800
 	let screen-height = 450
 

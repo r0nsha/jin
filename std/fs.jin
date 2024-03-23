@@ -18,22 +18,22 @@ fn read-to-str*(path: &str) io.Result[str] =
         Result.Err(err) -> Result.Err(err)
     }
 
-fn write*(path: str, contents: str) io.Result[unit] =
+fn write*(path: str, contents: str) io.Result[{}] =
     write(&path, &contents)
 
-fn write*(path: &str, contents: str) io.Result[unit] =
+fn write*(path: &str, contents: str) io.Result[{}] =
     write(path, &contents)
 
-fn write*(path: str, contents: &str) io.Result[unit] =
+fn write*(path: str, contents: &str) io.Result[{}] =
     write(&path, contents.as-bytes())
 
-fn write*(path: &str, contents: &str) io.Result[unit] =
+fn write*(path: &str, contents: &str) io.Result[{}] =
     write(path, contents.as-bytes())
 
-fn write*(path: str, bytes: &[]u8) io.Result[unit] =
+fn write*(path: str, bytes: &[]u8) io.Result[{}] =
     write(&path, bytes)
 
-fn write*(path: &str, bytes: &[]u8) io.Result[unit] =
+fn write*(path: &str, bytes: &[]u8) io.Result[{}] =
     match File.create(path) {
         Result.Ok(mut file) -> file.write(bytes).map fn(_) {}
         Result.Err(err) -> Result.Err(err)
@@ -113,11 +113,11 @@ fn write*(file: &mut File, buf: &[]u8) io.Result[uint] =
         written -> Result.Ok(uint(written))
     }
 
-fn remove-file*(path: &str) io.Result[unit] =
+fn remove-file*(path: &str) io.Result[{}] =
     match unsafe c.unlink(as[_](path.ptr)) {
         -1 -> Result.Err(io.Error.last-os-error())
         _ -> Result.Ok({})
     }
 
-fn `=drop`*(file: &mut File) unit =
+fn `=drop`*(file: &mut File) =
     unsafe c.close(file.fd)

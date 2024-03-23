@@ -1,6 +1,6 @@
 fn extern "c" printf(fmt: ptr[u8], ..) i32
 
-fn main() unit = {
+fn main() = {
 	let mut b = StrBuf.new()
 	print-str(&b)
 
@@ -30,5 +30,5 @@ fn main() unit = {
 	unsafe printf("\n".ptr)
 }
 
-fn print-str(b: &StrBuf) unit =
+fn print-str(b: &StrBuf) =
 	unsafe printf("str is: '%s'\n".ptr, b.as-ref().ptr)

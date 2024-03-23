@@ -51,7 +51,7 @@ fn set*[T](array: &mut Array[T], index: uint, value: T) Option[T] = {
     }
 }
 
-fn push*[T](array: &mut Array[T], value: T) unit = {
+fn push*[T](array: &mut Array[T], value: T) = {
     array.reserve(1)
     array.push-unchecked(value)
 }
@@ -65,24 +65,24 @@ fn pop*[T](array: &mut Array[T]) Option[T] = {
     Option.Some(unsafe (array.buf.ptr + array.buf.len).0)
 }
 
-fn clear*[T](array: &mut Array[T]) unit = {
+fn clear*[T](array: &mut Array[T]) = {
     array.buf = []
 }
 
-fn reserve*[T](array: &mut Array[T], additional: uint) unit = {
+fn reserve*[T](array: &mut Array[T], additional: uint) = {
     if array.needs-to-grow(additional) {
         array.grow(additional)
     }
 }
 
 // TODO: this should be marked `unsafe`
-fn push-unchecked*[T](array: &mut Array[T], value: T) unit = {
+fn push-unchecked*[T](array: &mut Array[T], value: T) = {
     unsafe array.buf.len += 1
     array.buf.[array.buf.len - 1] = value
 }
 
 // TODO: this should be marked `unsafe`
-fn set-len*[T](array: &mut Array[T], len: uint) unit = {
+fn set-len*[T](array: &mut Array[T], len: uint) = {
     unsafe array.buf.len = len
 }
 
@@ -91,7 +91,7 @@ fn needs-to-grow[T](array: &Array[T], additional: uint) bool =
     array.buf.len + additional > array.buf.cap
 
 
-fn grow[T](array: &mut Array[T], additional: uint) unit = {
+fn grow[T](array: &mut Array[T], additional: uint) = {
     let cap = array.buf.cap
     if cap > 0 {
         let new-cap = max(cap * 2, cap + additional)

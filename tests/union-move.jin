@@ -17,7 +17,7 @@ type PolyRef[T] {
     R(r: &T)
 }
 
-fn main() unit = {
+fn main() = {
     // Copy
     let enum = Enum.Foo
     let enum2 = enum

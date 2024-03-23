@@ -1,4 +1,4 @@
-fn main() unit = {
+fn main() = {
     let slice = [1, 3, 42, 487, 5, 66, 4055, 33]
     match slice.binary-search(4055) {
         Option.Some(idx) -> println("found: {idx}")

@@ -4,7 +4,7 @@ use fn-overloading.child.(*)
 
 fn extern "c" printf(fmt: ptr[u8], ..) i32
 
-fn main() unit = {
+fn main() = {
 	unsafe printf("Function overload matching:\n".ptr)
 	add(int(1), int(1)) // exact int
 	add(1, 1) // untyped int matching
@@ -45,18 +45,18 @@ fn add-one(x: int) int = {
 	x + 1
 }
 
-fn named(~x: int) unit = {
+fn named(~x: int) = {
 	unsafe printf("named: x = %d\n".ptr, x)
 }
 
-fn named(~x: int, ~y: int) unit = {
+fn named(~x: int, ~y: int) = {
 	unsafe printf("named: x = %d, y = %d\n".ptr, x, y)
 }
 
-fn named(~z: int) unit = {
+fn named(~z: int) = {
 	unsafe printf("named: z = %d\n".ptr, z)
 }
 
-fn named[T](~x: T) unit = {
+fn named[T](~x: T) = {
 	unsafe printf("named[a]: x = %d\n".ptr, x)
 }

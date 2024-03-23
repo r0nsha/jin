@@ -1,7 +1,7 @@
 use std.(fs, io)
 
 // TODO: Some sugar like unwrap and try syntax for `Result` would be nice here
-fn main() unit = {
+fn main() = {
     match std.fs.read-to-str("examples/file.txt") {
         Result.Ok(contents) -> {
             print("--- Read ---\n{contents}")

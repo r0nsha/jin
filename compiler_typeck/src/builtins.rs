@@ -26,7 +26,6 @@ pub(crate) fn define_all(cx: &mut Typeck) {
         (sym::ty::STR, cx.db.types.str),
         (sym::ty::CHAR, cx.db.types.char),
         (sym::ty::BOOL, cx.db.types.bool),
-        (sym::ty::UNIT, cx.db.types.unit),
         (sym::ty::NEVER, cx.db.types.never),
     ];
 

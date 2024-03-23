@@ -3,7 +3,7 @@ use vis
 type Priv(num: int)
 type PrivCtor*(num: int)
 
-fn foo() unit = {
+fn foo() = {
     Priv(1).num
     vis.x()
 }

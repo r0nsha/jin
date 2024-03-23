@@ -1,4 +1,4 @@
-fn main() unit = {
+fn main() = {
     let mut slice = [1, 3, 42, 487, 5, 66, 4055, 33]
     print("Before: ")
     slice.print()
@@ -7,7 +7,7 @@ fn main() unit = {
     slice.print()
 }
 
-fn bubble-sort(slice: &mut []int) unit = {
+fn bubble-sort(slice: &mut []int) = {
     let mut n = slice.len
     let mut swapped = true
 
@@ -28,7 +28,7 @@ fn bubble-sort(slice: &mut []int) unit = {
     }
 }
 
-fn print(slice: &[]int) unit = {
+fn print(slice: &[]int) = {
     let mut i = 0
     for if i < slice.len {
         print("{slice.[i]} ")

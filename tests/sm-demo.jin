@@ -1,4 +1,4 @@
-fn main() unit = {
+fn main() = {
     int-types()
     unary()
     arithmetic()
@@ -10,7 +10,7 @@ fn main() unit = {
     global-vars()
 }
 
-fn int-types() unit = {
+fn int-types() = {
     let id: i8 = 126
     let promoted = i64(id) + 5555
     let demoted1 = i32(promoted)
@@ -18,14 +18,14 @@ fn int-types() unit = {
     let int-to-uint = uint(int(663151))
 }
 
-fn unary() unit = {
+fn unary() = {
     -48
     !true
     !!false
     !54878
 }
 
-fn arithmetic() unit = {
+fn arithmetic() = {
     1 + 2
     3 - 4
     5 * 6
@@ -33,7 +33,7 @@ fn arithmetic() unit = {
     9 % 10
 }
 
-fn cmp() unit = {
+fn cmp() = {
     true && false
     false || true
     100 == 100
@@ -44,7 +44,7 @@ fn cmp() unit = {
     264 >= 71
 }
 
-fn if-expr() unit = {
+fn if-expr() = {
     let cond = true
     let result = if cond {
         69
@@ -64,7 +64,7 @@ fn id[T](x: T) T = {
     x
 }
 
-fn polymorphism() unit = {
+fn polymorphism() = {
     // Inferred type arguments
     id(42)
     id(true)
@@ -78,7 +78,7 @@ fn add-named(~first: int, ~second: int) int = {
     first + second
 }
 
-fn named-args() unit = {
+fn named-args() = {
     add-named(first: 1, second: 2)
     add-named(second: 2, first: 1)
     add-named(1, second: 2)
@@ -86,6 +86,6 @@ fn named-args() unit = {
 
 let global-answer: int = 42
 
-fn global-vars() unit = {
+fn global-vars() = {
     let answer = global-answer
 }

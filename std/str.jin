@@ -2,14 +2,14 @@ use std.builtin
 use std.char.(encode-utf8-raw, ?)
 use std.collections.Array
 
-fn str.from-utf8*(bytes: []u8) Result[str, unit] =
+fn str.from-utf8*(bytes: []u8) Result[str, {}] =
     if unsafe builtin.slice-utf8-validate(&bytes) {
         Result.Ok(unsafe as[_](bytes))
     } else {
         Result.Err({})
     }
 
-fn str.from-utf8*(bytes: &[]u8) Result[&str, unit] =
+fn str.from-utf8*(bytes: &[]u8) Result[&str, {}] =
     if unsafe builtin.slice-utf8-validate(bytes) {
         Result.Ok(unsafe as[_](bytes))
     } else {
@@ -31,7 +31,7 @@ fn str.from-utf8-mut-unchecked*(bytes: &mut []u8) &mut str =
 fn as-bytes*(s: &str) &[]u8 = unsafe as[_](s)
 fn as-bytes-mut*(s: &mut str) &mut []u8 = unsafe as[_](s)
 
-fn fmt*(s: &str, buf: &mut StrBuf) unit = buf.push(s)
+fn fmt*(s: &str, buf: &mut StrBuf) = buf.push(s)
 
 type StrBuf*(array: Array[u8])
 
@@ -60,9 +60,9 @@ fn take*(mut sb: StrBuf) str = {
     str.from-utf8-unchecked(s)
 }
 
-fn push*(sb: &mut StrBuf, s: str) unit = sb.push(&s)
+fn push*(sb: &mut StrBuf, s: str) = sb.push(&s)
 
-fn push*(sb: &mut StrBuf, s: &str) unit = {
+fn push*(sb: &mut StrBuf, s: &str) = {
     if s.len == 0 {
         return
     }
@@ -83,7 +83,7 @@ fn push*(sb: &mut StrBuf, s: &str) unit = {
     sb.array.push(b'\0')
 }
 
-fn push*(sb: &mut StrBuf, ch: char) unit = {
+fn push*(sb: &mut StrBuf, ch: char) = {
     let len = sb.array.len()
     let ch-len = ch.len-utf8()
     let new-len = len + ch-len
@@ -98,7 +98,7 @@ fn push*(sb: &mut StrBuf, ch: char) unit = {
     sb.array.push(b'\0')
 }
 
-fn clear*(sb: &mut StrBuf) unit = {
+fn clear*(sb: &mut StrBuf) = {
     sb.array = array-with-nul-byte(sb.array.cap())
 }
 

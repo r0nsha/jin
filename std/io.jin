@@ -7,14 +7,14 @@ use std.(
 
 const STDOUT: i32 = 1
 
-fn print*(msg: &str) unit =
+fn print*(msg: &str) =
     unsafe write(STDOUT, as[_](msg.ptr), msg.len)
 
-fn print*(msg: str) unit = print(&msg)
+fn print*(msg: str) = print(&msg)
 
-fn println*() unit = print("\n")
-fn println*(msg: &str) unit = print("{msg}\n")
-fn println*(msg: str) unit = println(&msg)
+fn println*() = print("\n")
+fn println*(msg: &str) = print("{msg}\n")
+fn println*(msg: str) = println(&msg)
 
 type Result*[T] = std.result.Result[T, Error]
 
@@ -44,7 +44,7 @@ fn Error.from-os-error*(code: i32) Error =
 fn Error.last-os-error*() Error =
     Error.from-os-error(unsafe (c.__errno_location().0))
 
-fn fmt*(err: &Error, buf: &mut StrBuf) unit =
+fn fmt*(err: &Error, buf: &mut StrBuf) =
     match err {
         Error.PermissionDenied -> buf.push("Permission denied")
         Error.NotFound -> buf.push("Not found")

@@ -1,9 +1,9 @@
-fn main() unit = {
+fn main() = {
     let mut wow = Wow("bye bye!")
     println("hello")
 }
 
 type Wow*(msg: &str)
 
-fn `=drop`(w: &mut Wow) unit =
+fn `=drop`(w: &mut Wow) =
     println(w.msg)

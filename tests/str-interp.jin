@@ -1,6 +1,6 @@
 use std.int.(Format)
 
-fn main() unit = {
+fn main() = {
     let letter = "R"
     let n = 18
     println("{letter} is the {n}th letter of the alphabet.")

@@ -1,6 +1,6 @@
 fn extern "c" printf(fmt: ptr[u8], ..) i32
 
-fn main() unit = {
+fn main() = {
     let box = Box.default()
     box.print()
 }
@@ -9,6 +9,6 @@ type Box(value: int)
 
 fn Box.default() Box = Box(0)
 
-fn print(box: &Box) unit = {
+fn print(box: &Box) = {
     unsafe printf("Box(%d)\n".ptr, box.value)
 }

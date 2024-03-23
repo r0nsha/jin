@@ -1,6 +1,6 @@
 fn extern "c" printf(fmt: ptr[u8], ..) i32
 
-fn main() unit = {
+fn main() = {
     let mut s = "Hello World"
     println(s)
 
@@ -16,6 +16,6 @@ fn main() unit = {
     println(&s.[3..10])
 }
 
-fn print-at(s: &str, at: uint) unit = {
+fn print-at(s: &str, at: uint) = {
     unsafe printf("s.[%d] = %c\n".ptr, at, s.[at])
 }

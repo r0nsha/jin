@@ -1,6 +1,6 @@
 fn extern "c" printf(fmt: ptr[u8], ..) i32
 
-fn main() unit = {
+fn main() = {
     match try-add(1, 2) {
         Result.Ok(res) -> unsafe printf("res = %d\n".ptr, res)
         Result.Err(msg) -> unsafe printf(msg.ptr)

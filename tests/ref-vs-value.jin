@@ -1,4 +1,4 @@
-fn main() unit = {
+fn main() = {
 	println("Reference semantics:")
 	ref-type()
 	println()
@@ -9,7 +9,7 @@ fn main() unit = {
 
 type Ref(field: int)
 
-fn ref-type() unit = {
+fn ref-type() = {
 	let mut r = Ref(1)
 	print(&r) // should be 1
 
@@ -20,17 +20,17 @@ fn ref-type() unit = {
 	print(&r) // should be 3
 }
 
-fn mutate(r: &mut Ref) unit = {
+fn mutate(r: &mut Ref) = {
 	r.field = 3
 }
 
-fn print(r: &Ref) unit = {
+fn print(r: &Ref) = {
 	println("Ref(field: {r.field})")
 }
 
 type Ext extern(field: int)
 
-fn ext-type() unit = {
+fn ext-type() = {
 	let mut ext = Ext(1)
 	print(ext) // should be 1
 
@@ -41,11 +41,11 @@ fn ext-type() unit = {
 	print(ext) // should still be 2
 }
 
-fn mutate(mut ext: Ext) unit = {
+fn mutate(mut ext: Ext) = {
 	ext.field = 3
 }
 
-fn print(ext: Ext) unit = {
+fn print(ext: Ext) = {
 	println("Ext(field: {ext.field})")
 }
 

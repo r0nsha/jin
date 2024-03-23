@@ -5,7 +5,7 @@ use imports.bar.baz.yup
 use imports.bar.(*)
 use imports.ufcs.(?)
 
-fn main() unit = {
+fn main() = {
     hello()
     yup()
     goodbye()
