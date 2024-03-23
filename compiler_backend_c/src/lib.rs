@@ -15,7 +15,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use compiler_core::{
     db::{build_options::EmitOption, Db, ExternLib},
-    target::{Arch, Os},
+    target::Os,
 };
 use compiler_mir::Mir;
 
@@ -60,39 +60,6 @@ fn build_exe(db: &mut Db, c_file_path: &Utf8Path) -> Utf8PathBuf {
 
 fn compile(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path) {
     let libs = Libraries::new(db);
-    let target_metrics = db.target_metrics();
-
-    let link_flags = match target_metrics.arch {
-        Arch::Amd64 => match target_metrics.os {
-            Os::Windows => vec!["/machine:x64"],
-            Os::Linux | Os::FreeBSD => vec!["-march=x86_64"],
-            _ => vec![],
-        },
-        Arch::_386 => match target_metrics.os {
-            Os::Windows => vec!["/machine:x86"],
-            Os::Darwin => panic!("unsupported architecture"),
-            Os::Linux | Os::FreeBSD => vec!["-march=x86"],
-            _ => vec![],
-        },
-        Arch::Arm64 => match target_metrics.os {
-            Os::Darwin => vec!["-march=arm64"],
-            Os::Linux => vec!["-march=aarch64"],
-            _ => vec![],
-        },
-        Arch::Wasm32 | Arch::Wasm64 => {
-            let mut link_flags = vec!["--allow-undefined"];
-
-            if matches!(target_metrics.arch, Arch::Wasm64) {
-                link_flags.push("-mwas64");
-            }
-
-            if matches!(target_metrics.os, Os::Freestanding) {
-                link_flags.push("--no-entry");
-            }
-
-            link_flags
-        }
-    };
 
     //     #[cfg(windows)]
     //     {
@@ -111,25 +78,8 @@ fn compile(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path) {
     //             lib_paths.push(path.to_string().unwrap());
     //         }
     //
-    //         Command::new("lld-link")
-    //             .arg(format!("/out:{}", exe_file_path))
-    //             .arg("/entry:mainCRTStartup")
-    //             .arg("/defaultlib:libcmt")
-    //             .arg("/nologo")
-    //             .arg("/incremental:no")
-    //             .arg("/opt:ref")
-    //             .arg("/threads:8")
-    //             .arg("/subsystem:CONSOLE")
-    //             .args(lib_paths.iter().map(|path| format!("/libpath:{}", path)))
-    //             .arg(c_file_path.to_str().unwrap())
-    //             .args(libs)
-    //             .args(link_flags)
-    //             .execute_output()
-    //             .expect("linking to work");
-    //     }
 
     //     #[cfg(not(windows))]
-
     let mut cmd = Command::new("zig");
 
     cmd
@@ -141,12 +91,10 @@ fn compile(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path) {
         .args(libs.paths.into_iter().map(|path| format!("-L{path}")))
         .args(libs.libs.into_iter().map(|path| format!("-l{path}")))
         .args(libs.includes.into_iter().map(|path| format!("-I{path}")))
-        .arg("-lc")
         .arg("-no-pie")
         // .arg("-static")
         // .arg("-O1")
-        .arg("-g")
-        .args(link_flags);
+        .arg("-g");
 
     //println!("{:?}", cmd);
 
