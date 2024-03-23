@@ -35,6 +35,10 @@ impl<'a> Parser<'a> {
                 let fty = self.parse_fn_ty()?;
                 TyExpr::Fn(fty)
             }
+            TokenKind::OpenCurly => {
+                let close = self.eat(TokenKind::CloseCurly)?;
+                TyExpr::Unit(tok.span.merge(close.span))
+            }
             TokenKind::OpenParen => {
                 let ty = self.parse_ty()?;
                 let close = self.eat(TokenKind::CloseParen)?;
@@ -57,6 +61,7 @@ impl<'a> Parser<'a> {
                     | TokenKind::Amp
                     | TokenKind::OpenBrack
                     | TokenKind::Kw(Kw::Fn)
+                    | TokenKind::OpenCurly
                     | TokenKind::OpenParen
                     | TokenKind::Underscore,
             )
@@ -86,7 +91,7 @@ impl<'a> Parser<'a> {
             (false, CallConv::default())
         };
         let (params, is_c_variadic) = self.parse_fn_tparams()?;
-        let ret = Box::new(self.parse_ty()?);
+        let ret = if self.is_ty_start() { Some(Box::new(self.parse_ty()?)) } else { None };
 
         Ok(TyExprFn {
             params,

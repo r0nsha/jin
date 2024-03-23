@@ -14,7 +14,7 @@ use ustr::ustr;
 use crate::parser::item::{AllowVis, IsFnParam};
 use crate::{
     bin_op_from_assign_op, errors,
-    parser::{item::RequireTy, AllowOmitParens, Parser, RequireSigTy},
+    parser::{item::RequireTy, Parser, RequireSigTy},
     token::{Kw, TokenKind},
 };
 
@@ -438,8 +438,18 @@ impl<'a> Parser<'a> {
 
     fn parse_fn_expr(&mut self) -> DiagnosticResult<Expr> {
         let start = self.last_span();
-        let (params, ret, is_c_variadic) =
-            self.parse_fn_sig_helper(AllowOmitParens::Yes, RequireSigTy::No)?;
+
+        let (params, is_c_variadic) = if self.peek_is(TokenKind::OpenParen) {
+            self.parse_fn_params(RequireSigTy::No)?
+        } else {
+            (vec![], false)
+        };
+
+        let ret = if !self.peek_is(TokenKind::OpenCurly) && self.is_ty_start() {
+            Some(self.parse_ty()?)
+        } else {
+            None
+        };
 
         if is_c_variadic {
             return Err(errors::invalid_c_variadic(start));

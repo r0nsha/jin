@@ -327,5 +327,4 @@ impl<'a> Parser<'a> {
     }
 }
 
-create_bool_enum!(AllowOmitParens);
 create_bool_enum!(RequireSigTy);

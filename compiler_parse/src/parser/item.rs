@@ -7,14 +7,14 @@ use compiler_ast::{
 };
 use compiler_core::{
     diagnostics::{Diagnostic, DiagnosticResult, Label},
-    middle::{CallConv, TyExpr},
+    middle::CallConv,
     span::{Span, Spanned},
     word::Word,
 };
 
 use crate::{
     errors,
-    parser::{AllowOmitParens, Parser, RequireSigTy},
+    parser::{Parser, RequireSigTy},
     token::{Kw, Token, TokenKind},
 };
 
@@ -128,35 +128,12 @@ impl<'a> Parser<'a> {
         require_sig_ty: RequireSigTy,
     ) -> DiagnosticResult<(FnSig, bool)> {
         let tparams = self.parse_optional_tparams()?;
-
-        let (params, ret, is_c_variadic) =
-            self.parse_fn_sig_helper(AllowOmitParens::No, require_sig_ty)?;
-
+        let (params, is_c_variadic) = self.parse_fn_params(require_sig_ty)?;
+        let ret = if self.is_ty_start() { Some(self.parse_ty()?) } else { None };
         Ok((FnSig { word, tparams, params, ret }, is_c_variadic))
     }
 
-    pub(super) fn parse_fn_sig_helper(
-        &mut self,
-        allow_omit_parens: AllowOmitParens,
-        require_sig_ty: RequireSigTy,
-    ) -> DiagnosticResult<(Vec<FnParam>, Option<TyExpr>, bool)> {
-        let (params, is_c_variadic) =
-            if allow_omit_parens.into() && !self.peek_is(TokenKind::OpenParen) {
-                (vec![], false)
-            } else {
-                self.parse_fn_params(require_sig_ty)?
-            };
-
-        let ret = if require_sig_ty == RequireSigTy::Yes || self.is_ty_start() {
-            Some(self.parse_ty()?)
-        } else {
-            None
-        };
-
-        Ok((params, ret, is_c_variadic))
-    }
-
-    fn parse_fn_params(
+    pub(super) fn parse_fn_params(
         &mut self,
         require_sig_ty: RequireSigTy,
     ) -> DiagnosticResult<(Vec<FnParam>, bool)> {
