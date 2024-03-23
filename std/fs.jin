@@ -51,7 +51,7 @@ fn File.create*(path &str) io.Result[File] =
         fd -> Result.Ok(File(fd))
     }
 
-fn open-impl(path &str, flags c.c-int, mode c.mode-t) c.c-int = {
+fn open-impl(path &str, flags c.c-int, mode c.mode) c.c-int = {
     let pathname = unsafe as[_](path.as-bytes().ptr)
     // TODO: cross-platform open
     unsafe c.open(pathname, flags, mode)

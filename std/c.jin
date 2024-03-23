@@ -13,17 +13,17 @@ type c-ulong* = u64
 type c-longlong* = i64
 type c-ulonglong* = u64
 
-type c-size-t* = uint
-type c-ssize-t* = int
+type c-size* = uint
+type c-ssize* = int
 
-type mode-t* = u32
+type mode* = u32
 
 fn extern "c" close*(fd c-int) c-int
-fn extern "c" open*(pathname ptr[c-char], flags c-int, mode mode-t) c-int
+fn extern "c" open*(pathname ptr[c-char], flags c-int, mode mode) c-int
 fn extern "c" printf*(format ptr[c-uchar], ..) c-int
-fn extern "c" read*(fd c-int, buf ptr[c-uchar], count c-size-t) c-ssize-t
+fn extern "c" read*(fd c-int, buf ptr[c-uchar], count c-size) c-ssize
 fn extern "c" unlink*(pathname ptr[c-char]) c-int
-fn extern "c" write*(fd c-int, buf ptr[c-uchar], count c-size-t) c-ssize-t
+fn extern "c" write*(fd c-int, buf ptr[c-uchar], count c-size) c-ssize
 fn extern "c" __errno_location*() ptr[c-int]
 
 const O_RDONLY* c-int = 0
