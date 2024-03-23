@@ -80,9 +80,9 @@ fn to-str*(x uint) str = fmt-impl(x, false, 10)
 fn to-str*(x uint, base u32) str = fmt-impl(x, false, base)
 fn fmt*(x &uint, buf &mut StrBuf) = buf.push(x.to-str(10))
 
-// TODO: We can avoid this allocation if we add stack allocated arrays to the language,
-// and stack allocate an uninitialized [22]u8 instead of using a StrBuf
 fn fmt-impl(mut num uint, is-neg bool, base u32) str = {
+    // TODO: We can avoid this allocation if we add stack allocated arrays to the language,
+    // and stack allocate an uninitialized [22]u8 instead of using a StrBuf
     let mut buf = StrBuf.with-cap(22)
 
     // TODO: We should be able to use an early return here,
