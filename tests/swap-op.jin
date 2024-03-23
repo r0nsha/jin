@@ -1,4 +1,4 @@
-fn extern "c" printf(fmt: ptr[u8], ..) i32
+fn extern "c" printf(fmt ptr[u8], ..) i32
 
 fn main() = {
     let mut a = 1
@@ -8,5 +8,5 @@ fn main() = {
     print(old)
 }
 
-fn print(v: int) =
+fn print(v int) =
     unsafe printf("%d\n".ptr, v)

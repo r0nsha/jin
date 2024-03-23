@@ -2,7 +2,7 @@ mod baz*
 
 use imports as root
 
-fn extern "c" printf(fmt: ptr[u8], ..) i32
+fn extern "c" printf(fmt ptr[u8], ..) i32
 
 fn hello*() = {
     unsafe printf(root.get-hello-world().ptr)

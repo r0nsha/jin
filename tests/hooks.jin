@@ -3,7 +3,7 @@ fn main() = {
     println("hello")
 }
 
-type Wow*(msg: &str)
+type Wow*(msg &str)
 
-fn `=drop`(w: &mut Wow) =
+fn `=drop`(w &mut Wow) =
     println(w.msg)

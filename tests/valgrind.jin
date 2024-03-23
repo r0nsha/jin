@@ -1,9 +1,9 @@
-fn extern "c" printf(fmt: ptr[u8], ..) i32
+fn extern "c" printf(fmt ptr[u8], ..) i32
 
-type Num(field: int)
-type Wrapper(num: Num)
-type Duo(n1: Num, n2: Num)
-type WrapperDuo(w1: Wrapper, w2: Wrapper)
+type Num(field int)
+type Wrapper(num Num)
+type Duo(n1 Num, n2 Num)
+type WrapperDuo(w1 Wrapper, w2 Wrapper)
 
 fn main() = {
     // Drop temporary values
@@ -23,7 +23,7 @@ fn main() = {
     n = Num(2)
 
     // drop in for & break
-    let mut i: uint = 10
+    let mut i uint = 10
     for {
         let n = Num(1)
         unsafe printf("i = %d\n".ptr, i)
@@ -61,4 +61,4 @@ fn main() = {
     }
 }
 
-fn drop-poly[T](arg: T) = {}
+fn drop-poly[T](arg T) = {}

@@ -147,10 +147,7 @@ impl<'a> Parser<'a> {
 
             let pat = this.parse_pat(IsFnParam::Yes, AllowVis::No)?;
 
-            let ty_expr = if require_sig_ty == RequireSigTy::Yes {
-                this.eat(TokenKind::Colon)?;
-                Some(this.parse_ty()?)
-            } else if this.is(TokenKind::Colon) {
+            let ty_expr = if require_sig_ty == RequireSigTy::Yes || this.is_ty_start() {
                 Some(this.parse_ty()?)
             } else {
                 None
@@ -210,16 +207,13 @@ impl<'a> Parser<'a> {
         let start = self.last_span();
         let pat = self.parse_pat(IsFnParam::No, allow_vis)?;
 
-        let ty_expr = if self.is(TokenKind::Colon) {
+        let ty_expr = if require_ty == RequireTy::Yes || !self.peek_is(TokenKind::Eq) {
             Some(self.parse_ty()?)
-        } else if require_ty == RequireTy::No {
-            None
         } else {
-            return Err(self.unexpected_token(":"));
+            None
         };
 
         self.eat(TokenKind::Eq)?;
-
         let value = self.parse_expr()?;
 
         Ok(Let {
@@ -238,7 +232,6 @@ impl<'a> Parser<'a> {
         let mutability = self.parse_mutability();
         let ident = self.eat_ident()?;
         let vis = self.parse_vis();
-        self.eat(TokenKind::Colon)?;
         let ty_expr = self.parse_ty()?;
 
         let span = start.merge(ty_expr.span());

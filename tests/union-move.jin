@@ -1,20 +1,20 @@
-fn extern "c" printf(fmt: ptr[u8], ..) i32
+fn extern "c" printf(fmt ptr[u8], ..) i32
 
 type Move()
 type Enum {
     Foo
     Bar
 }
-type HasMove rec { Has(m: Move) }
-type HasRef { Has(r: &Move) }
+type HasMove rec { Has(m Move) }
+type HasRef { Has(r &Move) }
 type MoveRef {
-    M(m: Move)
-    R(r: &Move)
+    M(m Move)
+    R(r &Move)
 }
-type Poly[T] { A(a: T) }
+type Poly[T] { A(a T) }
 type PolyRef[T] {
-    M(m: T)
-    R(r: &T)
+    M(m T)
+    R(r &T)
 }
 
 fn main() = {
@@ -33,7 +33,7 @@ fn main() = {
 
     // Move + Ref
     let mrr = MoveRef.R(match &hm2 { HasMove.Has(m) -> m })
-    // let mrm = MoveRef.M(match hm2 { HasMove.Has(m) -> m }) // (Ref error: Because this is defined after refs)
+    // let mrm = MoveRef.M(match hm2 { HasMove.Has(m) -> m }) // (Ref error Because this is defined after refs)
 
     // Poly (Copy)
     let pc = Poly.A(1)
@@ -50,5 +50,5 @@ fn main() = {
 
     // Poly (Move + Ref)
     let prr = PolyRef.R(match &pm2 { Poly.A(m) -> m })
-    // let prm = PolyRef.M(match pm2 { Poly.A(m) -> m }) // (Ref error: Because this is defined after refs)
+    // let prm = PolyRef.M(match pm2 { Poly.A(m) -> m }) // (Ref error Because this is defined after refs)
 }

@@ -1,7 +1,7 @@
-fn extern "c" printf(fmt: ptr[u8], ..) i32
+fn extern "c" printf(fmt ptr[u8], ..) i32
 
-type Num(field: int)
-type Wrapper(num: Num)
+type Num(field int)
+type Wrapper(num Num)
 
 fn main() = {
     use-after-move()
@@ -27,8 +27,8 @@ fn use-after-move-scoped() = {
     }
 }
 
-let global-int: int = 1
-let global-num: Num = Num(1)
+let global-int int = 1
+let global-num Num = Num(1)
 
 fn move-out-of-global() = {
     let x = global-int // Ok
@@ -87,6 +87,6 @@ fn assign-not-moved() = {
     }
 }
 
-fn drop-discarded-values(_: Num) = {
+fn drop-discarded-values(_ Num) = {
     let _ = Num(2)
 }

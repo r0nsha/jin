@@ -2,83 +2,83 @@ use std.option.Option
 use std.slice.(?)
 use std.str.StrBuf
 
-const I8-MIN*: i8 = -128
-const I8-MAX*: i8 = 127
+const I8-MIN* i8 = -128
+const I8-MAX* i8 = 127
 
-const I16-MIN*: i16 = -32_768
-const I16-MAX*: i16 = 32_767
+const I16-MIN* i16 = -32_768
+const I16-MAX* i16 = 32_767
 
-const I32-MIN*: i32 = -2_147_483_648
-const I32-MAX*: i32 = 2_147_483_647
+const I32-MIN* i32 = -2_147_483_648
+const I32-MAX* i32 = 2_147_483_647
 
-const I64-MIN*: i64 = -9_223_372_036_854_775_808
-const I64-MAX*: i64 = 9_223_372_036_854_775_807
-
-// TODO: Consider 32bit platforms!
-const INT-MIN*: int = I64-MIN
-const INT-MAX*: int = I64-MAX
-
-const U8-MIN*: u8 = 0
-const U8-MAX*: u8 = 255
-
-const U16-MIN*: u16 = 0
-const U16-MAX*: u16 = 65_535
-
-const U32-MIN*: u32 = 0
-const U32-MAX*: u32 = 4_294_967_295
-
-const U64-MIN*: u64 = 0
-const U64-MAX*: u64 = 18_446_744_073_709_551_615
+const I64-MIN* i64 = -9_223_372_036_854_775_808
+const I64-MAX* i64 = 9_223_372_036_854_775_807
 
 // TODO: Consider 32bit platforms!
-const UINT-MIN*: uint = U64-MIN
-const UINT-MAX*: uint = U64-MAX
+const INT-MIN* int = I64-MIN
+const INT-MAX* int = I64-MAX
 
-fn abs*(x: i8) i8 = if x > 0 { x } else { -x }
-fn abs*(x: i16) i16 = if x > 0 { x } else { -x }
-fn abs*(x: i32) i32 = if x > 0 { x } else { -x }
-fn abs*(x: i64) i64 = if x > 0 { x } else { -x }
-fn abs*(x: int) int = if x > 0 { x } else { -x }
+const U8-MIN* u8 = 0
+const U8-MAX* u8 = 255
 
-fn to-str*(x: i8) str = fmt-impl(uint(x.abs()), x < 0, Format.Decimal)
-fn to-str*(x: i8, format: Format) str = fmt-impl(uint(x.abs()), x < 0, format)
-fn fmt*(x: &i8, buf: &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
+const U16-MIN* u16 = 0
+const U16-MAX* u16 = 65_535
 
-fn to-str*(x: i16) str = fmt-impl(uint(x.abs()), x < 0, Format.Decimal)
-fn to-str*(x: i16, format: Format) str = fmt-impl(uint(x.abs()), x < 0, format)
-fn fmt*(x: &i16, buf: &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
+const U32-MIN* u32 = 0
+const U32-MAX* u32 = 4_294_967_295
 
-fn to-str*(x: i32) str = fmt-impl(uint(x.abs()), x < 0, Format.Decimal)
-fn to-str*(x: i32, format: Format) str = fmt-impl(uint(x.abs()), x < 0, format)
-fn fmt*(x: &i32, buf: &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
+const U64-MIN* u64 = 0
+const U64-MAX* u64 = 18_446_744_073_709_551_615
 
-fn to-str*(x: i64) str = fmt-impl(uint(x.abs()), x < 0, Format.Decimal)
-fn to-str*(x: i64, format: Format) str = fmt-impl(uint(x.abs()), x < 0, format)
-fn fmt*(x: &i64, buf: &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
+// TODO: Consider 32bit platforms!
+const UINT-MIN* uint = U64-MIN
+const UINT-MAX* uint = U64-MAX
 
-fn to-str*(x: int) str = fmt-impl(uint(x.abs()), x < 0, Format.Decimal)
-fn to-str*(x: int, format: Format) str = fmt-impl(uint(x.abs()), x < 0, format)
-fn fmt*(x: &int, buf: &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
+fn abs*(x i8) i8 = if x > 0 { x } else { -x }
+fn abs*(x i16) i16 = if x > 0 { x } else { -x }
+fn abs*(x i32) i32 = if x > 0 { x } else { -x }
+fn abs*(x i64) i64 = if x > 0 { x } else { -x }
+fn abs*(x int) int = if x > 0 { x } else { -x }
 
-fn to-str*(x: u8) str = fmt-impl(x, false, Format.Decimal)
-fn to-str*(x: u8, format: Format) str = fmt-impl(x, false, format)
-fn fmt*(x: &u8, buf: &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
+fn to-str*(x i8) str = fmt-impl(uint(x.abs()), x < 0, Format.Decimal)
+fn to-str*(x i8, format Format) str = fmt-impl(uint(x.abs()), x < 0, format)
+fn fmt*(x &i8, buf &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
 
-fn to-str*(x: u16) str = fmt-impl(x, false, Format.Decimal)
-fn to-str*(x: u16, format: Format) str = fmt-impl(x, false, format)
-fn fmt*(x: &u16, buf: &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
+fn to-str*(x i16) str = fmt-impl(uint(x.abs()), x < 0, Format.Decimal)
+fn to-str*(x i16, format Format) str = fmt-impl(uint(x.abs()), x < 0, format)
+fn fmt*(x &i16, buf &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
 
-fn to-str*(x: u32) str = fmt-impl(x, false, Format.Decimal)
-fn to-str*(x: u32, format: Format) str = fmt-impl(x, false, format)
-fn fmt*(x: &u32, buf: &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
+fn to-str*(x i32) str = fmt-impl(uint(x.abs()), x < 0, Format.Decimal)
+fn to-str*(x i32, format Format) str = fmt-impl(uint(x.abs()), x < 0, format)
+fn fmt*(x &i32, buf &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
 
-fn to-str*(x: u64) str = fmt-impl(x, false, Format.Decimal)
-fn to-str*(x: u64, format: Format) str = fmt-impl(x, false, format)
-fn fmt*(x: &u64, buf: &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
+fn to-str*(x i64) str = fmt-impl(uint(x.abs()), x < 0, Format.Decimal)
+fn to-str*(x i64, format Format) str = fmt-impl(uint(x.abs()), x < 0, format)
+fn fmt*(x &i64, buf &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
 
-fn to-str*(x: uint) str = fmt-impl(x, false, Format.Decimal)
-fn to-str*(x: uint, format: Format) str = fmt-impl(x, false, format)
-fn fmt*(x: &uint, buf: &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
+fn to-str*(x int) str = fmt-impl(uint(x.abs()), x < 0, Format.Decimal)
+fn to-str*(x int, format Format) str = fmt-impl(uint(x.abs()), x < 0, format)
+fn fmt*(x &int, buf &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
+
+fn to-str*(x u8) str = fmt-impl(x, false, Format.Decimal)
+fn to-str*(x u8, format Format) str = fmt-impl(x, false, format)
+fn fmt*(x &u8, buf &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
+
+fn to-str*(x u16) str = fmt-impl(x, false, Format.Decimal)
+fn to-str*(x u16, format Format) str = fmt-impl(x, false, format)
+fn fmt*(x &u16, buf &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
+
+fn to-str*(x u32) str = fmt-impl(x, false, Format.Decimal)
+fn to-str*(x u32, format Format) str = fmt-impl(x, false, format)
+fn fmt*(x &u32, buf &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
+
+fn to-str*(x u64) str = fmt-impl(x, false, Format.Decimal)
+fn to-str*(x u64, format Format) str = fmt-impl(x, false, format)
+fn fmt*(x &u64, buf &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
+
+fn to-str*(x uint) str = fmt-impl(x, false, Format.Decimal)
+fn to-str*(x uint, format Format) str = fmt-impl(x, false, format)
+fn fmt*(x &uint, buf &mut StrBuf) = buf.push(x.to-str(Format.Decimal))
 
 type Format* {
     Binary
@@ -86,7 +86,7 @@ type Format* {
     Hex
 }
 
-fn base*(f: Format) uint = match f {
+fn base*(f Format) uint = match f {
     Format.Binary -> 2
     Format.Decimal -> 10
     Format.Hex -> 16
@@ -94,7 +94,7 @@ fn base*(f: Format) uint = match f {
 
 // TODO: We can avoid this allocation if we add stack allocated arrays to the language,
 // and stack allocate an uninitialized [u8; 22] instead of using a StrBuf
-fn fmt-impl(mut num: uint, is-neg: bool, format: Format) str = {
+fn fmt-impl(mut num uint, is-neg bool, format Format) str = {
     let base = format.base()
     let mut buf = StrBuf.with-cap(22)
 

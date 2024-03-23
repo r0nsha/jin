@@ -1,13 +1,13 @@
 use std.builtin
 use std.option.Option
 
-const MIN-CAP: uint = 4
+const MIN-CAP uint = 4
 
-type Array*[T](buf: []T)
+type Array*[T](buf []T)
 
 fn Array.new*[T]() Array[T] = Array([])
 
-fn Array.new*[T](len: uint, f: fn(uint) T) Array[T] = {
+fn Array.new*[T](len uint, f fn(uint) T) Array[T] = {
     let mut array = Array.with-cap(len)
     let mut i = 0
 
@@ -19,23 +19,23 @@ fn Array.new*[T](len: uint, f: fn(uint) T) Array[T] = {
     array
 }
 
-fn Array.from*[T](slice: []T) Array[T] = Array(slice)
+fn Array.from*[T](slice []T) Array[T] = Array(slice)
 
-fn Array.with-cap*[T](cap: uint) Array[T] = {
+fn Array.with-cap*[T](cap uint) Array[T] = {
     // TODO: use a polymorphic `std.cmp.max` function for this
     let c = if cap > MIN-CAP { cap } else { MIN-CAP }
     Array([:c])
 }
 
-fn len*[T](array: &Array[T]) uint = array.buf.len
-fn cap*[T](array: &Array[T]) uint = array.buf.cap
-fn is-empty*[T](array: &Array[T]) bool = array.len() == 0
+fn len*[T](array &Array[T]) uint = array.buf.len
+fn cap*[T](array &Array[T]) uint = array.buf.cap
+fn is-empty*[T](array &Array[T]) bool = array.len() == 0
 
-fn as-ref*[T](array: &Array[T]) &[]T = &array.buf
-fn as-mut*[T](array: &mut Array[T]) &mut []T = &mut array.buf
-fn take*[T](array: Array[T]) []T = array.buf
+fn as-ref*[T](array &Array[T]) &[]T = &array.buf
+fn as-mut*[T](array &mut Array[T]) &mut []T = &mut array.buf
+fn take*[T](array Array[T]) []T = array.buf
 
-fn get*[T](array: &Array[T], index: uint) Option[&T] = {
+fn get*[T](array &Array[T], index uint) Option[&T] = {
     if index < array.buf.len {
         Option.Some(&array.buf.[index])
     } else {
@@ -43,7 +43,7 @@ fn get*[T](array: &Array[T], index: uint) Option[&T] = {
     }
 }
 
-fn set*[T](array: &mut Array[T], index: uint, value: T) Option[T] = {
+fn set*[T](array &mut Array[T], index uint, value T) Option[T] = {
     if index < array.buf.len {
         Option.Some(array.buf.[index] := value)
     } else {
@@ -51,12 +51,12 @@ fn set*[T](array: &mut Array[T], index: uint, value: T) Option[T] = {
     }
 }
 
-fn push*[T](array: &mut Array[T], value: T) = {
+fn push*[T](array &mut Array[T], value T) = {
     array.reserve(1)
     array.push-unchecked(value)
 }
 
-fn pop*[T](array: &mut Array[T]) Option[T] = {
+fn pop*[T](array &mut Array[T]) Option[T] = {
     if array.buf.len == 0 {
         return Option.None
     }
@@ -65,33 +65,33 @@ fn pop*[T](array: &mut Array[T]) Option[T] = {
     Option.Some(unsafe (array.buf.ptr + array.buf.len).0)
 }
 
-fn clear*[T](array: &mut Array[T]) = {
+fn clear*[T](array &mut Array[T]) = {
     array.buf = []
 }
 
-fn reserve*[T](array: &mut Array[T], additional: uint) = {
+fn reserve*[T](array &mut Array[T], additional uint) = {
     if array.needs-to-grow(additional) {
         array.grow(additional)
     }
 }
 
 // TODO: this should be marked `unsafe`
-fn push-unchecked*[T](array: &mut Array[T], value: T) = {
+fn push-unchecked*[T](array &mut Array[T], value T) = {
     unsafe array.buf.len += 1
     array.buf.[array.buf.len - 1] = value
 }
 
 // TODO: this should be marked `unsafe`
-fn set-len*[T](array: &mut Array[T], len: uint) = {
+fn set-len*[T](array &mut Array[T], len uint) = {
     unsafe array.buf.len = len
 }
 
-fn needs-to-grow[T](array: &Array[T], additional: uint) bool =
+fn needs-to-grow[T](array &Array[T], additional uint) bool =
     // TODO: this is prone to overflow, we should implement checked arithmetic
     array.buf.len + additional > array.buf.cap
 
 
-fn grow[T](array: &mut Array[T], additional: uint) = {
+fn grow[T](array &mut Array[T], additional uint) = {
     let cap = array.buf.cap
     if cap > 0 {
         let new-cap = max(cap * 2, cap + additional)
@@ -102,5 +102,5 @@ fn grow[T](array: &mut Array[T], additional: uint) = {
 }
 
 // TODO: use a polymorphic `std.cmp.max` function instead
-fn max(a: uint, b: uint) uint =
+fn max(a uint, b uint) uint =
     if a > b { a } else { b }

@@ -4,4 +4,4 @@ fn main() = {
     }
 }
 
-fn call(f: fn()) = f()
+fn call(f fn()) = f()

@@ -11,7 +11,7 @@ fn main() = {
 }
 
 fn int-types() = {
-    let id: i8 = 126
+    let id i8 = 126
     let promoted = i64(id) + 5555
     let demoted1 = i32(promoted)
     let demoted2 = i16(demoted1 - 4000)
@@ -55,12 +55,12 @@ fn if-expr() = {
 
 fn variables() int = {
     let x = 7 // Inferred to `int`
-    let y: int = 3 // Explicit type annotation
+    let y int = 3 // Explicit type annotation
     let x = 39  // Variables can be shadowed
     x + y
 }
 
-fn id[T](x: T) T = {
+fn id[T](x T) T = {
     x
 }
 
@@ -74,7 +74,7 @@ fn polymorphism() = {
     id[bool](false)
 }
 
-fn add-named(~first: int, ~second: int) int = {
+fn add-named(~first int, ~second int) int = {
     first + second
 }
 
@@ -84,7 +84,7 @@ fn named-args() = {
     add-named(1, second: 2)
 }
 
-let global-answer: int = 42
+let global-answer int = 42
 
 fn global-vars() = {
     let answer = global-answer

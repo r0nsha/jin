@@ -5,7 +5,7 @@ use std.(
     str.(?),
 )
 
-fn char.from-digit*(num: u32, radix: u32) Option[char] = {
+fn char.from-digit*(num u32, radix u32) Option[char] = {
     assert(radix <= 36, "radix is too high (maximum 36)")
 
     if num < radix {
@@ -20,18 +20,18 @@ fn char.from-digit*(num: u32, radix: u32) Option[char] = {
     }
 }
 
-// The low-level UTF8 implementation was taken from rust's `core::char` module
-const TAG-CONT: u8 = 0b1000_0000;
-const TAG-TWO-B: u8 = 0b1100_0000;
-const TAG-THREE-B: u8 = 0b1110_0000;
-const TAG-FOUR-B: u8 = 0b1111_0000;
-const MAX-ONE-B: u32 = 0x80;
-const MAX-TWO-B: u32 = 0x800;
-const MAX-THREE-B: u32 = 0x10000;
+// The low-level UTF8 implementation was taken from rust's `corechar` module
+const TAG-CONT u8 = 0b1000_0000;
+const TAG-TWO-B u8 = 0b1100_0000;
+const TAG-THREE-B u8 = 0b1110_0000;
+const TAG-FOUR-B u8 = 0b1111_0000;
+const MAX-ONE-B u32 = 0x80;
+const MAX-TWO-B u32 = 0x800;
+const MAX-THREE-B u32 = 0x10000;
 
-fn len-utf8*(ch: char) uint = len-utf8(u32(ch))
+fn len-utf8*(ch char) uint = len-utf8(u32(ch))
 
-fn len-utf8(code: u32) uint =
+fn len-utf8(code u32) uint =
     if code < MAX-ONE-B {
         1
     } else if code < MAX-TWO-B {
@@ -42,10 +42,10 @@ fn len-utf8(code: u32) uint =
         4
     }
 
-fn encode-utf8*(ch: char, dst: &mut []u8) &mut []u8 =
+fn encode-utf8*(ch char, dst &mut []u8) &mut []u8 =
     encode-utf8-raw(u32(ch), dst)
 
-fn encode-utf8-raw*(code: u32, dst: &mut []u8) &mut []u8 = {
+fn encode-utf8-raw*(code u32, dst &mut []u8) &mut []u8 = {
     let len = code.len-utf8()
     assert(dst.len >= len)
 
