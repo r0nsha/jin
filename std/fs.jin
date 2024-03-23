@@ -39,7 +39,6 @@ fn write*(path &str, bytes &[]u8) io.Result[{}] =
         Result.Err(err) -> Result.Err(err)
     }
 
-// TODO: Add an API for custom file opening with `OpenOptions`
 fn File.open*(path &str) io.Result[File] =
     match open-impl(path, c.O_RDONLY, 0) {
         -1 -> Result.Err(io.Error.last-os-error())
