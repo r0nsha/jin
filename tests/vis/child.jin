@@ -1,9 +1,9 @@
 use vis
 
-type Priv(num int)
-type PrivCtor*(num int)
+type Priv(num: int)
+type PrivCtor*(num: int)
 
-fn foo() = {
+fn foo() unit = {
     Priv(1).num
     vis.x()
 }

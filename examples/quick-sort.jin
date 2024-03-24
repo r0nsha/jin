@@ -1,13 +1,13 @@
-fn main() = {
+fn main() unit = {
     let mut slice = [1, 3, 42, 487, 5, 66, 4055, 33]
-    print("Before ")
+    print("Before: ")
     slice.print()
     quick-sort(&mut slice)
-    print("After ")
+    print("After: ")
     slice.print()
 }
 
-fn quick-sort(slice &mut []int) = {
+fn quick-sort(slice: &mut []int) unit = {
     let len = slice.len
 
     if len < 2 {
@@ -19,7 +19,7 @@ fn quick-sort(slice &mut []int) = {
     quick-sort(&mut slice.[pivot-idx + 1..len])
 }
 
-fn partition(slice &mut []int) uint = {
+fn partition(slice: &mut []int) uint = {
     let len = slice.len
     let pivot-idx = len / 2
     let last-idx = len - 1
@@ -41,7 +41,7 @@ fn partition(slice &mut []int) uint = {
     store-idx
 }
 
-fn print(slice &[]int) = {
+fn print(slice: &[]int) unit = {
     let mut i = 0
     for if i < slice.len {
         print("{slice.[i]} ")

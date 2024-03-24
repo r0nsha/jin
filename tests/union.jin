@@ -1,11 +1,11 @@
-type Box(value int)
+type Box(value: int)
 
-fn main() = {
+fn main() unit = {
     // Value constructors
     let a = Option.Some(1)
     let b = Option[int].Some(1)
     let c = Option.Some(value: 2)
-    let d Option[int] = Option.None
+    let d: Option[int] = Option.None
 
     // Pattern matching
     let value = Option.Some(1)
@@ -18,7 +18,7 @@ fn main() = {
     let o = Option.Some(Box(4))
 
     let mut b = Box(1)
-    println("before match Box({b.value})")
+    println("before match: Box({b.value})")
 
     match o {
         Option.Some(Box(value: 5)) -> println("some(Box(5))")
@@ -29,7 +29,7 @@ fn main() = {
         Option.None -> println("none")
     }
 
-    println("after match Box({b.value})")
+    println("after match: Box({b.value})")
 
     if Option.Some(-1).map-or(false, is-negative) {
         println("o is negative")
@@ -38,4 +38,4 @@ fn main() = {
     }
 }
 
-fn is-negative(x int) bool = x < 0
+fn is-negative(x: int) bool = x < 0

@@ -1,6 +1,6 @@
-const EPERM* i32 = 1
-const ENOENT* i32 = 2
-const EINTR* i32 = 4
-const EBADF* i32 = 9
-const EEXIST* i32 = 17
-const EINVAL* i32 = 22
+const EPERM*: i32 = 1
+const ENOENT*: i32 = 2
+const EINTR*: i32 = 4
+const EBADF*: i32 = 9
+const EEXIST*: i32 = 17
+const EINVAL*: i32 = 22

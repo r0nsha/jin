@@ -1,6 +1,6 @@
 use std.str.StrBuf
 
-fn fmt*(b &bool, buf &mut StrBuf) =
+fn fmt*(b: &bool, buf: &mut StrBuf) unit =
     buf.push(if b { "true" } else { "false "})
 
-fn to-str*(b bool) str = "{b}"
+fn to-str*(b: bool) str = "{b}"

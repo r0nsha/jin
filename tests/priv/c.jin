@@ -1,1 +1,1 @@
-let val* int = 1
+let val*: int = 1

@@ -1,1 +1,1 @@
-type Inner*[a](value* a)
+type Inner*[a](value*: a)

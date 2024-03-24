@@ -2,14 +2,14 @@ use std.builtin
 use std.char.(encode-utf8-raw, ?)
 use std.collections.Array
 
-fn str.from-utf8*(bytes []u8) Result[str, {}] =
+fn str.from-utf8*(bytes: []u8) Result[str, unit] =
     if unsafe builtin.slice-utf8-validate(&bytes) {
         Result.Ok(unsafe as[_](bytes))
     } else {
         Result.Err({})
     }
 
-fn str.from-utf8*(bytes &[]u8) Result[&str, {}] =
+fn str.from-utf8*(bytes: &[]u8) Result[&str, unit] =
     if unsafe builtin.slice-utf8-validate(bytes) {
         Result.Ok(unsafe as[_](bytes))
     } else {
@@ -17,52 +17,52 @@ fn str.from-utf8*(bytes &[]u8) Result[&str, {}] =
     }
 
 // TODO: should be marked unsafe
-fn str.from-utf8-unchecked*(bytes []u8) str =
+fn str.from-utf8-unchecked*(bytes: []u8) str =
     unsafe as[_](bytes)
 
 // TODO: should be marked unsafe
-fn str.from-utf8-unchecked*(bytes &[]u8) &str =
+fn str.from-utf8-unchecked*(bytes: &[]u8) &str =
     unsafe as[_](bytes)
 
 // TODO: should be marked unsafe
-fn str.from-utf8-mut-unchecked*(bytes &mut []u8) &mut str =
+fn str.from-utf8-mut-unchecked*(bytes: &mut []u8) &mut str =
     unsafe as[_](bytes)
 
-fn as-bytes*(s &str) &[]u8 = unsafe as[_](s)
-fn as-bytes-mut*(s &mut str) &mut []u8 = unsafe as[_](s)
+fn as-bytes*(s: &str) &[]u8 = unsafe as[_](s)
+fn as-bytes-mut*(s: &mut str) &mut []u8 = unsafe as[_](s)
 
-fn fmt*(s &str, buf &mut StrBuf) = buf.push(s)
+fn fmt*(s: &str, buf: &mut StrBuf) unit = buf.push(s)
 
-type StrBuf*(array Array[u8])
+type StrBuf*(array: Array[u8])
 
 fn StrBuf.new*() StrBuf = StrBuf.with-cap(1)
 
-fn StrBuf.with-cap*(cap uint) StrBuf =
+fn StrBuf.with-cap*(cap: uint) StrBuf =
     StrBuf(array-with-nul-byte(cap))
 
-fn len*(sb &StrBuf) uint = sb.array.len() - 1
-fn cap*(sb &StrBuf) uint = sb.array.cap()
-fn is-empty*(sb &StrBuf) bool = sb.len() == 0
+fn len*(sb: &StrBuf) uint = sb.array.len() - 1
+fn cap*(sb: &StrBuf) uint = sb.array.cap()
+fn is-empty*(sb: &StrBuf) bool = sb.len() == 0
 
-fn as-ref*(sb &StrBuf) &str =
+fn as-ref*(sb: &StrBuf) &str =
     str.from-utf8-unchecked(
         &sb.array.as-ref().[..sb.array.len() - 1]
     )
 
-fn as-mut*(sb &mut StrBuf) &mut str =
+fn as-mut*(sb: &mut StrBuf) &mut str =
     str.from-utf8-mut-unchecked(
         &mut sb.array.as-mut().[..sb.array.len() - 1]
     )
 
-fn take*(mut sb StrBuf) str = {
+fn take*(mut sb: StrBuf) str = {
     let s = sb.array.take()
     unsafe s.len -= 1
     str.from-utf8-unchecked(s)
 }
 
-fn push*(sb &mut StrBuf, s str) = sb.push(&s)
+fn push*(sb: &mut StrBuf, s: str) unit = sb.push(&s)
 
-fn push*(sb &mut StrBuf, s &str) = {
+fn push*(sb: &mut StrBuf, s: &str) unit = {
     if s.len == 0 {
         return
     }
@@ -83,12 +83,12 @@ fn push*(sb &mut StrBuf, s &str) = {
     sb.array.push(b'\0')
 }
 
-fn push*(sb &mut StrBuf, ch char) = {
+fn push*(sb: &mut StrBuf, ch: char) unit = {
     let len = sb.array.len()
     let ch-len = ch.len-utf8()
     let new-len = len + ch-len
 
-    // TODO: This is a good use-case for implementing an `extend` function. For this we need
+    // TODO: This is a good use-case for implementing an `extend` function. For this we need:
     //      1. Stack allocated arrays. We then encode the char into an array of 4 elements.
     //      2. Implement `std.array.extend([]T)`
     sb.array.reserve(ch-len + 1)
@@ -98,11 +98,11 @@ fn push*(sb &mut StrBuf, ch char) = {
     sb.array.push(b'\0')
 }
 
-fn clear*(sb &mut StrBuf) = {
+fn clear*(sb: &mut StrBuf) unit = {
     sb.array = array-with-nul-byte(sb.array.cap())
 }
 
-fn array-with-nul-byte(cap uint) Array[u8] = {
+fn array-with-nul-byte(cap: uint) Array[u8] = {
     let mut a = Array.with-cap(cap)
     a.push(b'\0')
     a

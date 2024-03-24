@@ -1,8 +1,10 @@
-fn main() = {
+use std.int.Format
+
+fn main() unit = {
     let letter = "R"
     let n = 18
     println("{letter} is the {n}th letter of the alphabet.")
     println("{1} + {2} = {1 + 2}")
-    println("{420} is {420.to-str(16)} in hex")
-    println("bool {true}, {!true}")
+    println("{420} is {420.to-str(Format.Hex)} in hex")
+    println("bool: {true}, {!true}")
 }

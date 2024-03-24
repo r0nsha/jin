@@ -1,9 +1,9 @@
-fn main() = {
+fn main() unit = {
 	let box = Box(Bag(Box(1), Box(Box(2))))
 	drop(box)
 }
 
-type Box[T](v T)
-type Bag(a Box[int], b Box[Box[int]])
+type Box[T](v: T)
+type Bag(a: Box[int], b: Box[Box[int]])
 
-fn drop[T](value T) = {}
+fn drop[T](value: T) unit = {}

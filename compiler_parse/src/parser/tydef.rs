@@ -49,6 +49,7 @@ impl<'a> Parser<'a> {
         let (fields, _) = self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
             let ident = this.eat_ident()?;
             let vis = this.parse_vis();
+            this.eat(TokenKind::Colon)?;
             let ty_expr = this.parse_ty()?;
             Ok(ControlFlow::Continue(StructTyField { name: ident.word(), vis, ty_expr }))
         })?;
@@ -73,6 +74,7 @@ impl<'a> Parser<'a> {
             let (fields, _) =
                 self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
                     let ident = this.eat_ident()?;
+                    this.eat(TokenKind::Colon)?;
                     let ty_expr = this.parse_ty()?;
                     Ok(ControlFlow::Continue(UnionVariantField { name: ident.word(), ty_expr }))
                 })?;
