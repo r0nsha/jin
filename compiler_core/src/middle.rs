@@ -199,7 +199,7 @@ impl Spanned for TyExpr {
 #[derive(Debug, Clone)]
 pub struct TyExprFn {
     pub params: Vec<TyExpr>,
-    pub ret: Option<Box<TyExpr>>,
+    pub ret: Box<TyExpr>,
     pub is_extern: bool,
     pub is_c_variadic: bool,
     pub callconv: CallConv,

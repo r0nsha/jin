@@ -91,7 +91,7 @@ impl<'a> Parser<'a> {
             (false, CallConv::default())
         };
         let (params, is_c_variadic) = self.parse_fn_tparams()?;
-        let ret = if self.is_ty_start() { Some(Box::new(self.parse_ty()?)) } else { None };
+        let ret = Box::new(self.parse_ty()?);
 
         Ok(TyExprFn {
             params,
