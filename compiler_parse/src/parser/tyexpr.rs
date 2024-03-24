@@ -35,10 +35,6 @@ impl<'a> Parser<'a> {
                 let fty = self.parse_fn_ty()?;
                 TyExpr::Fn(fty)
             }
-            TokenKind::OpenCurly => {
-                let close = self.eat(TokenKind::CloseCurly)?;
-                TyExpr::Unit(tok.span.merge(close.span))
-            }
             TokenKind::OpenParen => {
                 let ty = self.parse_ty()?;
                 let close = self.eat(TokenKind::CloseParen)?;

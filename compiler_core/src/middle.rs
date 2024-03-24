@@ -177,7 +177,6 @@ pub enum TyExpr {
     Slice(Box<Self>, Span),
     Ref(Box<Self>, Mutability, Span),
     Path(Vec<Word>, Option<Vec<Self>>, Span),
-    Unit(Span),
     Hole(Span),
     Group(Box<Self>, Span),
 }
@@ -189,7 +188,6 @@ impl Spanned for TyExpr {
             | Self::Slice(_, span)
             | Self::Ref(_, _, span)
             | Self::Path(_, _, span)
-            | Self::Unit(span)
             | Self::Hole(span)
             | Self::Group(_, span) => *span,
         }

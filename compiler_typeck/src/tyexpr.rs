@@ -79,7 +79,6 @@ pub(crate) fn check(
         TyExpr::Path(path, targs, span) => {
             check_path(cx, env, path, targs.as_deref(), *span, allow_hole)
         }
-        TyExpr::Unit(_) => Ok(cx.db.types.unit),
         TyExpr::Hole(span) => {
             if allow_hole == AllowTyHole::Yes {
                 Ok(cx.fresh_ty_var())
