@@ -173,7 +173,7 @@ impl<'db, 'cx> MonomorphizeBody<'db, 'cx> {
         let mut body_subst = BodySubst::new();
 
         for value in body.values() {
-            if let Some(instantiation) = body.instantation(value.id) {
+            if let Some(instantiation) = body.instantiation(value.id) {
                 // This is a polymorphic value which requires specialization
                 if let Some(new_kind) = self.monomorphize_value(mir, &value.kind, instantiation) {
                     body_subst.insert_value(value.id, new_kind);

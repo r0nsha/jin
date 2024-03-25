@@ -458,9 +458,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let sig_id = self.cx.def_to_fn_sig[&hook_id];
         let sig_ty = self.cx.mir.fn_sigs[sig_id].ty;
         let tparams = sig_ty.collect_params();
-        let instantiation = Instantiation::from((tparams.as_slice(), targs.as_slice()));
+        let instantiation = if tparams.is_empty() {
+            Instantiation::default()
+        } else {
+            Instantiation::from((tparams.as_slice(), targs.as_slice()))
+        };
 
         let callee = self.create_untracked_value(instantiation.fold(sig_ty), ValueKind::Fn(sig_id));
+        self.body.create_instantiation(callee, instantiation);
 
         let arg = {
             let arg = value;
@@ -476,8 +481,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             args: vec![arg],
             span,
         });
-
-        self.body.create_instantation(value, instantiation);
     }
 
     fn set_drop_flag(&mut self, value: ValueId, span: Span) {

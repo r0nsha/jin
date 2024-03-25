@@ -1,0 +1,14 @@
+fn main() unit = {
+    let wow = Wow("bye bye!")
+    println("hello")
+    let gen = Gen(1)
+}
+
+type Wow(msg: &str)
+type Gen[T](value: T)
+
+fn `=drop`(w: &mut Wow) unit =
+    println("dropping wow: {w.msg}")
+
+fn `=drop`[T](g: &mut Gen[T]) unit =
+    println("dropping gen")

@@ -707,11 +707,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             hir::ExprKind::Variant(variant) => {
                 let id = self.cx.get_or_create_variant_ctor(variant.id);
                 let value = self.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id));
-
-                if !variant.instantiation.is_empty() {
-                    self.body.create_instantation(value, variant.instantiation.clone());
-                }
-
+                self.body.create_instantiation(value, variant.instantiation.clone());
                 value
             }
             hir::ExprKind::SliceLit(lit) => {
@@ -1327,9 +1323,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             DefKind::TyAlias | DefKind::BuiltinTy(_) => unreachable!("{:?}", &self.cx.db[id]),
         };
 
-        if !instantiation.is_empty() {
-            self.body.create_instantation(value, instantiation.clone());
-        }
+        self.body.create_instantiation(value, instantiation.clone());
 
         value
     }

@@ -915,7 +915,7 @@ impl TyFolder for ParamFolder<'_> {
                     // NOTE: It currently makes sense to not instantiate params that are part of
                     // the currently typechecked function.
                     panic!(
-                        "type param `{:?}` not part of instantation: {:?}",
+                        "type param `{:?}` not part of instantiation: {:?}",
                         p, self.instantiation
                     )
                 }

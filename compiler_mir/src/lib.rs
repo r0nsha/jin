@@ -111,7 +111,7 @@ pub struct Body {
     blocks: Blocks,
     values: Values,
 
-    // A mapping for values to their instantation, used for specialization
+    // A mapping for values to their instantiation, used for specialization
     instantations: FxHashMap<ValueId, Instantiation>,
 
     // A mapping of values to their drop flags
@@ -228,7 +228,7 @@ impl Body {
         self.create_value(ty, ValueKind::Register(None))
     }
 
-    pub fn instantation(&self, value: ValueId) -> Option<&Instantiation> {
+    pub fn instantiation(&self, value: ValueId) -> Option<&Instantiation> {
         self.instantations.get(&value)
     }
 
@@ -241,8 +241,10 @@ impl Body {
         &mut self.instantations
     }
 
-    pub fn create_instantation(&mut self, value: ValueId, instantation: Instantiation) {
-        self.instantations.insert(value, instantation);
+    pub fn create_instantiation(&mut self, value: ValueId, instantiation: Instantiation) {
+        if !instantiation.is_empty() {
+            self.instantations.insert(value, instantiation);
+        }
     }
 
     pub fn ins(&mut self, block: BlockId) -> InstBuilder {
