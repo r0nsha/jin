@@ -19,6 +19,7 @@ use compiler_mir::{
     Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir, RtCallKind, ValueId, ValueKind,
 };
 
+use crate::ty::fn_ty_ret;
 use crate::{
     builtin::BinOpData,
     name_gen::LocalNames,
@@ -366,12 +367,13 @@ impl<'db> Generator<'db> {
             param.ty.cdecl(self, D::text(name))
         }));
 
-        let sig_doc = fn_ty.ret.cdecl(self, ident(sig.mangled_name.as_str())).append(util::group(
-            D::intersperse(params, D::text(",").append(D::space()))
-                .nest(2)
-                .group()
-                .append(if fn_ty.is_c_variadic() { D::text(", ...") } else { D::nil() }),
-        ));
+        let sig_doc =
+            fn_ty_ret(self, fn_ty, Some(ident(sig.mangled_name.as_str()))).append(util::group(
+                D::intersperse(params, D::text(",").append(D::space()))
+                    .nest(2)
+                    .group()
+                    .append(if fn_ty.is_c_variadic() { D::text(", ...") } else { D::nil() }),
+            ));
 
         let mut attr_docs = vec![];
 
@@ -525,9 +527,13 @@ impl<'db> Generator<'db> {
                     .enumerate()
                     .map(|(idx, &b)| (D::text(idx.to_string()), goto_stmt(state.body.block(b)))),
             ),
-            Inst::Return { value, .. } => {
-                stmt(|| D::text("return").append(D::space()).append(self.value(state, *value)))
-            }
+            Inst::Return { value, .. } => stmt(|| {
+                if state.ty_of(*value).is_unit() {
+                    D::text("return")
+                } else {
+                    D::text("return").append(D::space()).append(self.value(state, *value))
+                }
+            }),
             Inst::Call { value, callee, args, span } => {
                 let mut arg_docs = vec![];
 
@@ -541,17 +547,12 @@ impl<'db> Generator<'db> {
 
                 let call = util::call(self.value(state, *callee), arg_docs);
                 let callee_ret = state.ty_of(*callee).as_fn().unwrap().ret;
-
-                let stmts = if callee_ret.is_diverging() {
-                    util::stmts([
-                        call,
-                        self.value_assign(state, *value, |this| {
-                            this.zero_value(state.ty_of(*value))
-                        }),
-                    ])
-                } else {
-                    self.value_assign(state, *value, |_| call)
-                };
+                let stmts = self.call_helper(
+                    state,
+                    *value,
+                    call,
+                    callee_ret.is_diverging() || callee_ret.is_unit(),
+                );
 
                 if traced {
                     self.with_stack_frame(state, stmts, *span)
@@ -585,7 +586,8 @@ impl<'db> Generator<'db> {
                     args.push(self.create_stackframe_value(state, *span));
                 }
 
-                self.value_assign(state, *value, |_| util::call(D::text(kind.as_str()), args))
+                let call = util::call(D::text(kind.as_str()), args);
+                self.call_helper(state, *value, call, kind.returns_void())
             }
             Inst::Binary { value, lhs, rhs, op, span, checked } => self.codegen_bin_op(
                 state,
@@ -703,6 +705,23 @@ impl<'db> Generator<'db> {
             TyKind::Slice(_) | TyKind::Str => util::struct_lit(vec![]),
             TyKind::Unit | TyKind::Never => util::unit_value(),
             _ => util::cast(ty.cty(self), D::text("0")),
+        }
+    }
+
+    fn call_helper(
+        &mut self,
+        state: &GenState<'db>,
+        value: ValueId,
+        call: D<'db>,
+        is_void_call: bool,
+    ) -> D<'db> {
+        if is_void_call {
+            util::stmts([
+                call,
+                self.value_assign(state, value, |this| this.zero_value(state.ty_of(value))),
+            ])
+        } else {
+            self.value_assign(state, value, |_| call)
         }
     }
 }

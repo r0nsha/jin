@@ -125,7 +125,6 @@ impl<'db> CTy<'db> for FnTy {
 }
 
 fn fn_ty<'a>(fn_ty: &FnTy, cx: &mut Generator<'a>, name: Option<D<'a>>) -> D<'a> {
-    let ret = fn_ty.ret.cty(cx);
     let name_doc = util::group(D::text("*").append(name.unwrap_or(D::nil())));
 
     let mut param_docs = vec![];
@@ -138,11 +137,22 @@ fn fn_ty<'a>(fn_ty: &FnTy, cx: &mut Generator<'a>, name: Option<D<'a>>) -> D<'a>
 
     let params = D::intersperse(param_docs, D::text(",").append(D::space())).nest(1).group();
 
-    ret.append(D::space()).append(name_doc).append(util::group(
+    fn_ty_ret(cx, fn_ty, None).append(D::space()).append(name_doc).append(util::group(
         params.append(if fn_ty.is_c_variadic() { D::text(", ...") } else { D::nil() }),
     ))
 }
 
 fn ty_and_name<'a>(ty: &impl CTy<'a>, cx: &mut Generator<'a>, name: D<'a>) -> D<'a> {
     ty.cty(cx).append(D::space()).append(name)
+}
+
+pub(super) fn fn_ty_ret<'a>(cx: &mut Generator<'a>, fn_ty: &FnTy, name: Option<D<'a>>) -> D<'a> {
+    const VOID: &str = "void";
+
+    match (fn_ty.ret.kind(), name) {
+        (TyKind::Unit, Some(name)) => D::text(VOID).append(D::space()).append(name),
+        (TyKind::Unit, None) => D::text(VOID),
+        (_, Some(name)) => fn_ty.ret.cdecl(cx, name),
+        (_, None) => fn_ty.ret.cty(cx),
+    }
 }

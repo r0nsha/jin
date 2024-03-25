@@ -477,6 +477,13 @@ impl RtCallKind {
         }
     }
 
+    pub fn returns_void(self) -> bool {
+        match self {
+            Self::Panic { .. } | RtCallKind::SliceGrow { .. } => true,
+            RtCallKind::SliceUtf8Validate { .. } => false,
+        }
+    }
+
     pub fn as_str(self) -> &'static str {
         match self {
             RtCallKind::Panic { .. } => "jinrt_panic",

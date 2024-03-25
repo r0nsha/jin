@@ -4,7 +4,6 @@ const testing = std.testing;
 
 const cstr = [*:0]const u8;
 const Refcnt = u32;
-const Unit = extern struct {};
 
 const Rc = extern struct {
     refcnt: Refcnt,
@@ -242,10 +241,10 @@ export fn jinrt_slice_grow(
     elem_size: usize,
     new_cap: usize,
     frame: StackFrame,
-) Unit {
+) void {
     if (slice.array) |a| {
         if (new_cap <= a.cap) {
-            return Unit{};
+            return;
         }
 
         if (a.refcnt > 1) {
@@ -259,7 +258,6 @@ export fn jinrt_slice_grow(
     }
 
     slice.grow(elem_size, new_cap);
-    return Unit{};
 }
 
 export fn jinrt_slice_cap(slice: *RcSlice) usize {
