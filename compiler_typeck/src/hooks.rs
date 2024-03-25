@@ -31,9 +31,9 @@ fn check_drop_hook(cx: &mut Typeck, sig: &hir::FnSig, id: DefId) -> DiagnosticRe
         ));
     };
 
-    let adt_id = match param.ty.kind() {
+    let (adt_id, targs) = match param.ty.kind() {
         TyKind::Ref(ty, Mutability::Mut) => match ty.kind() {
-            TyKind::Adt(adt_id, _) => *adt_id,
+            TyKind::Adt(adt_id, targs) => (*adt_id, targs),
             ty => {
                 return Err(Diagnostic::error(format!(
                     "cannot define drop hook for type `{}`",
@@ -54,6 +54,17 @@ fn check_drop_hook(cx: &mut Typeck, sig: &hir::FnSig, id: DefId) -> DiagnosticRe
             cx.db[adt_id].name
         ))
         .with_label(Label::primary(sig.params[0].pat.span(), "parameter is a value type")));
+    }
+
+    let any_non_poly_targs =
+        targs.iter().any(|ty| ty.walk_short(|ty| !matches!(ty.kind(), TyKind::Param(_))));
+    if any_non_poly_targs {
+        return Err(Diagnostic::error("drop hook cannot be specialized")
+            .with_label(Label::primary(
+                sig.params[0].pat.span(),
+                "has non-polymorphic type arguments",
+            ))
+            .with_note("change parameter type to only contain polymorphic type arguments"));
     }
 
     if !fn_ty.ret.is_unit() {
