@@ -13,7 +13,7 @@ use compiler_data_structures::{
 use path_absolutize::Absolutize;
 use petgraph::graphmap::DiGraphMap;
 use rustc_hash::{FxHashMap, FxHashSet};
-use ustr::Ustr;
+use ustr::{ustr, Ustr};
 
 use crate::{
     db::{
@@ -199,7 +199,12 @@ impl Db {
         self.main_package_name.get().map_or(false, |n| n == package)
     }
 
-    pub fn create_package(
+    pub fn create_package(&mut self, root_file: &Utf8Path) -> anyhow::Result<(Ustr, SourceId)> {
+        let name = ustr(root_file.parent().unwrap().file_stem().unwrap());
+        self.create_package_with_name(name, root_file)
+    }
+
+    pub fn create_package_with_name(
         &mut self,
         name: Ustr,
         root_file: &Utf8Path,
