@@ -8,5 +8,3 @@ time for dir in (fd . tests -d 1)
     rm -r $dir/test-out
     echo
 end
-
-rm -r tests/build
