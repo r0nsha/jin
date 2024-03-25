@@ -878,14 +878,14 @@ impl FromIterator<(TyVar, Ty)> for Instantiation {
 
 impl<'a, 'b> From<(&'a [TyParam], &'b [Ty])> for Instantiation {
     fn from((tparams, targs): (&'a [TyParam], &'b [Ty])) -> Self {
-        debug_assert!(targs.len() == tparams.len());
+        debug_assert!(targs.len() == tparams.len(), "targs: {targs:?}, tparams: {tparams:?}");
         tparams.iter().zip(targs).map(|(tp, ty)| (tp.ty.as_param().unwrap().var, *ty)).collect()
     }
 }
 
 impl<'a, 'b> From<(&'a [ParamTy], &'b [Ty])> for Instantiation {
     fn from((tparams, targs): (&'a [ParamTy], &'b [Ty])) -> Self {
-        debug_assert!(targs.len() == tparams.len());
+        debug_assert!(targs.len() == tparams.len(), "targs: {targs:?}, tparams: {tparams:?}");
         tparams.iter().zip(targs).map(|(tp, ty)| (tp.var, *ty)).collect()
     }
 }
