@@ -21,11 +21,11 @@ use crate::token::TokenKind;
 pub fn parse(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Ast> {
     let mut ast = Ast::new();
 
-    // // Std package
-    // let root_std_file = compiler_helpers::current_exe_dir().join("std/std.jin");
-    // let (std_package, _) = db.create_package(&root_std_file)?;
-    // db.std_package_name.set(std_package);
-    // parse_package(db, &mut ast, std_package);
+    // Std package
+    let root_std_file = compiler_helpers::current_exe_dir().join("std/main.jin");
+    let (std_package, _) = db.create_package(&root_std_file)?;
+    db.std_package_name.set(std_package);
+    parse_package(db, &mut ast, std_package);
 
     // Main package
     let (main_package, _) = db.create_package(root_file)?;
@@ -73,9 +73,7 @@ fn parse_module(
                         continue;
                     }
 
-                    todo!("submodule")
-                    // let source_id = db.sources.load_file(path).expect("import path to exist");
-                    // parse_module(db, package, ast, source_id, Some(module.id));
+                    parse_module(db, package, ast, path, Some(module.id));
                 }
             }
             Err(diag) => db.diagnostics.add(diag),
@@ -88,7 +86,7 @@ fn parse_module(
 fn create_module(db: &mut Db, package: Ustr, dir: &Utf8Path, parent: Option<ModuleId>) -> ModuleId {
     let package_root = &db.package(package).root_path;
     let name = QPath::from_path(package_root, dir).unwrap();
-    db.add_module(package, name, parent)
+    db.add_module(package, dir.to_path_buf(), name, parent)
 }
 
 fn parse_file(
@@ -103,7 +101,7 @@ fn parse_file(
     let (items, submodule_paths) = {
         let source = db.sources.get(source_id).unwrap();
         let tokens = lexer::tokenize(source)?;
-        parser::parse(db, source, is_package_main, tokens)?
+        parser::parse(db, source, tokens)?
     };
 
     module.items.extend(items);

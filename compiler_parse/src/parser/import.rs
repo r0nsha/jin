@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use camino::{Utf8Path, Utf8PathBuf};
+use camino::Utf8PathBuf;
 use compiler_ast::{Attrs, ExternImport, Import, ImportTree};
 use compiler_core::{
     db::ExternLib,
@@ -9,7 +9,6 @@ use compiler_core::{
     span::{Span, Spanned},
     word::Word,
 };
-use path_absolutize::Absolutize as _;
 
 use crate::{
     errors,
@@ -83,9 +82,8 @@ impl<'a> Parser<'a> {
     }
 
     fn search_package(&self, name: Word) -> DiagnosticResult<Utf8PathBuf> {
-        if let Some(pkg) = self.db.packages.get(&name.name()) {
-            let source = self.db.sources.get(pkg.main_source_id).unwrap();
-            Ok(source.path().to_path_buf())
+        if let Some(package) = self.db.packages.get(&name.name()) {
+            Ok(package.root_path.clone())
         } else {
             Err(Diagnostic::error(format!("could not find package `{name}`"))
                 .with_label(Label::primary(name.span(), "not found")))
@@ -93,61 +91,20 @@ impl<'a> Parser<'a> {
     }
 
     fn search_submodule(&self, name: Word) -> DiagnosticResult<Utf8PathBuf> {
-        let mut search_notes = vec![];
+        let path = self.parent_path().unwrap().join(name.name().as_str());
 
-        let path = self
-            .is_package_main
-            .then(|| self.search_module_in_currdir(name, &mut search_notes))
-            .flatten()
-            .or_else(|| self.search_module_in_subdir(name, &mut search_notes));
-
-        path.ok_or_else(|| {
-            Diagnostic::error(format!("could not find module `{name}`"))
+        if path.exists() {
+            if path.is_dir() {
+                Ok(path)
+            } else {
+                Err(Diagnostic::error(format!("found path `{path}`, but it is not a directory"))
+                    .with_label(Label::primary(name.span(), "invalid module declaration")))
+            }
+        } else {
+            Err(Diagnostic::error(format!("could not find module `{name}`"))
                 .with_label(Label::primary(name.span(), "not found"))
-                .with_notes(search_notes)
-        })
-    }
-
-    fn search_module_in_currdir(
-        &self,
-        name: Word,
-        search_notes: &mut Vec<String>,
-    ) -> Option<Utf8PathBuf> {
-        self.source
-            .path()
-            .with_extension("")
-            .parent()
-            .and_then(|dir| self.search_module_in_dir(dir, name, search_notes))
-    }
-
-    fn search_module_in_subdir(
-        &self,
-        name: Word,
-        search_notes: &mut Vec<String>,
-    ) -> Option<Utf8PathBuf> {
-        let dir = self.source.path().with_extension("");
-        self.search_module_in_dir(&dir, name, search_notes)
-    }
-
-    fn search_module_in_dir(
-        &self,
-        dir: &Utf8Path,
-        name: Word,
-        search_notes: &mut Vec<String>,
-    ) -> Option<Utf8PathBuf> {
-        let path = Utf8Path::new(&name.name()).with_extension("jin");
-
-        let absolute_path: Utf8PathBuf = path
-            .as_std_path()
-            .absolutize_from(dir.as_std_path())
-            .ok()?
-            .to_path_buf()
-            .try_into()
-            .expect("path to be utf8");
-
-        search_notes.push(format!("searched path: {absolute_path}"));
-
-        absolute_path.exists().then_some(absolute_path)
+                .with_note(format!("searched path: {path}")))
+        }
     }
 
     pub(super) fn parse_extern_import(

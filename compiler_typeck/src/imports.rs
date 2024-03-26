@@ -32,7 +32,7 @@ fn build_imports_map(cx: &mut Typeck, ast: &Ast) -> ImportsMap {
         attrs::validate(cx, &import.attrs, attrs::Placement::Import);
 
         let entry = map.entry(module.id).or_default();
-        let root_module_id = cx.db.find_module_by_source_path(&import.module_path).unwrap().id;
+        let root_module_id = cx.db.find_module_by_path(&import.module_path).unwrap().id;
         BuildImportsMap::new(cx, entry, root_module_id, module.id).build(&import.tree);
     }
 
@@ -511,7 +511,7 @@ impl<'cx, 'db> CollectTransitiveGlobs<'cx, 'db> {
 
 pub(crate) fn insert_prelude(cx: &mut Typeck) {
     let prelude_module_id =
-        cx.db.find_module_by_path("std", ["prelude"]).expect("std.prelude to exist").id;
+        cx.db.find_module_by_parts("std", ["prelude"]).expect("std.prelude to exist").id;
 
     for (&module_id, env) in &mut cx.global_env.modules {
         // Don't insert the prelude in the prelude itself

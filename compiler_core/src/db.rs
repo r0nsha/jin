@@ -140,11 +140,11 @@ impl Db {
     pub fn add_module(
         &mut self,
         package: Ustr,
+        path: Utf8PathBuf,
         qpath: QPath,
         parent: Option<ModuleId>,
     ) -> ModuleId {
-        let id =
-            self.modules.push_with_key(|id| ModuleInfo { id, package, path: qpath.join(), qpath });
+        let id = self.modules.push_with_key(|id| ModuleInfo { id, package, path, qpath });
 
         self.module_graph.add_node(id);
 
@@ -159,11 +159,11 @@ impl Db {
         self.source_to_module.get(&id).map(|mid| &self.modules[*mid])
     }
 
-    pub fn find_module_by_source_path(&self, path: &Utf8Path) -> Option<&ModuleInfo> {
-        self.sources.find_by_path(path).and_then(|s| self.find_module_by_source_id(s.id()))
+    pub fn find_module_by_path(&self, path: &Utf8Path) -> Option<&ModuleInfo> {
+        self.modules.iter().find(|m| m.path == path)
     }
 
-    pub fn find_module_by_path<'a>(
+    pub fn find_module_by_parts<'a>(
         &self,
         package: &str,
         path: impl IntoIterator<Item = &'a str>,
@@ -198,15 +198,12 @@ impl Db {
         name: Ustr,
         root_file: &Utf8Path,
     ) -> anyhow::Result<(Ustr, SourceId)> {
-        let absolute_path: Utf8PathBuf =
-            root_file.as_std_path().absolutize()?.into_owned().try_into()?;
-
-        if !absolute_path.is_file() {
-            anyhow::bail!("`{}` in not a file", absolute_path);
+        if !root_file.is_file() {
+            anyhow::bail!("`{}` in not a file", root_file);
         }
 
-        let source_id = self.sources.load_file(absolute_path.to_path_buf())?;
-        let root_path = absolute_path.parent().expect("to have a parent directory").to_path_buf();
+        let source_id = self.sources.load_file(root_file.to_path_buf())?;
+        let root_path = root_file.parent().expect("to have a parent directory").to_path_buf();
         self.packages.insert(name, Package::new(name, root_path, source_id));
 
         Ok((name, source_id))
@@ -297,8 +294,8 @@ impl Package {
 pub struct ModuleInfo {
     pub id: ModuleId,
     pub package: Ustr,
+    pub path: Utf8PathBuf,
     pub qpath: QPath,
-    pub path: String,
 }
 
 impl ModuleInfo {

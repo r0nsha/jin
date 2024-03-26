@@ -1,3 +1,0 @@
-mod array
-
-use std.collections.array.(Array*, ?*)

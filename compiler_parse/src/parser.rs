@@ -33,10 +33,9 @@ const WEAK_KW_REC: &str = "rec";
 pub fn parse(
     db: &Db,
     source: &Source,
-    is_package_main: bool,
     tokens: Vec<Token>,
 ) -> DiagnosticResult<(Items, FxHashSet<Utf8PathBuf>)> {
-    let mut parser = Parser::new(db, source, tokens, is_package_main);
+    let mut parser = Parser::new(db, source, tokens);
     let items = parser.parse()?;
     Ok((items, parser.submodule_paths))
 }
@@ -46,14 +45,13 @@ pub(super) struct Parser<'a> {
     pub(super) db: &'a Db,
     pub(super) source: &'a Source,
     pub(super) tokens: Vec<Token>,
-    pub(super) is_package_main: bool,
     pub(super) pos: usize,
     pub(super) submodule_paths: FxHashSet<Utf8PathBuf>,
 }
 
 impl<'a> Parser<'a> {
-    fn new(db: &'a Db, source: &'a Source, tokens: Vec<Token>, is_package_main: bool) -> Self {
-        Self { db, source, tokens, is_package_main, pos: 0, submodule_paths: FxHashSet::default() }
+    fn new(db: &'a Db, source: &'a Source, tokens: Vec<Token>) -> Self {
+        Self { db, source, tokens, pos: 0, submodule_paths: FxHashSet::default() }
     }
 
     fn parse(&mut self) -> DiagnosticResult<Items> {

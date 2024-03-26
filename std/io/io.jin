@@ -1,7 +1,7 @@
 use std.(
     c,
     c.write,
-    os.errors,
+    os,
     str.(?)
 )
 
@@ -31,12 +31,12 @@ type Error* {
 
 fn Error.from-os-error*(code: i32) Error =
     match code {
-        errors.EPERM -> Error.PermissionDenied
-        errors.ENOENT -> Error.NotFound
-        errors.EINTR -> Error.Interrupted
-        errors.EBADF -> Error.BadFileNumber
-        errors.EEXIST -> Error.AlreadyExists
-        errors.EINVAL -> Error.InvalidArgument
+        os.EPERM -> Error.PermissionDenied
+        os.ENOENT -> Error.NotFound
+        os.EINTR -> Error.Interrupted
+        os.EBADF -> Error.BadFileNumber
+        os.EEXIST -> Error.AlreadyExists
+        os.EINVAL -> Error.InvalidArgument
         code -> Error.Other(code)
     }
 
