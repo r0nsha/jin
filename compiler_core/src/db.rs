@@ -140,17 +140,11 @@ impl Db {
     pub fn add_module(
         &mut self,
         package: Ustr,
-        source_id: SourceId,
         qpath: QPath,
         parent: Option<ModuleId>,
     ) -> ModuleId {
-        let id = self.modules.push_with_key(|id| ModuleInfo {
-            id,
-            package,
-            source_id,
-            path: qpath.join(),
-            qpath,
-        });
+        let id =
+            self.modules.push_with_key(|id| ModuleInfo { id, package, path: qpath.join(), qpath });
 
         self.module_graph.add_node(id);
 
@@ -162,13 +156,11 @@ impl Db {
     }
 
     pub fn find_module_by_source_id(&self, id: SourceId) -> Option<&ModuleInfo> {
-        self.modules.iter().find(|m| m.source_id == id)
+        self.source_to_module.get(&id).map(|mid| &self.modules[*mid])
     }
 
     pub fn find_module_by_source_path(&self, path: &Utf8Path) -> Option<&ModuleInfo> {
-        self.modules
-            .iter()
-            .find(|m| matches!(self.sources.get(m.source_id), Some(s) if s.path() == path))
+        self.sources.find_by_path(path).and_then(|s| self.find_module_by_source_id(s.id()))
     }
 
     pub fn find_module_by_path<'a>(
@@ -305,7 +297,6 @@ impl Package {
 pub struct ModuleInfo {
     pub id: ModuleId,
     pub package: Ustr,
-    pub source_id: SourceId,
     pub qpath: QPath,
     pub path: String,
 }

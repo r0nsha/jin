@@ -60,7 +60,7 @@ fn parse_module(
             parser::parse(db, package, source, is_package_main, tokens)?
         };
 
-        module.id = db.add_module(package, module.source, module.name.clone(), parent);
+        module.id = db.add_module(package, module.name.clone(), parent);
 
         if is_main {
             db.main_module.set(module.id);

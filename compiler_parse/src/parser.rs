@@ -15,7 +15,7 @@ use compiler_core::{
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{Mutability, Vis},
     qpath::QPath,
-    span::{Source, SourceId, Span},
+    span::{Source, Span},
 };
 use compiler_helpers::create_bool_enum;
 use rustc_hash::FxHashSet;
@@ -39,10 +39,8 @@ pub fn parse(
     tokens: Vec<Token>,
 ) -> DiagnosticResult<(Module, FxHashSet<Utf8PathBuf>)> {
     let name = QPath::from_path(&db.package(package).root_path, source.path()).unwrap();
-
     let mut parser = Parser::new(db, source, tokens, is_package_main);
-    let module = parser.parse(source.id(), name)?;
-
+    let module = parser.parse(name)?;
     Ok((module, parser.submodule_paths))
 }
 
@@ -61,8 +59,8 @@ impl<'a> Parser<'a> {
         Self { db, source, tokens, is_package_root, pos: 0, submodule_paths: FxHashSet::default() }
     }
 
-    fn parse(&mut self, source_id: SourceId, name: QPath) -> DiagnosticResult<Module> {
-        let mut module = Module::new(source_id, name);
+    fn parse(&mut self, name: QPath) -> DiagnosticResult<Module> {
+        let mut module = Module::new(name);
 
         while !self.eof() {
             let item = self.parse_item()?;

@@ -14,7 +14,7 @@ use compiler_core::{
     db::{ExternLib, ModuleId, StructKind, UnionKind},
     middle::{BinOp, CallConv, IsUfcs, Mutability, Pat, TyExpr, UnOp, Vis},
     qpath::QPath,
-    span::{SourceId, Span, Spanned},
+    span::{Span, Spanned},
     word::Word,
 };
 
@@ -58,14 +58,13 @@ impl Ast {
 #[derive(Debug, Clone)]
 pub struct Module {
     pub id: ModuleId,
-    pub source: SourceId,
     pub name: QPath,
     pub items: IndexVec<ItemId, Item>,
 }
 
 impl Module {
-    pub fn new(source_id: SourceId, name: QPath) -> Self {
-        Self { id: ModuleId::null(), source: source_id, name, items: IndexVec::new() }
+    pub fn new(name: QPath) -> Self {
+        Self { id: ModuleId::null(), name, items: IndexVec::new() }
     }
 }
 
