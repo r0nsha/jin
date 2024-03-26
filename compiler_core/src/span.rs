@@ -6,6 +6,7 @@ use compiler_data_structures::{
     index_vec::{IndexVec, IndexVecExt, Key as _},
     new_key_type,
 };
+use rustc_hash::FxHashMap;
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Span {
@@ -79,7 +80,10 @@ where
 }
 
 #[derive(Debug)]
-pub struct Sources(IndexVec<SourceId, Source>);
+pub struct Sources {
+    sources: IndexVec<SourceId, Source>,
+    path_to_source: FxHashMap<Utf8PathBuf, SourceId>,
+}
 
 new_key_type! {
     pub struct SourceId;
@@ -87,24 +91,29 @@ new_key_type! {
 
 impl Sources {
     pub fn new() -> Self {
-        Self(IndexVec::new())
+        Self { sources: IndexVec::new(), path_to_source: FxHashMap::default() }
     }
 
     pub fn load_file(&mut self, path: Utf8PathBuf) -> io::Result<SourceId> {
-        let mut source = Source::try_from(path)?;
+        if let Some(id) = self.path_to_source.get(&path) {
+            return Ok(*id);
+        }
 
-        Ok(self.0.push_with_key(|id| {
+        let mut source = Source::try_from(path)?;
+        self.path_to_source.insert(source.path.clone(), source.id);
+
+        Ok(self.sources.push_with_key(|id| {
             source.id = id;
             source
         }))
     }
 
     pub fn get(&self, id: SourceId) -> Option<&Source> {
-        self.0.get(id)
+        self.sources.get(id)
     }
 
     pub fn find_by_path(&self, path: &Utf8Path) -> Option<&Source> {
-        self.0.iter().find(|s| s.path == path)
+        self.path_to_source.get(path).and_then(|id| self.get(*id))
     }
 }
 

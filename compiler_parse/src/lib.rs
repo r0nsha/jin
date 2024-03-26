@@ -36,51 +36,59 @@ pub fn parse(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Ast> {
 }
 
 fn parse_package(db: &mut Db, ast: &mut Ast, package: Ustr) {
-    parse_module(db, package, ast, db.package(package).main_source_id, None);
+    parse_module(db, package, ast, db.package(package).root_path.clone(), None);
 }
 
 fn parse_module(
     db: &mut Db,
     package: Ustr,
     ast: &mut Ast,
-    source_id: SourceId,
+    dir: Utf8PathBuf,
     parent: Option<ModuleId>,
 ) {
-    let module_id = create_module(db, package, source_id, parent);
+    let module_id = create_module(db, package, &dir, parent);
     let mut module = Module::new(module_id);
 
-    match parse_file(db, package, source_id, &mut module) {
-        Ok(submodule_paths) => {
-            for path in submodule_paths {
-                if db.sources.find_by_path(&path).is_some() {
-                    continue;
-                }
-
-                let package = db.find_package_by_path(&path).expect("to be part of a package").name;
-                let source_id = db.sources.load_file(path).expect("import path to exist");
-                parse_module(db, package, ast, source_id, Some(module.id));
+    let files: Vec<_> = std::fs::read_dir(&dir)
+        .unwrap()
+        .filter_map(Result::ok)
+        .filter_map(|entry| {
+            let path = entry.path();
+            if path.extension().map_or(false, |e| e == "jin") && path.is_file() {
+                Some(Utf8PathBuf::from_path_buf(path).unwrap())
+            } else {
+                None
             }
+        })
+        .collect();
+
+    for file in files {
+        let source_id = db.sources.load_file(file).unwrap();
+        db.source_to_module.insert(source_id, module_id);
+
+        match parse_file(db, package, source_id, &mut module) {
+            Ok(submodule_paths) => {
+                for path in submodule_paths {
+                    if db.sources.find_by_path(&path).is_some() {
+                        continue;
+                    }
+
+                    todo!("submodule")
+                    // let source_id = db.sources.load_file(path).expect("import path to exist");
+                    // parse_module(db, package, ast, source_id, Some(module.id));
+                }
+            }
+            Err(diag) => db.diagnostics.add(diag),
         }
-        Err(diag) => db.diagnostics.add(diag),
     }
 
     ast.modules.push(module);
 }
 
-fn create_module(
-    db: &mut Db,
-    package: Ustr,
-    source_id: SourceId,
-    parent: Option<ModuleId>,
-) -> ModuleId {
-    let module_id = {
-        let package_root = &db.package(package).root_path;
-        let source_path = db.sources.get(source_id).unwrap().path();
-        let name = QPath::from_path(package_root, source_path).unwrap();
-        db.add_module(package, name, parent)
-    };
-    db.source_to_module.insert(source_id, module_id);
-    module_id
+fn create_module(db: &mut Db, package: Ustr, dir: &Utf8Path, parent: Option<ModuleId>) -> ModuleId {
+    let package_root = &db.package(package).root_path;
+    let name = QPath::from_path(package_root, dir).unwrap();
+    db.add_module(package, name, parent)
 }
 
 fn parse_file(
