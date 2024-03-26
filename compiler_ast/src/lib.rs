@@ -5,10 +5,7 @@ use std::{fmt, io};
 
 use camino::Utf8PathBuf;
 use compiler_core::db::Db;
-use compiler_data_structures::{
-    index_vec::{IndexVec, Key as _},
-    new_key_type,
-};
+use compiler_data_structures::{index_vec::IndexVec, new_key_type};
 use ustr::Ustr;
 
 use compiler_core::{
@@ -58,24 +55,20 @@ impl Ast {
 #[derive(Debug, Clone)]
 pub struct Module {
     pub id: ModuleId,
-    pub items: IndexVec<ItemId, Item>,
+    pub items: Items,
 }
 
 impl Module {
-    pub fn new() -> Self {
-        Self { id: ModuleId::null(), items: IndexVec::new() }
-    }
-}
-
-impl Default for Module {
-    fn default() -> Self {
-        Self::new()
+    pub fn new(id: ModuleId) -> Self {
+        Self { id, items: IndexVec::new() }
     }
 }
 
 new_key_type! {
     pub struct ItemId;
 }
+
+pub type Items = IndexVec<ItemId, Item>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GlobalItemId {

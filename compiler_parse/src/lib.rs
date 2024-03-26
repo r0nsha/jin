@@ -46,42 +46,7 @@ fn parse_module(
     source_id: SourceId,
     parent: Option<ModuleId>,
 ) {
-    fn inner(
-        db: &mut Db,
-        package: Ustr,
-        source_id: SourceId,
-        parent: Option<ModuleId>,
-    ) -> DiagnosticResult<(Module, FxHashSet<Utf8PathBuf>)> {
-        let module_id = {
-            let name = QPath::from_path(
-                &db.package(package).root_path,
-                db.sources.get(source_id).unwrap().path(),
-            )
-            .unwrap();
-            db.add_module(package, name, parent)
-        };
-
-        let is_package_main = source_id == db.package(package).main_source_id;
-        let is_main = db.is_main_package(package) && is_package_main;
-
-        let (mut module, submodule_paths) = {
-            let source = db.sources.get(source_id).unwrap();
-            let tokens = lexer::tokenize(source)?;
-            parser::parse(db, source, is_package_main, tokens)?
-        };
-
-        module.id = module_id;
-
-        if is_main {
-            db.main_module.set(module.id);
-        }
-
-        db.source_to_module.insert(source_id, module.id);
-
-        Ok((module, submodule_paths))
-    }
-
-    match inner(db, package, source_id, parent) {
+    match parse_module_inner(db, package, source_id, parent) {
         Ok((module, submodule_paths)) => {
             let id = module.id;
             ast.modules.push(module);
@@ -98,6 +63,40 @@ fn parse_module(
         }
         Err(diag) => db.diagnostics.add(diag),
     }
+}
+
+fn parse_module_inner(
+    db: &mut Db,
+    package: Ustr,
+    source_id: SourceId,
+    parent: Option<ModuleId>,
+) -> DiagnosticResult<(Module, FxHashSet<Utf8PathBuf>)> {
+    let module_id = {
+        let package_root = &db.package(package).root_path;
+        let source_path = db.sources.get(source_id).unwrap().path();
+        let name = QPath::from_path(package_root, source_path).unwrap();
+        db.add_module(package, name, parent)
+    };
+    db.source_to_module.insert(source_id, module_id);
+
+    let mut module = Module::new(module_id);
+
+    let is_package_main = source_id == db.package(package).main_source_id;
+    let is_main = db.is_main_package(package) && is_package_main;
+
+    let (items, submodule_paths) = {
+        let source = db.sources.get(source_id).unwrap();
+        let tokens = lexer::tokenize(source)?;
+        parser::parse(db, source, is_package_main, tokens)?
+    };
+
+    module.items.extend(items);
+
+    if is_main {
+        db.main_module.set(module.id);
+    }
+
+    Ok((module, submodule_paths))
 }
 
 pub(crate) fn bin_op_from_assign_op(tk: TokenKind) -> Option<BinOp> {
