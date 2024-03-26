@@ -21,11 +21,11 @@ use crate::token::TokenKind;
 pub fn parse(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Ast> {
     let mut ast = Ast::new();
 
-    // Std package
-    let root_std_file = compiler_helpers::current_exe_dir().join("std/std.jin");
-    let (std_package, _) = db.create_package(&root_std_file)?;
-    db.std_package_name.set(std_package);
-    parse_package(db, &mut ast, std_package);
+    // // Std package
+    // let root_std_file = compiler_helpers::current_exe_dir().join("std/std.jin");
+    // let (std_package, _) = db.create_package(&root_std_file)?;
+    // db.std_package_name.set(std_package);
+    // parse_package(db, &mut ast, std_package);
 
     // Main package
     let (main_package, _) = db.create_package(root_file)?;
@@ -46,11 +46,11 @@ fn parse_module(
     source_id: SourceId,
     parent: Option<ModuleId>,
 ) {
-    match parse_module_inner(db, package, source_id, parent) {
-        Ok((module, submodule_paths)) => {
-            let id = module.id;
-            ast.modules.push(module);
+    let module_id = create_module(db, package, source_id, parent);
+    let mut module = Module::new(module_id);
 
+    match parse_file(db, package, source_id, &mut module) {
+        Ok(submodule_paths) => {
             for path in submodule_paths {
                 if db.sources.find_by_path(&path).is_some() {
                     continue;
@@ -58,19 +58,21 @@ fn parse_module(
 
                 let package = db.find_package_by_path(&path).expect("to be part of a package").name;
                 let source_id = db.sources.load_file(path).expect("import path to exist");
-                parse_module(db, package, ast, source_id, Some(id));
+                parse_module(db, package, ast, source_id, Some(module.id));
             }
         }
         Err(diag) => db.diagnostics.add(diag),
     }
+
+    ast.modules.push(module);
 }
 
-fn parse_module_inner(
+fn create_module(
     db: &mut Db,
     package: Ustr,
     source_id: SourceId,
     parent: Option<ModuleId>,
-) -> DiagnosticResult<(Module, FxHashSet<Utf8PathBuf>)> {
+) -> ModuleId {
     let module_id = {
         let package_root = &db.package(package).root_path;
         let source_path = db.sources.get(source_id).unwrap().path();
@@ -78,9 +80,15 @@ fn parse_module_inner(
         db.add_module(package, name, parent)
     };
     db.source_to_module.insert(source_id, module_id);
+    module_id
+}
 
-    let mut module = Module::new(module_id);
-
+fn parse_file(
+    db: &mut Db,
+    package: Ustr,
+    source_id: SourceId,
+    module: &mut Module,
+) -> DiagnosticResult<FxHashSet<Utf8PathBuf>> {
     let is_package_main = source_id == db.package(package).main_source_id;
     let is_main = db.is_main_package(package) && is_package_main;
 
@@ -96,7 +104,7 @@ fn parse_module_inner(
         db.main_module.set(module.id);
     }
 
-    Ok((module, submodule_paths))
+    Ok(submodule_paths)
 }
 
 pub(crate) fn bin_op_from_assign_op(tk: TokenKind) -> Option<BinOp> {

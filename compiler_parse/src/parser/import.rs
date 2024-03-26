@@ -96,7 +96,7 @@ impl<'a> Parser<'a> {
         let mut search_notes = vec![];
 
         let path = self
-            .is_package_root
+            .is_package_main
             .then(|| self.search_module_in_currdir(name, &mut search_notes))
             .flatten()
             .or_else(|| self.search_module_in_subdir(name, &mut search_notes));
