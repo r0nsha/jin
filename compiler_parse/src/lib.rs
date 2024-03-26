@@ -51,14 +51,22 @@ fn parse_module(
         source_id: SourceId,
         parent: Option<ModuleId>,
     ) -> DiagnosticResult<(Module, FxHashSet<Utf8PathBuf>)> {
+        let is_package_main = source_id == db.package(package).main_source_id;
+        let is_main = db.is_main_package(package) && is_package_main;
+
         let (mut module, submodule_paths) = {
             let source = db.sources.get(source_id).unwrap();
             let tokens = lexer::tokenize(source)?;
-            parser::parse(db, package, source, tokens)?
+            parser::parse(db, package, source, is_package_main, tokens)?
         };
 
-        module.id =
-            db.add_module(package, module.source, module.name.clone(), module.is_main(), parent);
+        module.id = db.add_module(package, module.source, module.name.clone(), parent);
+
+        if is_main {
+            db.main_module.set(module.id);
+        }
+
+        db.source_to_module.insert(source_id, module.id);
 
         Ok((module, submodule_paths))
     }

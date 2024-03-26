@@ -34,7 +34,9 @@ pub struct Db {
     pub sources: Sources,
     pub packages: FxHashMap<Ustr, Package>,
     pub modules: IndexVec<ModuleId, ModuleInfo>,
+    pub source_to_module: FxHashMap<SourceId, ModuleId>,
     pub module_graph: DiGraphMap<ModuleId, ()>,
+
     pub defs: IndexVec<DefId, Def>,
     pub adts: IndexVec<AdtId, Adt>,
     pub variants: IndexVec<VariantId, Variant>,
@@ -44,13 +46,13 @@ pub struct Db {
     pub extern_libs: FxHashSet<ExternLib>,
     pub diagnostics: Diagnostics,
 
-    timings: Timings,
-    build_options: BuildOptions,
-
     pub std_package_name: Once<Ustr>,
     pub main_package_name: Once<Ustr>,
     pub main_source: Once<SourceId>,
     pub main_module: Once<ModuleId>,
+
+    timings: Timings,
+    build_options: BuildOptions,
 }
 
 impl Db {
@@ -61,6 +63,7 @@ impl Db {
             sources: Sources::new(),
             packages: FxHashMap::default(),
             modules: IndexVec::new(),
+            source_to_module: FxHashMap::default(),
             module_graph: DiGraphMap::new(),
             defs: IndexVec::new(),
             adts: IndexVec::new(),
@@ -139,7 +142,6 @@ impl Db {
         package: Ustr,
         source_id: SourceId,
         qpath: QPath,
-        is_main: bool,
         parent: Option<ModuleId>,
     ) -> ModuleId {
         let id = self.modules.push_with_key(|id| ModuleInfo {
@@ -148,17 +150,12 @@ impl Db {
             source_id,
             path: qpath.join(),
             qpath,
-            is_main,
         });
 
         self.module_graph.add_node(id);
 
         if let Some(parent) = parent {
             self.module_graph.add_edge(parent, id, ());
-        }
-
-        if is_main {
-            self.main_module.set(id);
         }
 
         id
@@ -311,15 +308,9 @@ pub struct ModuleInfo {
     pub source_id: SourceId,
     pub qpath: QPath,
     pub path: String,
-    #[allow(unused)]
-    pub is_main: bool,
 }
 
 impl ModuleInfo {
-    pub fn span(&self) -> Span {
-        Span::uniform(self.source_id, 0)
-    }
-
     pub fn is_submodule(&self, db: &Db, of: ModuleId) -> bool {
         self.package == db[of].package
             && petgraph::algo::has_path_connecting(&db.module_graph, of, self.id, None)
