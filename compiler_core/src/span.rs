@@ -99,13 +99,14 @@ impl Sources {
             return Ok(*id);
         }
 
-        let mut source = Source::try_from(path)?;
-        self.path_to_source.insert(source.path.clone(), source.id);
-
-        Ok(self.sources.push_with_key(|id| {
+        let mut source = Source::try_from(path.clone())?;
+        let id = self.sources.push_with_key(|id| {
             source.id = id;
             source
-        }))
+        });
+        self.path_to_source.insert(path, id);
+
+        Ok(id)
     }
 
     pub fn get(&self, id: SourceId) -> Option<&Source> {
