@@ -4,6 +4,7 @@ use std::rc::Rc;
 use std::{fmt, io};
 
 use camino::Utf8PathBuf;
+use compiler_core::db::Db;
 use compiler_data_structures::{
     index_vec::{IndexVec, Key as _},
     new_key_type,
@@ -13,7 +14,6 @@ use ustr::Ustr;
 use compiler_core::{
     db::{ExternLib, ModuleId, StructKind, UnionKind},
     middle::{BinOp, CallConv, IsUfcs, Mutability, Pat, TyExpr, UnOp, Vis},
-    qpath::QPath,
     span::{Span, Spanned},
     word::Word,
 };
@@ -46,9 +46,9 @@ impl Ast {
         })
     }
 
-    pub fn pretty_print(&self, w: &mut impl io::Write) -> io::Result<()> {
+    pub fn pretty_print(&self, db: &Db, w: &mut impl io::Write) -> io::Result<()> {
         for module in &self.modules {
-            pretty::print_module(module, w)?;
+            pretty::print_module(db, module, w)?;
         }
 
         Ok(())
@@ -58,13 +58,18 @@ impl Ast {
 #[derive(Debug, Clone)]
 pub struct Module {
     pub id: ModuleId,
-    pub name: QPath,
     pub items: IndexVec<ItemId, Item>,
 }
 
 impl Module {
-    pub fn new(name: QPath) -> Self {
-        Self { id: ModuleId::null(), name, items: IndexVec::new() }
+    pub fn new() -> Self {
+        Self { id: ModuleId::null(), items: IndexVec::new() }
+    }
+}
+
+impl Default for Module {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

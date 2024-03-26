@@ -6,6 +6,7 @@ mod token;
 use camino::{Utf8Path, Utf8PathBuf};
 use compiler_ast::{Ast, Module};
 use compiler_core::db::ModuleId;
+use compiler_core::qpath::QPath;
 use compiler_core::{
     db::Db,
     diagnostics::DiagnosticResult,
@@ -51,16 +52,25 @@ fn parse_module(
         source_id: SourceId,
         parent: Option<ModuleId>,
     ) -> DiagnosticResult<(Module, FxHashSet<Utf8PathBuf>)> {
+        let module_id = {
+            let name = QPath::from_path(
+                &db.package(package).root_path,
+                db.sources.get(source_id).unwrap().path(),
+            )
+            .unwrap();
+            db.add_module(package, name, parent)
+        };
+
         let is_package_main = source_id == db.package(package).main_source_id;
         let is_main = db.is_main_package(package) && is_package_main;
 
         let (mut module, submodule_paths) = {
             let source = db.sources.get(source_id).unwrap();
             let tokens = lexer::tokenize(source)?;
-            parser::parse(db, package, source, is_package_main, tokens)?
+            parser::parse(db, source, is_package_main, tokens)?
         };
 
-        module.id = db.add_module(package, module.name.clone(), parent);
+        module.id = module_id;
 
         if is_main {
             db.main_module.set(module.id);

@@ -71,7 +71,7 @@ fn check(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<()> {
 fn build_to_mir(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Option<Mir>> {
     let ast = db.time("Parse", |db| compiler_parse::parse(db, root_file))?;
     fs::create_dir_all(db.output_dir())?;
-    db.emit_file(EmitOption::Ast, |_, file| ast.pretty_print(file))?;
+    db.emit_file(EmitOption::Ast, |db, file| ast.pretty_print(db, file))?;
 
     if db.diagnostics.any_errors() {
         return Ok(None);

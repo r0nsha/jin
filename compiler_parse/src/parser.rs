@@ -9,18 +9,16 @@ use std::ops::ControlFlow;
 
 use camino::{Utf8Path, Utf8PathBuf};
 use compiler_ast::{Module, TyParam};
-use compiler_core::word::Word;
 use compiler_core::{
     db::Db,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{Mutability, Vis},
-    qpath::QPath,
     span::{Source, Span},
+    word::Word,
 };
 use compiler_helpers::create_bool_enum;
 use rustc_hash::FxHashSet;
 use ustr::ustr;
-use ustr::Ustr;
 
 use crate::{
     errors,
@@ -33,14 +31,12 @@ const WEAK_KW_REC: &str = "rec";
 
 pub fn parse(
     db: &Db,
-    package: Ustr,
     source: &Source,
     is_package_main: bool,
     tokens: Vec<Token>,
 ) -> DiagnosticResult<(Module, FxHashSet<Utf8PathBuf>)> {
-    let name = QPath::from_path(&db.package(package).root_path, source.path()).unwrap();
     let mut parser = Parser::new(db, source, tokens, is_package_main);
-    let module = parser.parse(name)?;
+    let module = parser.parse()?;
     Ok((module, parser.submodule_paths))
 }
 
@@ -59,8 +55,8 @@ impl<'a> Parser<'a> {
         Self { db, source, tokens, is_package_root, pos: 0, submodule_paths: FxHashSet::default() }
     }
 
-    fn parse(&mut self, name: QPath) -> DiagnosticResult<Module> {
-        let mut module = Module::new(name);
+    fn parse(&mut self) -> DiagnosticResult<Module> {
+        let mut module = Module::new();
 
         while !self.eof() {
             let item = self.parse_item()?;

@@ -1,5 +1,6 @@
 use std::io;
 
+use compiler_core::db::Db;
 use compiler_core::{
     db::UnionKind,
     middle::{BinOp, IsUfcs},
@@ -11,8 +12,9 @@ use crate::{
     ImportTree, Item, Let, Module, TyDef, TyDefKind, TyExpr,
 };
 
-pub(super) fn print_module(module: &Module, w: &mut impl io::Write) -> io::Result<()> {
-    let mut cx = PrettyCx { builder: ptree::TreeBuilder::new(module.name.join()) };
+pub(super) fn print_module(db: &Db, module: &Module, w: &mut impl io::Write) -> io::Result<()> {
+    let name = db[module.id].qpath.join();
+    let mut cx = PrettyCx { builder: ptree::TreeBuilder::new(name) };
 
     for item in &module.items {
         item.pretty_print(&mut cx);
