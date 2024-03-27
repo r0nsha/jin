@@ -141,9 +141,16 @@ impl Db {
         &mut self,
         package: Ustr,
         path: Utf8PathBuf,
-        qpath: QPath,
         parent: Option<ModuleId>,
     ) -> ModuleId {
+        let package_root = &self.package(package).root_path;
+        let qpath = {
+            let stripped = path.strip_prefix(package_root).unwrap();
+            let mut qpath = QPath::new();
+            qpath.push(package);
+            qpath.extend(stripped.iter().map(ustr));
+            qpath
+        };
         let id = self.modules.push_with_key(|id| ModuleInfo { id, package, path, qpath });
 
         self.module_graph.add_node(id);
@@ -165,11 +172,10 @@ impl Db {
 
     pub fn find_module_by_parts<'a>(
         &self,
-        package: &str,
         path: impl IntoIterator<Item = &'a str>,
     ) -> Option<&ModuleInfo> {
         let qpath = QPath::from_iter(path);
-        self.modules.iter().find(|m| m.package == package && m.qpath == qpath)
+        self.modules.iter().find(|m| m.qpath == qpath)
     }
 
     pub fn package(&self, package: Ustr) -> &Package {

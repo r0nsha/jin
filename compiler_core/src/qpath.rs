@@ -1,6 +1,5 @@
 use core::fmt;
 
-use camino::Utf8Path;
 use ustr::{ustr, Ustr};
 
 use crate::word::Word;
@@ -11,12 +10,6 @@ pub struct QPath(Vec<Ustr>);
 impl QPath {
     pub fn new() -> Self {
         Self(vec![])
-    }
-
-    pub fn from_path(root: &Utf8Path, target: &Utf8Path) -> Option<Self> {
-        let target = target.with_extension("");
-        let stripped = target.strip_prefix(root).ok()?;
-        Some(Self(stripped.iter().map(ustr).collect()))
     }
 
     pub fn root(&self) -> Ustr {

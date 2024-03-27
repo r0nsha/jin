@@ -2,14 +2,14 @@ use std.(fs, io)
 
 // TODO: Some sugar like unwrap and try syntax for `Result` would be nice here
 fn main() unit = {
-    match std.fs.read-to-str("examples/file.txt") {
+    match std.fs.read-to-str("examples/fs/file.txt") {
         Result.Ok(contents) -> {
             print("--- Read ---\n{contents}")
-            match std.fs.write("examples/file2.txt", contents) {
+            match std.fs.write("examples/fs/file2.txt", contents) {
                 Result.Ok({}) -> {}
-                Result.Err(err) -> println("Error writing to 'examples/file2.txt': {err}")
+                Result.Err(err) -> println("Error writing to 'examples/fs/file2.txt': {err}")
             }
         }
-        Result.Err(err) -> println("Error reading 'examples/file.txt': {err}")
+        Result.Err(err) -> println("Error reading 'examples/fs/file.txt': {err}")
     }
 }

@@ -5,10 +5,8 @@ mod token;
 
 use camino::{Utf8Path, Utf8PathBuf};
 use compiler_ast::{Ast, Module};
-use compiler_core::db::ModuleId;
-use compiler_core::qpath::QPath;
 use compiler_core::{
-    db::Db,
+    db::{Db, ModuleId},
     diagnostics::DiagnosticResult,
     middle::{BinOp, CmpOp},
     span::SourceId,
@@ -46,7 +44,7 @@ fn parse_module(
     dir: Utf8PathBuf,
     parent: Option<ModuleId>,
 ) {
-    let module_id = create_module(db, package, &dir, parent);
+    let module_id = db.add_module(package, dir.clone(), parent);
     let mut module = Module::new(module_id);
 
     let files: Vec<_> = std::fs::read_dir(&dir)
@@ -81,12 +79,6 @@ fn parse_module(
     }
 
     ast.modules.push(module);
-}
-
-fn create_module(db: &mut Db, package: Ustr, dir: &Utf8Path, parent: Option<ModuleId>) -> ModuleId {
-    let package_root = &db.package(package).root_path;
-    let name = QPath::from_path(package_root, dir).unwrap();
-    db.add_module(package, dir.to_path_buf(), name, parent)
 }
 
 fn parse_file(
