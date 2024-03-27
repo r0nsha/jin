@@ -108,6 +108,12 @@ impl NsDef {
     }
 
     pub(crate) fn can_access(&self, cx: &Typeck, from_module: ModuleId) -> bool {
+        // if self.vis == Vis::Private {
+        //     println!(
+        //         "from: {}, in: {}, vis: {:?}",
+        //         cx.db[from_module].qpath, cx.db[self.module_id].qpath, self.vis
+        //     );
+        // }
         cx.can_access(from_module, self.module_id, self.vis)
     }
 

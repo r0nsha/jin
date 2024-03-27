@@ -1,4 +1,4 @@
-mod extern "raylib"
+mod extern "/usr/local/lib/raylib"
 mod extern "m"
 
 fn extern "c" InitWindow*(width: i32, height: i32, title: ptr[u8]) unit

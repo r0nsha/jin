@@ -1,7 +1,7 @@
 use std*
 use std.bool.(?*)
 use std.char.(?*)
-use std.collections.(**)
+use std.collections.(Array*, ?*)
 use std.fs.(?*)
 use std.option.(Option*, ?*)
 use std.int.(?*)
