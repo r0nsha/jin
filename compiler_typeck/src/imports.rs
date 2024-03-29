@@ -153,15 +153,22 @@ impl<'db, 'cx> Define<'db, 'cx> {
         // redundancy.
         let (resolved, res_module_id) = match resolved {
             Resolved::Module(module_id) => {
-                let id = self.import_module(imp, module_id);
+                let id = import_module(self.cx, imp, module_id);
                 (Resolved::Def(NsDef::from_def_id(self.cx.db, id)), module_id)
             }
             Resolved::Def(def) => {
-                self.import_def(imp, def.id)?;
+                import_def(self.cx, imp, def.id)?;
                 (resolved, self.cx.db[def.id].scope.module_id)
             }
             Resolved::Fn(target_module_id, name) => {
-                self.import_fns(in_module, target_module_id, name, imp.alias);
+                import_fns(
+                    self.cx,
+                    &mut self.imported_fns,
+                    in_module,
+                    target_module_id,
+                    name,
+                    imp.alias,
+                );
                 (resolved, target_module_id)
             }
         };
@@ -281,44 +288,6 @@ impl<'db, 'cx> Define<'db, 'cx> {
         }
     }
 
-    fn import_module(&mut self, imp: &Import, module_id: ModuleId) -> DefId {
-        let id = self.cx.define().new_global(
-            imp.module_id,
-            imp.vis,
-            DefKind::Global,
-            imp.alias,
-            Mutability::Imm,
-        );
-        self.cx.def_to_ty.insert(id, Ty::new(TyKind::Module(module_id)));
-        id
-    }
-
-    fn import_def(&mut self, imp: &Import, id: DefId) -> DiagnosticResult<()> {
-        self.cx.define().global(imp.module_id, imp.alias, id, imp.vis)?;
-        Ok(())
-    }
-
-    fn import_fns(
-        &mut self,
-        in_module: ModuleId,
-        target_module_id: ModuleId,
-        name: Ustr,
-        alias: Word,
-    ) {
-        let defined_fns = self
-            .cx
-            .global_env
-            .module(target_module_id)
-            .ns
-            .defined_fns
-            .get(&name)
-            .expect("to be defined");
-
-        for &id in defined_fns {
-            self.imported_fns.entry(in_module).or_default().push(ImportedFn { id, name, alias });
-        }
-    }
-
     fn get_resolved_import_path(&self, imp: &Import) -> Option<&Resolved> {
         self.resolved.get(&imp.module_id).and_then(|m| m.get(&imp.alias.name()))
     }
@@ -346,6 +315,34 @@ impl<'db, 'cx> Define<'db, 'cx> {
 
     fn expected_module_found_fn(span: Span) -> Diagnostic {
         errors::expected_module(format!("found {}", DefKind::Fn(FnInfo::Bare)), span)
+    }
+}
+
+fn import_module(cx: &mut Typeck, imp: &Import, module_id: ModuleId) -> DefId {
+    let id =
+        cx.define().new_global(imp.module_id, imp.vis, DefKind::Global, imp.alias, Mutability::Imm);
+    cx.def_to_ty.insert(id, Ty::new(TyKind::Module(module_id)));
+    id
+}
+
+fn import_def(cx: &mut Typeck, imp: &Import, id: DefId) -> DiagnosticResult<()> {
+    cx.define().global(imp.module_id, imp.alias, id, imp.vis)?;
+    Ok(())
+}
+
+fn import_fns(
+    cx: &mut Typeck,
+    imported_fns: &mut ImportedFns,
+    in_module: ModuleId,
+    target_module_id: ModuleId,
+    name: Ustr,
+    alias: Word,
+) {
+    let defined_fns =
+        cx.global_env.module(target_module_id).ns.defined_fns.get(&name).expect("to be defined");
+
+    for &id in defined_fns {
+        imported_fns.entry(in_module).or_default().push(ImportedFn { id, name, alias });
     }
 }
 

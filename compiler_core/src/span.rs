@@ -116,6 +116,10 @@ impl Sources {
     pub fn find_by_path(&self, path: &Utf8Path) -> Option<&Source> {
         self.path_to_source.get(path).and_then(|id| self.get(*id))
     }
+
+    pub fn ids(&self) -> impl Iterator<Item = SourceId> {
+        self.sources.keys()
+    }
 }
 
 impl ops::Index<SourceId> for Sources {
