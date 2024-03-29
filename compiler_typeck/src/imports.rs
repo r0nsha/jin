@@ -523,3 +523,67 @@ pub(crate) fn insert_prelude(cx: &mut Typeck) {
             .or_insert(ns::GlobImport { is_ufcs: IsUfcs::No, vis: Vis::Private });
     }
 }
+
+// pub(crate) fn insert_prelude(cx: &mut Typeck, imported_fns: &mut ImportedFns) {
+//     // use std*
+//     // use std.bool.(?*)
+//     // use std.char.(?*)
+//     // use std.collections.(Array*, ?*)
+//     // use std.fs.(?*)
+//     // use std.option.(Option*, ?*)
+//     // use std.int.(?*)
+//     // use std.io.(print*, println*, ?*)
+//     // use std.panicking.(assert*, panic*, todo*)
+//     // use std.ptr.(?*)
+//     // use std.result.(Result*, ?*)
+//     // use std.slice.(?*)
+//     // use std.str.(StrBuf*, ?*)
+//     const imports: &[PreludeImport] = &[];
+//
+//     fn module_contains(cx: &Typeck, module_id: ModuleId, name: Ustr) -> bool {
+//         cx.global_env.module(module_id).ns.defs.contains_key(&name)
+//     }
+//
+//     let source_ids: Vec<_> = cx.db.sources.ids().collect();
+//     let module_ids: Vec<_> = cx.global_env.modules.keys().copied().collect();
+//
+//     for source_id in source_ids {
+//         for import in imports {
+//             if let Some(sym) = import.module_symbol {
+//                 let sym = ustr(sym);
+//                 if !module_contains(cx, module_id, sym) {
+//                     let id = cx.define().new_global(
+//                         module_id,
+//                         Vis::Private,
+//                         DefKind::Global,
+//                         Word::new(sym, Span::initial(source_id)),
+//                         Mutability::Imm,
+//                     );
+//                     cx.def_to_ty.insert(id, Ty::new(TyKind::Module(module_id)));
+//                 }
+//             }
+//
+//             // TODO: ufcs
+//             // env.globs
+//             //     .entry(prelude_module_id)
+//             //     .or_insert(ns::GlobImport { is_ufcs: IsUfcs::No, vis: Vis::Private });
+//             // TODO: symbols
+//         }
+//     }
+// }
+//
+// struct PreludeImport<'a> {
+//     module: &'a [&'a str],
+//     module_symbol: Option<&'a str>,
+//     symbols: &'a [&'a str],
+// }
+//
+// impl<'a> PreludeImport<'a> {
+//     const fn module(module: &'a [&'a str], symbol: &'a str) -> Self {
+//         Self { module, module_symbol: Some(symbol), symbols: &[] }
+//     }
+//
+//     const fn symbols(module: &'a [&'a str], symbols: &'a [&'a str]) -> Self {
+//         Self { module, module_symbol: None, symbols }
+//     }
+// }
