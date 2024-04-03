@@ -4,49 +4,39 @@ use crate::generate::Generator;
 
 impl<'db> Generator<'db> {
     pub fn get_global_init_order(&self) -> Vec<GlobalId> {
-        GlobalInitOrder { cx: self, order: vec![] }.get()
-    }
-}
+        let mut order: Vec<GlobalId> = vec![];
 
-struct GlobalInitOrder<'db, 'a> {
-    cx: &'a Generator<'db>,
-    order: Vec<GlobalId>,
-}
-
-impl GlobalInitOrder<'_, '_> {
-    fn get(mut self) -> Vec<GlobalId> {
-        for glob in self.cx.mir.globals.values() {
-            self.search_global(glob);
-            if let GlobalKind::Static { .. } = &glob.kind {
-                self.add_global(glob.id);
+        for glob in self.mir.globals.values() {
+            search_global(self, &mut order, glob);
+            if matches!(&glob.kind, GlobalKind::Static { .. }) {
+                add_global(&mut order, glob.id);
             }
         }
 
-        self.order
+        order
     }
+}
 
-    fn search_global(&mut self, glob: &Global) {
-        if let GlobalKind::Static(body) = &glob.kind {
-            for value in body.values() {
-                if let ValueKind::Global(gid) = &value.kind {
-                    if !self.add_global(*gid) {
-                        self.search_global_by_id(*gid);
-                    }
-                }
-            }
+fn search_global(cx: &Generator, order: &mut Vec<GlobalId>, glob: &Global) {
+    let GlobalKind::Static(body) = &glob.kind else { return };
+
+    for value in body.values() {
+        let ValueKind::Global(gid) = &value.kind else { continue };
+        if !add_global(order, *gid) {
+            search_global_by_id(cx, order, *gid);
         }
     }
+}
 
-    fn search_global_by_id(&mut self, id: GlobalId) {
-        self.search_global(&self.cx.mir.globals[id]);
+fn search_global_by_id(cx: &Generator, order: &mut Vec<GlobalId>, id: GlobalId) {
+    search_global(cx, order, &cx.mir.globals[id]);
+}
+
+fn add_global(order: &mut Vec<GlobalId>, id: GlobalId) -> bool {
+    if order.contains(&id) {
+        return false;
     }
 
-    fn add_global(&mut self, id: GlobalId) -> bool {
-        if self.order.contains(&id) {
-            false
-        } else {
-            self.order.push(id);
-            true
-        }
-    }
+    order.push(id);
+    true
 }
