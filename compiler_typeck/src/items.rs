@@ -25,7 +25,7 @@ use crate::{
     ns::{AssocTy, Env, ScopeKind},
     tyexpr,
     tyexpr::AllowTyHole,
-    types, TyAlias, Typeck,
+    ty, TyAlias, Typeck,
 };
 
 pub(crate) fn define(cx: &mut Typeck, ast: &Ast) {
@@ -194,7 +194,7 @@ fn define_tydef(
                     Mutability::Imm,
                 );
 
-                let tparams = types::define_tparams(cx, env, &tydef.tparams);
+                let tparams = ty::define_tparams(cx, env, &tydef.tparams);
                 cx.ty_aliases.insert(
                     def_id,
                     TyAlias { tyexpr: Some(Rc::clone(&alias.ty)), ty: None, tparams },
@@ -244,7 +244,7 @@ fn define_variants(
 }
 
 fn check_adt_tparams(cx: &mut Typeck, env: &mut Env, tydef: &ast::TyDef, adt_id: AdtId) {
-    let tparams = types::define_tparams(cx, env, &tydef.tparams);
+    let tparams = ty::define_tparams(cx, env, &tydef.tparams);
     cx.db[adt_id].tparams = tparams;
     let adt = &cx.db[adt_id];
     cx.def_to_ty.insert(adt.def_id, TyKind::Type(adt.ty()).into());
@@ -484,7 +484,7 @@ fn check_assoc_item_ty(
 ) -> DiagnosticResult<AssocTy> {
     let id = cx.lookup().query(module_id, module_id, &Query::Name(tyname))?;
 
-    let Some(assoc_ty) = types::try_extract_assoc_ty(cx, id) else {
+    let Some(assoc_ty) = ty::try_extract_assoc_ty(cx, id) else {
         return Err(Diagnostic::error(format!(
             "expected a type, found value of type `{}`",
             cx.def_ty(id).display(cx.db)

@@ -18,7 +18,7 @@ use crate::{
     exprs,
     lookup::PathLookup,
     ns::{Env, ScopeKind},
-    types,
+    ty,
     unify::{CoerceExt as _, Obligation},
     Typeck,
 };
@@ -337,7 +337,7 @@ fn check_match_pat_adt_ty(
     adt_id: AdtId,
 ) -> DiagnosticResult<Instantiation> {
     let adt_ty = cx.db[adt_id].ty();
-    let instantiation = types::fresh_instantiation(cx, env, adt_ty.collect_params());
+    let instantiation = ty::fresh_instantiation(cx, env, adt_ty.collect_params());
 
     cx.at(Obligation::exprs(span, parent_span, span))
         .eq(pat_ty.auto_deref(), instantiation.fold(adt_ty))?;

@@ -20,7 +20,7 @@ use crate::{
     ns::{Env, ScopeKind},
     pmatch, trans_let_kind,
     tyexpr::{self, AllowTyHole},
-    types,
+    ty,
     unify::{CoerceExt as _, CoerceOptions, Obligation},
     Typeck,
 };
@@ -236,11 +236,11 @@ pub(crate) fn check_expr(
                 let name_targs =
                     tyexpr::check_optional_targs(cx, env, name_targs.as_deref(), AllowTyHole::Yes)?;
 
-                if let Some(assoc_ty) = types::try_extract_assoc_ty(cx, id) {
+                if let Some(assoc_ty) = ty::try_extract_assoc_ty(cx, id) {
                     let query_args = map_call_args_for_query(cx, &args);
                     let query = FnQuery::new(*method, targs.as_deref(), &query_args, IsUfcs::No);
 
-                    let (ty, _) = types::apply_targs_to_ty(
+                    let (ty, _) = ty::apply_targs_to_ty(
                         cx,
                         env,
                         assoc_ty.ty(cx.db),
@@ -578,7 +578,7 @@ fn check_name(
 
     if cx.ty_aliases.contains_key(&id) {
         let ty = tyexpr::check_ty_alias(cx, id, AllowTyHole::Yes)?;
-        let (ty, instantiation) = types::apply_targs_to_ty(cx, env, ty, targs, span)?;
+        let (ty, instantiation) = ty::apply_targs_to_ty(cx, env, ty, targs, span)?;
 
         return Ok(cx.expr(
             hir::ExprKind::Name(hir::Name { id, word, instantiation }),
@@ -588,7 +588,7 @@ fn check_name(
     }
 
     let def_ty = cx.normalize(cx.def_ty(id));
-    let (ty, instantiation) = types::apply_targs_to_ty(cx, env, def_ty, targs, span)?;
+    let (ty, instantiation) = ty::apply_targs_to_ty(cx, env, def_ty, targs, span)?;
 
     Ok(cx.expr(hir::ExprKind::Name(hir::Name { id, word, instantiation }), ty, span))
 }
@@ -622,7 +622,7 @@ fn check_name_struct(
         )));
     }
 
-    let (ty, instantiation) = types::apply_targs_to_ty(cx, env, struct_def.ctor_ty, targs, span)?;
+    let (ty, instantiation) = ty::apply_targs_to_ty(cx, env, struct_def.ctor_ty, targs, span)?;
 
     Ok(cx.expr(hir::ExprKind::Name(hir::Name { id, word, instantiation }), ty, span))
 }

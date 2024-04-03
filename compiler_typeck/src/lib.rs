@@ -13,8 +13,8 @@ mod normalize;
 mod ns;
 mod pmatch;
 mod subst;
+mod ty;
 mod tyexpr;
-mod types;
 mod unify;
 
 use std::cell::RefCell;
@@ -55,7 +55,7 @@ fn typeck_inner(cx: &mut Typeck, ast: Ast) {
     }
 
     // Check top-level types and signatures
-    types::check(cx, &ast);
+    ty::check(cx, &ast);
     items::check_sigs(cx, &ast);
     imports::fill_imported_fn_candidates(cx, imported_fns);
 

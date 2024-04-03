@@ -1,12 +1,11 @@
 use compiler_ast::{self as ast, Ast};
-use compiler_core::word::Word;
 use compiler_core::{
     db::{AdtField, AdtId, DefId, DefKind, ModuleId, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{Mutability, TyParam, Vis},
     span::{Span, Spanned as _},
     ty::{Instantiation, ParamTy, Ty, TyKind},
-    word::WordMap,
+    word::{Word, WordMap},
 };
 
 use crate::{

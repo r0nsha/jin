@@ -16,7 +16,7 @@ use crate::{
     ns::{Env, ScopeKind},
     tyexpr,
     tyexpr::AllowTyHole,
-    types,
+    ty,
     unify::{CoerceExt as _, Obligation},
     Typeck,
 };
@@ -28,7 +28,7 @@ pub(crate) fn check_sig(
     callconv: CallConv,
     flags: FnTyFlags,
 ) -> DiagnosticResult<hir::FnSig> {
-    let tparams = types::define_tparams(cx, env, &sig.tparams);
+    let tparams = ty::define_tparams(cx, env, &sig.tparams);
     let (params, fnty_params) = check_fn_sig_params(cx, env, &sig.params)?;
 
     let ret = sig
