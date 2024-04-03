@@ -15,10 +15,10 @@ use itertools::{Itertools as _, Position};
 use ustr::{ustr, UstrMap};
 
 use crate::{
-    errors, fns, helpers, items,
+    errors, fns, items,
     lookup::{AssocLookup, FnQuery, Query},
     ns::{Env, ScopeKind},
-    pmatch,
+    pmatch, trans_let_kind,
     tyexpr::{self, AllowTyHole},
     types,
     unify::{CoerceExt as _, CoerceOptions, Obligation},
@@ -43,7 +43,7 @@ pub(crate) fn check_expr(
                 hir::ExprKind::Let(hir::Let {
                     id: hir::LetId::null(),
                     module_id: env.module_id(),
-                    kind: helpers::trans_let_kind(&let_.kind),
+                    kind: trans_let_kind(&let_.kind),
                     pat,
                     value: Box::new(value),
                     ty,

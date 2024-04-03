@@ -4,7 +4,6 @@ mod define;
 mod errors;
 mod exprs;
 mod fns;
-mod helpers;
 mod hooks;
 mod imports;
 mod items;
@@ -279,5 +278,12 @@ pub(crate) struct TyAlias {
 impl TyAlias {
     pub fn instantiation(&self, targs: &[Ty]) -> Instantiation {
         Instantiation::from((self.tparams.as_slice(), targs))
+    }
+}
+
+pub(crate) fn trans_let_kind(kind: &ast::LetKind) -> hir::LetKind {
+    match kind {
+        ast::LetKind::Let => hir::LetKind::Let,
+        ast::LetKind::Const => hir::LetKind::Const,
     }
 }
