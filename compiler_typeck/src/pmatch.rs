@@ -13,14 +13,13 @@ use ustr::{Ustr, UstrMap};
 
 use crate::lookup::Query;
 use crate::{
-    coerce::CoerceExt as _,
     errors,
     errors::field_not_found,
     exprs,
     lookup::PathLookup,
     ns::{Env, ScopeKind},
     types,
-    unify::Obligation,
+    unify::{CoerceExt as _, Obligation},
     Typeck,
 };
 

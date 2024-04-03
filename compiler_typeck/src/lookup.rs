@@ -1,12 +1,11 @@
 use std::iter;
 
-use compiler_core::ty::{FloatTy, InferTy, IntTy};
 use compiler_core::{
     db::{AdtKind, Db, DefId, ModuleId, UnionDef, Variant, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{CallConv, IsUfcs},
     span::{Span, Spanned as _},
-    ty::{printer::FnTyPrinter, FnTy, FnTyFlags, FnTyParam, Ty, TyKind},
+    ty::{printer::FnTyPrinter, FloatTy, FnTy, FnTyFlags, FnTyParam, InferTy, IntTy, Ty, TyKind},
     word::Word,
 };
 use compiler_helpers::create_bool_enum;
@@ -14,12 +13,10 @@ use itertools::Itertools as _;
 use rustc_hash::FxHashSet;
 use ustr::{ustr, Ustr};
 
-use crate::unify::TyUnifyExt as _;
 use crate::{
-    coerce::{Coerce as _, CoerceOptions},
     errors,
     ns::{AssocTy, Env, NsDef},
-    unify::UnifyOptions,
+    unify::{Coerce as _, CoerceOptions, TyUnifyExt as _, UnifyOptions},
     Typeck,
 };
 

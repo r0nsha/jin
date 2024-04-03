@@ -14,16 +14,14 @@ use compiler_data_structures::index_vec::{IndexVecExt as _, Key as _};
 use itertools::{Itertools as _, Position};
 use ustr::{ustr, UstrMap};
 
-use crate::helpers;
 use crate::{
-    coerce::{CoerceExt as _, CoerceOptions},
-    errors, fns, items,
+    errors, fns, helpers, items,
     lookup::{AssocLookup, FnQuery, Query},
     ns::{Env, ScopeKind},
-    pmatch, tyexpr,
-    tyexpr::AllowTyHole,
+    pmatch,
+    tyexpr::{self, AllowTyHole},
     types,
-    unify::Obligation,
+    unify::{CoerceExt as _, CoerceOptions, Obligation},
     Typeck,
 };
 

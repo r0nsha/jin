@@ -1,6 +1,5 @@
 mod attrs;
 mod builtins;
-mod coerce;
 mod define;
 mod errors;
 mod exprs;

@@ -12,13 +12,12 @@ use compiler_data_structures::index_vec::Key as _;
 use ustr::ustr;
 
 use crate::{
-    coerce::CoerceExt as _,
     errors, exprs,
     ns::{Env, ScopeKind},
     tyexpr,
     tyexpr::AllowTyHole,
     types,
-    unify::Obligation,
+    unify::{CoerceExt as _, Obligation},
     Typeck,
 };
 
