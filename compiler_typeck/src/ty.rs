@@ -17,9 +17,9 @@ use crate::{
 };
 
 pub(crate) fn check(cx: &mut Typeck, ast: &Ast) {
-    for (item, id) in ast.items_with_id() {
+    for (item_id, item) in ast.items.iter_enumerated() {
         if let ast::ItemKind::Type(tydef) = &item.kind {
-            if let Err(diagnostic) = check_tydef(cx, item.loc.module_id, id, tydef) {
+            if let Err(diagnostic) = check_tydef(cx, item.loc.module_id, item_id, tydef) {
                 cx.db.diagnostics.add(diagnostic);
             }
         }
@@ -29,7 +29,7 @@ pub(crate) fn check(cx: &mut Typeck, ast: &Ast) {
 fn check_tydef(
     cx: &mut Typeck<'_>,
     module_id: ModuleId,
-    item_id: ast::GlobalItemId,
+    item_id: ast::ItemId,
     tydef: &ast::TyDef,
 ) -> DiagnosticResult<()> {
     let mut env = Env::new(module_id);
@@ -52,7 +52,7 @@ fn check_tydef(
     })
 }
 
-fn check_adt_prologue(cx: &mut Typeck<'_>, env: &mut Env, item_id: ast::GlobalItemId) -> AdtId {
+fn check_adt_prologue(cx: &mut Typeck<'_>, env: &mut Env, item_id: ast::ItemId) -> AdtId {
     let adt_id = cx.res_map.item_to_adt.remove(&item_id).expect("to be defined");
     for tp in &cx.db[adt_id].tparams {
         env.insert(tp.word.name(), tp.id);

@@ -33,16 +33,6 @@ impl Ast {
         Self { items: IndexVec::new() }
     }
 
-    pub fn items(&self) -> impl Iterator<Item = &Item> {
-        self.items.iter()
-    }
-
-    pub fn items_with_id(&self) -> impl Iterator<Item = (&Item, GlobalItemId)> {
-        self.items
-            .iter_enumerated()
-            .map(|(item_id, item)| (item, GlobalItemId { module_id: item.loc.module_id, item_id }))
-    }
-
     pub fn pretty_print(&self, db: &Db, w: &mut impl io::Write) -> io::Result<()> {
         for (module_id, items) in &self.items.iter().group_by(|i| i.loc.module_id) {
             pretty::print_module(db, module_id, items, w)?;
@@ -72,12 +62,6 @@ new_key_type! {
 pub struct Location {
     pub module_id: ModuleId,
     pub source_id: SourceId,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct GlobalItemId {
-    pub module_id: ModuleId,
-    pub item_id: ItemId,
 }
 
 #[derive(Debug, Clone)]

@@ -29,7 +29,7 @@ use crate::{
 };
 
 pub(crate) fn define(cx: &mut Typeck, ast: &Ast) {
-    for (item, item_id) in ast.items_with_id() {
+    for (item_id, item) in ast.items.iter_enumerated() {
         match &item.kind {
             ast::ItemKind::Let(let_) => define_let(cx, item.loc.module_id, item_id, let_),
             ast::ItemKind::ExternLet(let_) => {
@@ -50,12 +50,7 @@ pub(crate) fn define(cx: &mut Typeck, ast: &Ast) {
     }
 }
 
-fn define_let(
-    cx: &mut Typeck<'_>,
-    module_id: ModuleId,
-    item_id: ast::GlobalItemId,
-    let_: &ast::Let,
-) {
+fn define_let(cx: &mut Typeck<'_>, module_id: ModuleId, item_id: ast::ItemId, let_: &ast::Let) {
     attrs::validate(cx, &let_.attrs, attrs::Placement::Let);
     let unknown = cx.db.types.unknown;
     let pat = cx.define().global_pat(
@@ -73,7 +68,7 @@ fn define_let(
 fn define_extern_let(
     cx: &mut Typeck<'_>,
     module_id: ModuleId,
-    item_id: ast::GlobalItemId,
+    item_id: ast::ItemId,
     let_: &ast::ExternLet,
 ) {
     attrs::validate(cx, &let_.attrs, attrs::Placement::ExternLet);
@@ -92,7 +87,7 @@ fn define_extern_let(
 fn define_fn(
     cx: &mut Typeck<'_>,
     module_id: ModuleId,
-    item_id: ast::GlobalItemId,
+    item_id: ast::ItemId,
     fun: &ast::Fn,
     assoc_ty: Option<AssocTy>,
 ) -> DiagnosticResult<DefId> {
@@ -148,7 +143,7 @@ fn define_fn(
 fn define_tydef(
     cx: &mut Typeck<'_>,
     module_id: ModuleId,
-    item_id: ast::GlobalItemId,
+    item_id: ast::ItemId,
     tydef: &ast::TyDef,
 ) {
     attrs::validate(
@@ -253,7 +248,7 @@ fn check_adt_tparams(cx: &mut Typeck, env: &mut Env, tydef: &ast::TyDef, adt_id:
 }
 
 pub(crate) fn check_sigs(cx: &mut Typeck, ast: &Ast) {
-    for (item, item_id) in ast.items_with_id() {
+    for (item_id, item) in ast.items.iter_enumerated() {
         let result = match &item.kind {
             ast::ItemKind::Let(let_) => check_let_item(cx, item.loc.module_id, item_id, let_),
             ast::ItemKind::ExternLet(let_) => {
@@ -275,7 +270,7 @@ pub(crate) fn check_sigs(cx: &mut Typeck, ast: &Ast) {
 pub(crate) fn check_let_item(
     cx: &mut Typeck<'_>,
     module_id: ModuleId,
-    item_id: ast::GlobalItemId,
+    item_id: ast::ItemId,
     let_: &ast::Let,
 ) -> DiagnosticResult<()> {
     let env = Env::new(module_id);
@@ -305,7 +300,7 @@ fn map_typed_pat(cx: &mut Typeck<'_>, pat: Pat, ty: Ty) -> Pat {
 fn check_extern_let(
     cx: &mut Typeck<'_>,
     module_id: ModuleId,
-    item_id: ast::GlobalItemId,
+    item_id: ast::ItemId,
     let_: &ast::ExternLet,
 ) -> DiagnosticResult<()> {
     let env = Env::new(module_id);
@@ -319,7 +314,7 @@ fn check_extern_let(
 fn check_fn(
     cx: &mut Typeck<'_>,
     module_id: ModuleId,
-    item_id: ast::GlobalItemId,
+    item_id: ast::ItemId,
     fun: &ast::Fn,
 ) -> DiagnosticResult<()> {
     let &id = cx.res_map.item_to_def.get(&item_id).expect("to be defined");
@@ -329,7 +324,7 @@ fn check_fn(
 fn check_assoc_fn(
     cx: &mut Typeck<'_>,
     module_id: ModuleId,
-    item_id: ast::GlobalItemId,
+    item_id: ast::ItemId,
     fun: &ast::Fn,
     assoc_ty: AssocTy,
 ) -> DiagnosticResult<()> {
@@ -373,7 +368,7 @@ fn check_assoc_name_overlap(
 fn check_fn_helper(
     cx: &mut Typeck,
     module_id: ModuleId,
-    item_id: ast::GlobalItemId,
+    item_id: ast::ItemId,
     id: DefId,
     fun: &ast::Fn,
     assoc_ty: Option<AssocTy>,
@@ -466,7 +461,7 @@ fn check_builtin_fn(
 fn check_assoc_item(
     cx: &mut Typeck<'_>,
     module_id: ModuleId,
-    item_id: ast::GlobalItemId,
+    item_id: ast::ItemId,
     tyname: Word,
     item: &ast::ItemKind,
 ) -> DiagnosticResult<()> {
@@ -532,18 +527,14 @@ fn check_assoc_item_ty(
 }
 
 pub(crate) fn check_bodies(cx: &mut Typeck<'_>, ast: &Ast) {
-    for (item, item_id) in ast.items_with_id() {
+    for (item_id, item) in ast.items.iter_enumerated() {
         if let Err(diagnostic) = check_item_body(cx, item, item_id) {
             cx.db.diagnostics.add(diagnostic);
         }
     }
 }
 
-fn check_item_body(
-    cx: &mut Typeck<'_>,
-    item: &ast::Item,
-    id: ast::GlobalItemId,
-) -> DiagnosticResult<()> {
+fn check_item_body(cx: &mut Typeck<'_>, item: &ast::Item, id: ast::ItemId) -> DiagnosticResult<()> {
     let module_id = item.loc.module_id;
 
     match &item.kind {
@@ -578,7 +569,7 @@ fn check_let_item_body(
     cx: &mut Typeck<'_>,
     module_id: ModuleId,
     let_: &ast::Let,
-    id: ast::GlobalItemId,
+    id: ast::ItemId,
 ) -> DiagnosticResult<(Pat, hir::Expr, Ty)> {
     let mut env = Env::new(module_id);
     let pat = cx.res_map.item_to_pat.remove(&id).expect("to be defined");
@@ -614,7 +605,7 @@ pub(crate) fn check_let_body(
 
 pub(crate) fn check_fn_item_body(
     cx: &mut Typeck<'_>,
-    item_id: ast::GlobalItemId,
+    item_id: ast::ItemId,
     fun: &ast::Fn,
 ) -> DiagnosticResult<()> {
     let def_id = cx.res_map.item_to_def.remove(&item_id).expect("to be defined");

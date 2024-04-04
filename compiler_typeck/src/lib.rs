@@ -246,7 +246,7 @@ impl<'db> Typeck<'db> {
     }
 }
 
-pub(crate) type ItemMap<T> = FxHashMap<ast::GlobalItemId, T>;
+pub(crate) type ItemMap<T> = FxHashMap<ast::ItemId, T>;
 
 /// Various mappings and resolutions from the `define_*` passes
 pub(crate) struct ResMap {

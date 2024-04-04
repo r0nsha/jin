@@ -27,7 +27,7 @@ pub(crate) fn define(cx: &mut Typeck, ast: &Ast) -> ImportedFns {
 fn build_imports_map(cx: &mut Typeck, ast: &Ast) -> ImportsMap {
     let mut map = ImportsMap::default();
 
-    for item in ast.items() {
+    for item in &ast.items {
         let ast::ItemKind::Import(import) = &item.kind else { continue };
         attrs::validate(cx, &import.attrs, attrs::Placement::Import);
 
