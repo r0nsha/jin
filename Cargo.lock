@@ -278,6 +278,7 @@ dependencies = [
  "compiler_core",
  "compiler_data_structures",
  "compiler_helpers",
+ "itertools",
  "path-absolutize",
  "ptree",
  "rustc-hash",

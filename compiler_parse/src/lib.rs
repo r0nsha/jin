@@ -4,7 +4,7 @@ mod parser;
 mod token;
 
 use camino::{Utf8Path, Utf8PathBuf};
-use compiler_ast::{Ast, Module};
+use compiler_ast::{Ast, Item};
 use compiler_core::{
     db::{Db, ModuleId},
     diagnostics::DiagnosticResult,
@@ -45,7 +45,7 @@ fn parse_module(
     parent: Option<ModuleId>,
 ) {
     let module_id = db.add_module(package, dir.clone(), parent);
-    let mut module = Module::new(module_id);
+    let mut items = Vec::<Item>::new();
 
     let files: Vec<_> = std::fs::read_dir(&dir)
         .unwrap()
@@ -64,42 +64,43 @@ fn parse_module(
         let source_id = db.sources.load_file(file).unwrap();
         db.source_to_module.insert(source_id, module_id);
 
-        match parse_file(db, package, source_id, &mut module) {
+        match parse_file(db, package, module_id, source_id, &mut items) {
             Ok(submodule_paths) => {
                 for path in submodule_paths {
                     if db.sources.find_by_path(&path).is_some() {
                         continue;
                     }
 
-                    parse_module(db, package, ast, path, Some(module.id));
+                    parse_module(db, package, ast, path, Some(module_id));
                 }
             }
             Err(diag) => db.diagnostics.add(diag),
         }
     }
 
-    ast.modules.push(module);
+    ast.items.extend(items);
 }
 
 fn parse_file(
     db: &mut Db,
     package: Ustr,
+    module_id: ModuleId,
     source_id: SourceId,
-    module: &mut Module,
+    items: &mut Vec<Item>,
 ) -> DiagnosticResult<FxHashSet<Utf8PathBuf>> {
     let is_package_main = source_id == db.package(package).main_source_id;
     let is_main = db.is_main_package(package) && is_package_main;
 
-    let (items, submodule_paths) = {
+    let (file_items, submodule_paths) = {
         let source = db.sources.get(source_id).unwrap();
         let tokens = lexer::tokenize(source)?;
-        parser::parse(db, source, module.id, tokens)?
+        parser::parse(db, source, module_id, tokens)?
     };
 
-    module.items.extend(items);
+    items.extend(file_items);
 
     if is_main {
-        db.main_module.set(module.id);
+        db.main_module.set(module_id);
     }
 
     Ok(submodule_paths)

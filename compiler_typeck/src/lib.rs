@@ -42,7 +42,7 @@ pub fn typeck(db: &mut Db, ast: Ast) -> Hir {
 }
 
 fn typeck_inner(cx: &mut Typeck, ast: Ast) {
-    cx.init_global_env(&ast);
+    cx.init_global_env();
 
     // Define
     items::define(cx, &ast);
@@ -157,9 +157,9 @@ impl<'db> Typeck<'db> {
         }
     }
 
-    fn init_global_env(&mut self, ast: &Ast) {
-        for module in &ast.modules {
-            self.global_env.insert_module(module.id);
+    fn init_global_env(&mut self) {
+        for module_id in self.db.modules.keys() {
+            self.global_env.insert_module(module_id);
         }
 
         builtins::define_all(self);

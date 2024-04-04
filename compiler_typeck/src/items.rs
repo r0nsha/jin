@@ -29,16 +29,18 @@ use crate::{
 };
 
 pub(crate) fn define(cx: &mut Typeck, ast: &Ast) {
-    for (module, item, id) in ast.items_with_id() {
+    for (item, item_id) in ast.items_with_id() {
         match &item.kind {
-            ast::ItemKind::Let(let_) => define_let(cx, module.id, id, let_),
-            ast::ItemKind::ExternLet(let_) => define_extern_let(cx, module.id, id, let_),
+            ast::ItemKind::Let(let_) => define_let(cx, item.loc.module_id, item_id, let_),
+            ast::ItemKind::ExternLet(let_) => {
+                define_extern_let(cx, item.loc.module_id, item_id, let_)
+            }
             ast::ItemKind::Fn(fun) => {
-                if let Err(diagnostic) = define_fn(cx, module.id, id, fun, None) {
+                if let Err(diagnostic) = define_fn(cx, item.loc.module_id, item_id, fun, None) {
                     cx.db.diagnostics.add(diagnostic);
                 }
             }
-            ast::ItemKind::Type(tydef) => define_tydef(cx, module.id, id, tydef),
+            ast::ItemKind::Type(tydef) => define_tydef(cx, item.loc.module_id, item_id, tydef),
             ast::ItemKind::ExternImport(import) => {
                 attrs::validate(cx, &import.attrs, attrs::Placement::ExternImport);
                 cx.db.extern_libs.insert(import.lib.clone());
@@ -251,13 +253,15 @@ fn check_adt_tparams(cx: &mut Typeck, env: &mut Env, tydef: &ast::TyDef, adt_id:
 }
 
 pub(crate) fn check_sigs(cx: &mut Typeck, ast: &Ast) {
-    for (module, item, id) in ast.items_with_id() {
+    for (item, item_id) in ast.items_with_id() {
         let result = match &item.kind {
-            ast::ItemKind::Let(let_) => check_let_item(cx, module.id, id, let_),
-            ast::ItemKind::ExternLet(let_) => check_extern_let(cx, module.id, id, let_),
-            ast::ItemKind::Fn(fun) => check_fn(cx, module.id, id, fun),
-            ast::ItemKind::Assoc(tyname, item) => {
-                check_assoc_item(cx, module.id, id, *tyname, item)
+            ast::ItemKind::Let(let_) => check_let_item(cx, item.loc.module_id, item_id, let_),
+            ast::ItemKind::ExternLet(let_) => {
+                check_extern_let(cx, item.loc.module_id, item_id, let_)
+            }
+            ast::ItemKind::Fn(fun) => check_fn(cx, item.loc.module_id, item_id, fun),
+            ast::ItemKind::Assoc(tyname, assoc_item) => {
+                check_assoc_item(cx, item.loc.module_id, item_id, *tyname, assoc_item)
             }
             _ => Ok(()),
         };
@@ -528,8 +532,8 @@ fn check_assoc_item_ty(
 }
 
 pub(crate) fn check_bodies(cx: &mut Typeck<'_>, ast: &Ast) {
-    for (module, item, id) in ast.items_with_id() {
-        if let Err(diagnostic) = check_item_body(cx, module.id, item, id) {
+    for (item, item_id) in ast.items_with_id() {
+        if let Err(diagnostic) = check_item_body(cx, item, item_id) {
             cx.db.diagnostics.add(diagnostic);
         }
     }
@@ -537,10 +541,11 @@ pub(crate) fn check_bodies(cx: &mut Typeck<'_>, ast: &Ast) {
 
 fn check_item_body(
     cx: &mut Typeck<'_>,
-    module_id: ModuleId,
     item: &ast::Item,
     id: ast::GlobalItemId,
 ) -> DiagnosticResult<()> {
+    let module_id = item.loc.module_id;
+
     match &item.kind {
         ast::ItemKind::Let(let_) => {
             let (pat, value, ty) = check_let_item_body(cx, module_id, let_, id)?;

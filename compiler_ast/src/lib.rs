@@ -7,6 +7,7 @@ use camino::Utf8PathBuf;
 use compiler_core::db::Db;
 use compiler_core::span::SourceId;
 use compiler_data_structures::{index_vec::IndexVec, new_key_type};
+use itertools::Itertools as _;
 use ustr::Ustr;
 
 use compiler_core::{
@@ -18,7 +19,7 @@ use compiler_core::{
 
 #[derive(Debug, Clone)]
 pub struct Ast {
-    pub modules: IndexVec<ModuleId, Module>,
+    pub items: IndexVec<ItemId, Item>,
 }
 
 impl Default for Ast {
@@ -29,24 +30,22 @@ impl Default for Ast {
 
 impl Ast {
     pub fn new() -> Self {
-        Self { modules: IndexVec::new() }
+        Self { items: IndexVec::new() }
     }
 
-    pub fn items(&self) -> impl Iterator<Item = (&Module, &Item)> {
-        self.modules.iter().flat_map(|module| module.items.iter().map(move |item| (module, item)))
+    pub fn items(&self) -> impl Iterator<Item = &Item> {
+        self.items.iter()
     }
 
-    pub fn items_with_id(&self) -> impl Iterator<Item = (&Module, &Item, GlobalItemId)> {
-        self.modules.iter().flat_map(|module| {
-            module.items.iter_enumerated().map(move |(id, item)| {
-                (module, item, GlobalItemId { module_id: module.id, item_id: id })
-            })
-        })
+    pub fn items_with_id(&self) -> impl Iterator<Item = (&Item, GlobalItemId)> {
+        self.items
+            .iter_enumerated()
+            .map(|(item_id, item)| (item, GlobalItemId { module_id: item.loc.module_id, item_id }))
     }
 
     pub fn pretty_print(&self, db: &Db, w: &mut impl io::Write) -> io::Result<()> {
-        for module in &self.modules {
-            pretty::print_module(db, module, w)?;
+        for (module_id, items) in &self.items.iter().group_by(|i| i.loc.module_id) {
+            pretty::print_module(db, module_id, items, w)?;
         }
 
         Ok(())
@@ -56,7 +55,7 @@ impl Ast {
 #[derive(Debug, Clone)]
 pub struct Module {
     pub id: ModuleId,
-    pub items: Items,
+    pub items: IndexVec<ItemId, Item>,
 }
 
 impl Module {
@@ -68,8 +67,6 @@ impl Module {
 new_key_type! {
     pub struct ItemId;
 }
-
-pub type Items = IndexVec<ItemId, Item>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Location {

@@ -27,13 +27,13 @@ pub(crate) fn define(cx: &mut Typeck, ast: &Ast) -> ImportedFns {
 fn build_imports_map(cx: &mut Typeck, ast: &Ast) -> ImportsMap {
     let mut map = ImportsMap::default();
 
-    for (module, item) in ast.items() {
+    for item in ast.items() {
         let ast::ItemKind::Import(import) = &item.kind else { continue };
         attrs::validate(cx, &import.attrs, attrs::Placement::Import);
 
-        let entry = map.entry(module.id).or_default();
+        let entry = map.entry(item.loc.module_id).or_default();
         let root_module_id = cx.db.find_module_by_path(&import.module_path).unwrap().id;
-        BuildImportsMap::new(cx, entry, root_module_id, module.id).build(&import.tree);
+        BuildImportsMap::new(cx, entry, root_module_id, item.loc.module_id).build(&import.tree);
     }
 
     map

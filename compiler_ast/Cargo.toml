@@ -12,6 +12,7 @@ ustr = { workspace = true }
 rustc-hash = { workspace = true }
 camino = { workspace = true }
 path-absolutize = { workspace = true }
+itertools = { workspace = true }
 
 [lints]
 workspace = true

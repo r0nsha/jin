@@ -8,7 +8,7 @@ mod tyexpr;
 use std::ops::ControlFlow;
 
 use camino::{Utf8Path, Utf8PathBuf};
-use compiler_ast::{Items, Location, TyParam};
+use compiler_ast::{Item, Location, TyParam};
 use compiler_core::db::ModuleId;
 use compiler_core::{
     db::Db,
@@ -17,7 +17,6 @@ use compiler_core::{
     span::{Source, Span},
     word::Word,
 };
-use compiler_data_structures::index_vec::IndexVec;
 use compiler_helpers::create_bool_enum;
 use rustc_hash::FxHashSet;
 use ustr::ustr;
@@ -35,7 +34,7 @@ pub fn parse(
     source: &Source,
     module_id: ModuleId,
     tokens: Vec<Token>,
-) -> DiagnosticResult<(Items, FxHashSet<Utf8PathBuf>)> {
+) -> DiagnosticResult<(Vec<Item>, FxHashSet<Utf8PathBuf>)> {
     let mut parser = Parser::new(db, source, module_id, tokens);
     let items = parser.parse()?;
     Ok((items, parser.submodule_paths))
@@ -56,8 +55,8 @@ impl<'a> Parser<'a> {
         Self { db, source, module_id, tokens, pos: 0, submodule_paths: FxHashSet::default() }
     }
 
-    fn parse(&mut self) -> DiagnosticResult<Items> {
-        let mut items = IndexVec::new();
+    fn parse(&mut self) -> DiagnosticResult<Vec<Item>> {
+        let mut items = Vec::<Item>::new();
 
         while !self.eof() {
             let item = self.parse_item()?;
