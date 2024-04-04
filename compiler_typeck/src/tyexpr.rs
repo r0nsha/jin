@@ -99,7 +99,7 @@ fn check_path(
     span: Span,
     allow_hole: AllowTyHole,
 ) -> DiagnosticResult<Ty> {
-    let result = cx.lookup().with_env(env).path(env.module_id(), path)?;
+    let result = cx.lookup_with_env(env).path(env.module_id(), path)?;
 
     match result {
         PathLookup::Def(id) => {

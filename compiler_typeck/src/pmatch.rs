@@ -159,7 +159,7 @@ fn check_match_pat_name(
     names: &mut UstrMap<DefId>,
 ) -> DiagnosticResult<hir::MatchPat> {
     if let Ok(id) =
-        cx.lookup().with_env(env).query(env.module_id(), env.module_id(), &Query::Name(word))
+        cx.lookup_with_env(env).query(env.module_id(), env.module_id(), &Query::Name(word))
     {
         if let DefKind::Const = cx.db[id].kind {
             return check_match_pat_const(cx, id, word.span(), parent_span, pat_ty);
@@ -217,34 +217,6 @@ fn check_match_pat_const(
 
     Ok(hir::MatchPat::Const(id, span))
 }
-
-// fn maybe_check_match_pat_inferred_variant(
-//     cx: &mut Typeck<'_>,
-//     env: &mut Env,
-//     pat: &ast::MatchPatAdt,
-//     pat_ty: Ty,
-//     parent_span: Span,
-//     names: &mut UstrMap<DefId>,
-// ) -> Option<DiagnosticResult<hir::MatchPat>> {
-//     let pat_ty_deref = cx.normalize(pat_ty).auto_deref();
-//
-//     if let Some(union_def) = pat_ty_deref.as_union(cx.db) {
-//         let word = pat.path[0];
-//         if let Some(variant) = cx.lookup().maybe_variant_in_union(union_def, word) {
-//             return Some(check_match_pat_variant(
-//                 cx,
-//                 env,
-//                 pat,
-//                 pat_ty,
-//                 parent_span,
-//                 names,
-//                 variant.id,
-//             ));
-//         }
-//     }
-//
-//     None
-// }
 
 fn check_match_pat_adt(
     cx: &mut Typeck<'_>,

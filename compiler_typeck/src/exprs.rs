@@ -18,9 +18,8 @@ use crate::{
     errors, fns, items,
     lookup::{AssocLookup, FnQuery, Query},
     ns::{Env, ScopeKind},
-    pmatch, trans_let_kind,
+    pmatch, trans_let_kind, ty,
     tyexpr::{self, AllowTyHole},
-    ty,
     unify::{CoerceExt as _, CoerceOptions, Obligation},
     Typeck,
 };
@@ -228,7 +227,7 @@ pub(crate) fn check_expr(
 
             // Try looking up an associated function call first
             if let ast::Expr::Name { word, targs: name_targs, .. } = expr.as_ref() {
-                let id = cx.lookup().with_env(env).query(
+                let id = cx.lookup_with_env(env).query(
                     env.module_id(),
                     env.module_id(),
                     &Query::Name(*word),
@@ -445,7 +444,7 @@ pub(crate) fn check_expr(
             ))
         }
         ast::Expr::Name { word, targs, span } => {
-            let id = cx.lookup().with_env(env).query(
+            let id = cx.lookup_with_env(env).query(
                 env.module_id(),
                 env.module_id(),
                 &Query::Name(*word),
@@ -763,7 +762,7 @@ fn lookup_fn_for_call(
 ) -> DiagnosticResult<DefId> {
     let args = map_call_args_for_query(cx, args);
     let query = FnQuery::new(word, targs, &args, is_ufcs);
-    cx.lookup().with_env(env).query(env.module_id(), in_module, &Query::Fn(query))
+    cx.lookup_with_env(env).query(env.module_id(), in_module, &Query::Fn(query))
 }
 
 fn check_call(

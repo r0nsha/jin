@@ -22,7 +22,11 @@ use crate::{
 
 impl<'db> Typeck<'db> {
     pub(crate) fn lookup(&self) -> Lookup<'db, '_> {
-        Lookup::new(self)
+        Lookup::new(self, None)
+    }
+
+    pub(crate) fn lookup_with_env<'cx>(&'cx self, env: &'cx Env) -> Lookup<'db, 'cx> {
+        Lookup::new(self, Some(env))
     }
 }
 
@@ -32,13 +36,8 @@ pub(crate) struct Lookup<'db, 'cx> {
 }
 
 impl<'db, 'cx> Lookup<'db, 'cx> {
-    fn new(cx: &'cx Typeck<'db>) -> Self {
-        Self { cx, env: None }
-    }
-
-    pub(crate) fn with_env(mut self, env: &'cx Env) -> Self {
-        self.env = Some(env);
-        self
+    fn new(cx: &'cx Typeck<'db>, env: Option<&'cx Env>) -> Self {
+        Self { cx, env }
     }
 
     pub(crate) fn query(
