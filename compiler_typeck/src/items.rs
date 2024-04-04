@@ -23,9 +23,9 @@ use crate::{
     lookup::{FnCandidate, Query},
     ns,
     ns::{AssocTy, Env, ScopeKind},
-    tyexpr,
+    ty, tyexpr,
     tyexpr::AllowTyHole,
-    ty, TyAlias, Typeck,
+    TyAlias, Typeck,
 };
 
 pub(crate) fn define(cx: &mut Typeck, ast: &Ast) {
@@ -482,7 +482,7 @@ fn check_assoc_item_ty(
     module_id: ModuleId,
     tyname: Word,
 ) -> DiagnosticResult<AssocTy> {
-    let id = cx.lookup().query(module_id, module_id, &Query::Name(tyname))?;
+    let id = cx.lookup(module_id).query(module_id, &Query::Name(tyname))?;
 
     let Some(assoc_ty) = ty::try_extract_assoc_ty(cx, id) else {
         return Err(Diagnostic::error(format!(

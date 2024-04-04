@@ -227,11 +227,7 @@ pub(crate) fn check_expr(
 
             // Try looking up an associated function call first
             if let ast::Expr::Name { word, targs: name_targs, .. } = expr.as_ref() {
-                let id = cx.lookup_with_env(env).query(
-                    env.module_id(),
-                    env.module_id(),
-                    &Query::Name(*word),
-                )?;
+                let id = cx.lookup_with_env(env).query(env.module_id(), &Query::Name(*word))?;
                 let name_targs =
                     tyexpr::check_optional_targs(cx, env, name_targs.as_deref(), AllowTyHole::Yes)?;
 
@@ -444,11 +440,7 @@ pub(crate) fn check_expr(
             ))
         }
         ast::Expr::Name { word, targs, span } => {
-            let id = cx.lookup_with_env(env).query(
-                env.module_id(),
-                env.module_id(),
-                &Query::Name(*word),
-            )?;
+            let id = cx.lookup_with_env(env).query(env.module_id(), &Query::Name(*word))?;
             let targs = tyexpr::check_optional_targs(cx, env, targs.as_deref(), AllowTyHole::Yes)?;
             check_name(cx, env, id, *word, *span, targs.as_deref())
         }
@@ -637,7 +629,7 @@ fn check_field(
 
     let res_ty = match (ty.kind(), field.as_str()) {
         (TyKind::Module(module_id), _) => {
-            let id = cx.lookup().query(env.module_id(), *module_id, &Query::Name(field))?;
+            let id = cx.lookup(env.module_id()).query(*module_id, &Query::Name(field))?;
             return check_name(cx, env, id, field, span, None);
         }
         (TyKind::Adt(adt_id, targs), _) => {
@@ -718,7 +710,7 @@ fn check_query_in_ty(
     targs: Option<&[Ty]>,
     span: Span,
 ) -> DiagnosticResult<(hir::Expr, bool)> {
-    match cx.lookup().query_assoc_ns(env.module_id(), ty, ty_span, query)? {
+    match cx.lookup(env.module_id()).query_assoc_ns(ty, ty_span, query)? {
         AssocLookup::Variant(variant_id) => {
             let TyKind::Adt(adt_id, targs) = ty.kind() else { unreachable!() };
 
@@ -762,7 +754,7 @@ fn lookup_fn_for_call(
 ) -> DiagnosticResult<DefId> {
     let args = map_call_args_for_query(cx, args);
     let query = FnQuery::new(word, targs, &args, is_ufcs);
-    cx.lookup_with_env(env).query(env.module_id(), in_module, &Query::Fn(query))
+    cx.lookup_with_env(env).query(in_module, &Query::Fn(query))
 }
 
 fn check_call(
@@ -1073,12 +1065,11 @@ fn check_str_interp(
     exprs: &[ast::Expr],
     span: Span,
 ) -> DiagnosticResult<hir::Expr> {
-    let env_module = env.module_id();
     let str_module = cx.db.find_module_by_parts(["std", "str"]).expect("std.str to exist").id;
 
     let strbuf_def_id = cx
-        .lookup()
-        .query(env_module, str_module, &Query::Name(Word::new_unknown(ustr("StrBuf"))))
+        .lookup(env.module_id())
+        .query(str_module, &Query::Name(Word::new_unknown(ustr("StrBuf"))))
         .expect("std.str.StrBuf to exist");
     let DefKind::Adt(strbuf_adt_id) = cx.db[strbuf_def_id].kind else {
         panic!("expected std.str.StrBuf to be an Adt")
@@ -1121,9 +1112,8 @@ fn interp_let_buf(
     let from_module = env.module_id();
     let new_word = Word::new(ustr("new"), span);
     let AssocLookup::AssocFn(strbuf_new) = cx
-        .lookup()
+        .lookup(from_module)
         .query_assoc_ns(
-            from_module,
             strbuf_ty,
             strbuf_span,
             &Query::Fn(FnQuery { word: new_word, targs: None, args: &[], is_ufcs: IsUfcs::No }),
@@ -1201,8 +1191,7 @@ fn interp_fmt_expr(
     let ty = cx.normalize(expr.ty);
 
     let fmt_word = Word::new(ustr("fmt"), span);
-    let fmt_fn = cx.lookup().query(
-        env.module_id(),
+    let fmt_fn = cx.lookup(env.module_id()).query(
         env.module_id(),
         &Query::Fn(FnQuery {
             word: fmt_word,
@@ -1255,9 +1244,8 @@ fn interp_strbuf_take(
 ) -> hir::Expr {
     let word = Word::new(ustr("take"), span);
     let id = cx
-        .lookup()
+        .lookup(env.module_id())
         .query(
-            env.module_id(),
             str_module,
             &Query::Fn(FnQuery {
                 word,

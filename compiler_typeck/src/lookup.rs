@@ -21,31 +21,27 @@ use crate::{
 };
 
 impl<'db> Typeck<'db> {
-    pub(crate) fn lookup(&self) -> Lookup<'db, '_> {
-        Lookup::new(self, None)
+    pub(crate) fn lookup(&self, from_module: ModuleId) -> Lookup<'db, '_> {
+        Lookup::new(self, from_module, None)
     }
 
     pub(crate) fn lookup_with_env<'cx>(&'cx self, env: &'cx Env) -> Lookup<'db, 'cx> {
-        Lookup::new(self, Some(env))
+        Lookup::new(self, env.module_id(), Some(env))
     }
 }
 
 pub(crate) struct Lookup<'db, 'cx> {
     cx: &'cx Typeck<'db>,
+    from_module: ModuleId,
     env: Option<&'cx Env>,
 }
 
 impl<'db, 'cx> Lookup<'db, 'cx> {
-    fn new(cx: &'cx Typeck<'db>, env: Option<&'cx Env>) -> Self {
-        Self { cx, env }
+    fn new(cx: &'cx Typeck<'db>, from_module: ModuleId, env: Option<&'cx Env>) -> Self {
+        Self { cx, from_module, env }
     }
 
-    pub(crate) fn query(
-        &self,
-        from_module: ModuleId,
-        in_module: ModuleId,
-        query: &Query,
-    ) -> DiagnosticResult<DefId> {
+    pub(crate) fn query(&self, in_module: ModuleId, query: &Query) -> DiagnosticResult<DefId> {
         let name = query.name();
 
         if let Query::Name(_) | Query::Fn(FnQuery { is_ufcs: IsUfcs::No, .. }) = query {
@@ -55,7 +51,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         }
 
         if let Query::Fn(fn_query) = query {
-            if let Some(id) = self.query_fns(from_module, in_module, fn_query)? {
+            if let Some(id) = self.query_fns(in_module, fn_query)? {
                 return Ok(id);
             }
         }
@@ -66,29 +62,24 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
             Query::Fn(_) => ShouldLookupFns::No,
         };
 
-        let id = self
-            .one(from_module, in_module, name, query.span(), should_lookup_fns)?
-            .ok_or_else(|| match query {
-                Query::Name(word) => {
-                    errors::name_not_found(self.cx.db, from_module, in_module, *word)
-                }
-                Query::Fn(fn_query) => errors::fn_not_found(self.cx.db, fn_query),
-            })?;
+        let id =
+            self.one(in_module, name, query.span(), should_lookup_fns)?.ok_or_else(
+                || match query {
+                    Query::Name(word) => {
+                        errors::name_not_found(self.cx.db, self.from_module, in_module, *word)
+                    }
+                    Query::Fn(fn_query) => errors::fn_not_found(self.cx.db, fn_query),
+                },
+            )?;
 
-        self.cx.check_access_def(from_module, id, query.span())?;
+        self.cx.check_access_def(self.from_module, id, query.span())?;
 
         Ok(id)
     }
 
-    fn query_fns(
-        &self,
-        from_module: ModuleId,
-        in_module: ModuleId,
-        query: &FnQuery,
-    ) -> DiagnosticResult<Option<DefId>> {
+    fn query_fns(&self, in_module: ModuleId, query: &FnQuery) -> DiagnosticResult<Option<DefId>> {
         fn inner(
             this: &Lookup,
-            from_module: ModuleId,
             lookup_modules: impl Iterator<Item = ModuleId>,
             query: &FnQuery,
         ) -> DiagnosticResult<Option<DefId>> {
@@ -100,20 +91,19 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
                 .unique_by(|candidate| candidate.id)
                 .collect::<Vec<_>>();
 
-            this.check_and_filter_fn_candidates(query, candidates, from_module)
+            this.check_and_filter_fn_candidates(query, candidates)
         }
 
-        if from_module == in_module {
+        if self.from_module == in_module {
             let lookup_modules = self.get_lookup_modules(in_module, query.is_ufcs);
-            inner(self, from_module, lookup_modules, query)
+            inner(self, lookup_modules, query)
         } else {
-            inner(self, from_module, iter::once(in_module), query)
+            inner(self, iter::once(in_module), query)
         }
     }
 
     fn query_assoc_fns(
         &self,
-        from_module: ModuleId,
         assoc_ty: AssocTy,
         query: &FnQuery,
     ) -> DiagnosticResult<Option<DefId>> {
@@ -128,20 +118,19 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         };
 
         let candidates = set.find(self.cx, query);
-        self.check_and_filter_fn_candidates(query, candidates, from_module)
+        self.check_and_filter_fn_candidates(query, candidates)
     }
 
     fn check_and_filter_fn_candidates(
         &self,
         query: &FnQuery,
         mut candidates: Vec<&FnCandidate>,
-        from_module: ModuleId,
     ) -> DiagnosticResult<Option<DefId>> {
         if candidates.is_empty() {
             return Ok(None);
         }
 
-        candidates.retain(|c| self.cx.can_access_def(from_module, c.id));
+        candidates.retain(|c| self.cx.can_access_def(self.from_module, c.id));
 
         if candidates.is_empty() {
             return Err(Diagnostic::error(format!(
@@ -165,13 +154,13 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         }
     }
 
-    pub fn path(&self, from_module: ModuleId, path: &[Word]) -> DiagnosticResult<PathLookup> {
+    pub fn path(&self, path: &[Word]) -> DiagnosticResult<PathLookup> {
         let (&last, path) = path.split_last().expect("to have at least one element");
 
-        let mut target_module = from_module;
+        let mut target_module = self.from_module;
 
         for (idx, &part) in path.iter().enumerate() {
-            let part_id = self.query(from_module, target_module, &Query::Name(part))?;
+            let part_id = self.query(target_module, &Query::Name(part))?;
             let part_ty = self.cx.normalize(self.cx.def_ty(part_id));
 
             match part_ty.kind() {
@@ -183,12 +172,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
                     // explicitly look it up
                     let next_part = path.get(idx + 1).copied().unwrap_or(last);
 
-                    match self.query_assoc_ns(
-                        from_module,
-                        *ty,
-                        part.span(),
-                        &Query::Name(next_part),
-                    )? {
+                    match self.query_assoc_ns(*ty, part.span(), &Query::Name(next_part))? {
                         AssocLookup::Variant(variant_id) => {
                             // If there are more parts after this variant, it's an error, since we
                             // there are no symbols under variants
@@ -220,7 +204,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
             }
         }
 
-        let id = self.query(from_module, target_module, &Query::Name(last))?;
+        let id = self.query(target_module, &Query::Name(last))?;
 
         Ok(PathLookup::Def(id))
     }
@@ -228,13 +212,12 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
     /// Looks up a `query` in the associated namespace of `ty`.
     pub(crate) fn query_assoc_ns(
         &self,
-        from_module: ModuleId,
         ty: Ty,
         ty_span: Span,
         query: &Query,
     ) -> DiagnosticResult<AssocLookup> {
         if let Query::Fn(fn_query) = query {
-            if let Some(id) = self.query_assoc_fns(from_module, AssocTy::from(ty), fn_query)? {
+            if let Some(id) = self.query_assoc_fns(AssocTy::from(ty), fn_query)? {
                 return Ok(AssocLookup::AssocFn(id));
             }
         }
@@ -276,25 +259,24 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
 
     fn one(
         &self,
-        from_module: ModuleId,
         in_module: ModuleId,
         name: Ustr,
         span: Span,
         should_lookup_fns: ShouldLookupFns,
     ) -> DiagnosticResult<Option<DefId>> {
-        let results = self.many(from_module, in_module, name, should_lookup_fns, IsUfcs::No);
+        let results = self.many(in_module, name, should_lookup_fns, IsUfcs::No);
 
         if results.is_empty() {
             // We allow looking up builtin types only when looking up a symbol in the same
             // module as its environment's module.
-            if from_module == in_module {
+            if self.from_module == in_module {
                 return Ok(self.cx.global_env.builtin_tys.get(&name).copied());
             }
 
             return Ok(None);
         }
 
-        let filtered_results = self.keep_accessible_lookup_results(from_module, results);
+        let filtered_results = self.keep_accessible_lookup_results(results);
         if filtered_results.is_empty() {
             return Err(Diagnostic::error(format!("`{name}` is private"))
                 .with_label(Label::primary(span, "private definition")));
@@ -314,7 +296,6 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
 
     fn many(
         &self,
-        from_module: ModuleId,
         in_module: ModuleId,
         name: Ustr,
         should_lookup_fns: ShouldLookupFns,
@@ -350,7 +331,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
             results.into_iter().collect()
         }
 
-        if from_module == in_module {
+        if self.from_module == in_module {
             let lookup_modules = self.get_lookup_modules(in_module, is_ufcs);
             inner(self, in_module, lookup_modules, name, should_lookup_fns)
         } else {
@@ -380,16 +361,12 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
     }
 
     #[inline]
-    fn keep_accessible_lookup_results(
-        &self,
-        from_module: ModuleId,
-        results: Vec<LookupResult>,
-    ) -> Vec<LookupResult> {
+    fn keep_accessible_lookup_results(&self, results: Vec<LookupResult>) -> Vec<LookupResult> {
         results
             .into_iter()
             .filter(|r| match r {
-                LookupResult::Def(def) => def.can_access(self.cx, from_module),
-                LookupResult::Fn(c) => self.cx.can_access_def(from_module, c.id),
+                LookupResult::Def(def) => def.can_access(self.cx, self.from_module),
+                LookupResult::Fn(c) => self.cx.can_access_def(self.from_module, c.id),
             })
             .collect()
     }

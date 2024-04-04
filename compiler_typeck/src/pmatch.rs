@@ -158,9 +158,7 @@ fn check_match_pat_name(
     pat_ty: Ty,
     names: &mut UstrMap<DefId>,
 ) -> DiagnosticResult<hir::MatchPat> {
-    if let Ok(id) =
-        cx.lookup_with_env(env).query(env.module_id(), env.module_id(), &Query::Name(word))
-    {
+    if let Ok(id) = cx.lookup_with_env(env).query(env.module_id(), &Query::Name(word)) {
         if let DefKind::Const = cx.db[id].kind {
             return check_match_pat_const(cx, id, word.span(), parent_span, pat_ty);
         }
@@ -226,7 +224,7 @@ fn check_match_pat_adt(
     parent_span: Span,
     names: &mut UstrMap<DefId>,
 ) -> DiagnosticResult<hir::MatchPat> {
-    match cx.lookup().path(env.module_id(), &pat.path)? {
+    match cx.lookup(env.module_id(),).path( &pat.path)? {
         PathLookup::Def(id) => {
             let def = &cx.db[id];
 
