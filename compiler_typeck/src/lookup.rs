@@ -615,7 +615,7 @@ impl PartialEq for FnCandidate {
             return false;
         }
 
-        // Both function parameters are the same, order is insignificant
+        // Both function parameter names are the same, order is insignificant
         if !self.ty.params.iter().all(|p1| {
             if let Some(name) = p1.name {
                 other.ty.params.iter().any(|p2| Some(name) == p2.name)
