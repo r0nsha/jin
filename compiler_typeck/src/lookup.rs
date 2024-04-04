@@ -63,14 +63,14 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         };
 
         let id =
-            self.one(in_module, name, query.span(), should_lookup_fns)?.ok_or_else(
-                || match query {
+            self.query_one(in_module, name, query.span(), should_lookup_fns)?.ok_or_else(|| {
+                match query {
                     Query::Name(word) => {
                         errors::name_not_found(self.cx.db, self.from_module, in_module, *word)
                     }
                     Query::Fn(fn_query) => errors::fn_not_found(self.cx.db, fn_query),
-                },
-            )?;
+                }
+            })?;
 
         self.cx.check_access_def(self.from_module, id, query.span())?;
 
@@ -99,6 +99,88 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
             inner(self, lookup_modules, query)
         } else {
             inner(self, iter::once(in_module), query)
+        }
+    }
+
+    fn query_one(
+        &self,
+        in_module: ModuleId,
+        name: Ustr,
+        span: Span,
+        should_lookup_fns: ShouldLookupFns,
+    ) -> DiagnosticResult<Option<DefId>> {
+        let results = self.query_many(in_module, name, should_lookup_fns, IsUfcs::No);
+
+        if results.is_empty() {
+            // We allow looking up builtin types only when looking up a symbol in the same
+            // module as its environment's module.
+            if self.from_module == in_module {
+                return Ok(self.cx.global_env.builtin_tys.get(&name).copied());
+            }
+
+            return Ok(None);
+        }
+
+        let filtered_results = self.keep_accessible_lookup_results(results);
+        if filtered_results.is_empty() {
+            return Err(Diagnostic::error(format!("`{name}` is private"))
+                .with_label(Label::primary(span, "private definition")));
+        }
+
+        match filtered_results.len() {
+            0 => unreachable!(),
+            1 => Ok(filtered_results.first().map(LookupResult::def_id)),
+            _ => Err(Diagnostic::error(format!("ambiguous use of item `{}`", name))
+                .with_label(Label::primary(span, "used here"))
+                .with_labels(filtered_results.iter().map(|res| {
+                    let def = &self.cx.db[res.def_id()];
+                    Label::secondary(def.span, format!("`{}` defined here", def.name))
+                }))),
+        }
+    }
+
+    fn query_many(
+        &self,
+        in_module: ModuleId,
+        name: Ustr,
+        should_lookup_fns: ShouldLookupFns,
+        is_ufcs: IsUfcs,
+    ) -> Vec<LookupResult> {
+        fn inner(
+            this: &Lookup,
+            in_module: ModuleId,
+            lookup_modules: impl Iterator<Item = ModuleId>,
+            name: Ustr,
+            should_lookup_fns: ShouldLookupFns,
+        ) -> Vec<LookupResult> {
+            let mut results = FxHashSet::default();
+
+            for module_id in lookup_modules {
+                let env = this.cx.global_env.module(module_id);
+
+                if let Some(def) = env.ns.defs.get(&name) {
+                    if module_id == in_module {
+                        // For definitions, we always prioritize a definition which is defined or
+                        // imported in scope. Glob imports always come next for definitions.
+                        return vec![LookupResult::Def(*def)];
+                    }
+
+                    results.insert(LookupResult::Def(*def));
+                } else if let ShouldLookupFns::Yes = should_lookup_fns {
+                    if let Some(candidates) = env.ns.fns.get(&name) {
+                        results.extend(candidates.iter().cloned().map(LookupResult::Fn));
+                    }
+                }
+            }
+
+            results.into_iter().collect()
+        }
+
+        if self.from_module == in_module {
+            let lookup_modules = self.get_lookup_modules(in_module, is_ufcs);
+            inner(self, in_module, lookup_modules, name, should_lookup_fns)
+        } else {
+            inner(self, in_module, iter::once(in_module), name, should_lookup_fns)
         }
     }
 
@@ -255,88 +337,6 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
     ) -> DiagnosticResult<&Variant> {
         self.maybe_variant_in_union(union_def, name)
             .ok_or_else(|| errors::variant_not_found(self.cx.db, union_def.id, span, name))
-    }
-
-    fn one(
-        &self,
-        in_module: ModuleId,
-        name: Ustr,
-        span: Span,
-        should_lookup_fns: ShouldLookupFns,
-    ) -> DiagnosticResult<Option<DefId>> {
-        let results = self.many(in_module, name, should_lookup_fns, IsUfcs::No);
-
-        if results.is_empty() {
-            // We allow looking up builtin types only when looking up a symbol in the same
-            // module as its environment's module.
-            if self.from_module == in_module {
-                return Ok(self.cx.global_env.builtin_tys.get(&name).copied());
-            }
-
-            return Ok(None);
-        }
-
-        let filtered_results = self.keep_accessible_lookup_results(results);
-        if filtered_results.is_empty() {
-            return Err(Diagnostic::error(format!("`{name}` is private"))
-                .with_label(Label::primary(span, "private definition")));
-        }
-
-        match filtered_results.len() {
-            0 => unreachable!(),
-            1 => Ok(filtered_results.first().map(LookupResult::def_id)),
-            _ => Err(Diagnostic::error(format!("ambiguous use of item `{}`", name))
-                .with_label(Label::primary(span, "used here"))
-                .with_labels(filtered_results.iter().map(|res| {
-                    let def = &self.cx.db[res.def_id()];
-                    Label::secondary(def.span, format!("`{}` defined here", def.name))
-                }))),
-        }
-    }
-
-    fn many(
-        &self,
-        in_module: ModuleId,
-        name: Ustr,
-        should_lookup_fns: ShouldLookupFns,
-        is_ufcs: IsUfcs,
-    ) -> Vec<LookupResult> {
-        fn inner(
-            this: &Lookup,
-            in_module: ModuleId,
-            lookup_modules: impl Iterator<Item = ModuleId>,
-            name: Ustr,
-            should_lookup_fns: ShouldLookupFns,
-        ) -> Vec<LookupResult> {
-            let mut results = FxHashSet::default();
-
-            for module_id in lookup_modules {
-                let env = this.cx.global_env.module(module_id);
-
-                if let Some(def) = env.ns.defs.get(&name) {
-                    if module_id == in_module {
-                        // For definitions, we always prioritize a definition which is defined or
-                        // imported in scope. Glob imports always come next for definitions.
-                        return vec![LookupResult::Def(*def)];
-                    }
-
-                    results.insert(LookupResult::Def(*def));
-                } else if let ShouldLookupFns::Yes = should_lookup_fns {
-                    if let Some(candidates) = env.ns.fns.get(&name) {
-                        results.extend(candidates.iter().cloned().map(LookupResult::Fn));
-                    }
-                }
-            }
-
-            results.into_iter().collect()
-        }
-
-        if self.from_module == in_module {
-            let lookup_modules = self.get_lookup_modules(in_module, is_ufcs);
-            inner(self, in_module, lookup_modules, name, should_lookup_fns)
-        } else {
-            inner(self, in_module, iter::once(in_module), name, should_lookup_fns)
-        }
     }
 
     fn get_lookup_modules(
