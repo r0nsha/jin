@@ -42,18 +42,6 @@ impl Ast {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Module {
-    pub id: ModuleId,
-    pub items: IndexVec<ItemId, Item>,
-}
-
-impl Module {
-    pub fn new(id: ModuleId) -> Self {
-        Self { id, items: IndexVec::new() }
-    }
-}
-
 new_key_type! {
     pub struct ItemId;
 }
