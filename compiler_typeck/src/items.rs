@@ -30,16 +30,16 @@ use crate::{
 
 pub(crate) fn define(cx: &mut Typeck, ast: &Ast) {
     for (module, item, id) in ast.items_with_id() {
-        match item {
-            ast::Item::Let(let_) => define_let(cx, module.id, id, let_),
-            ast::Item::ExternLet(let_) => define_extern_let(cx, module.id, id, let_),
-            ast::Item::Fn(fun) => {
+        match &item.kind {
+            ast::ItemKind::Let(let_) => define_let(cx, module.id, id, let_),
+            ast::ItemKind::ExternLet(let_) => define_extern_let(cx, module.id, id, let_),
+            ast::ItemKind::Fn(fun) => {
                 if let Err(diagnostic) = define_fn(cx, module.id, id, fun, None) {
                     cx.db.diagnostics.add(diagnostic);
                 }
             }
-            ast::Item::Type(tydef) => define_tydef(cx, module.id, id, tydef),
-            ast::Item::ExternImport(import) => {
+            ast::ItemKind::Type(tydef) => define_tydef(cx, module.id, id, tydef),
+            ast::ItemKind::ExternImport(import) => {
                 attrs::validate(cx, &import.attrs, attrs::Placement::ExternImport);
                 cx.db.extern_libs.insert(import.lib.clone());
             }
@@ -252,11 +252,13 @@ fn check_adt_tparams(cx: &mut Typeck, env: &mut Env, tydef: &ast::TyDef, adt_id:
 
 pub(crate) fn check_sigs(cx: &mut Typeck, ast: &Ast) {
     for (module, item, id) in ast.items_with_id() {
-        let result = match item {
-            ast::Item::Let(let_) => check_let_item(cx, module.id, id, let_),
-            ast::Item::ExternLet(let_) => check_extern_let(cx, module.id, id, let_),
-            ast::Item::Fn(fun) => check_fn(cx, module.id, id, fun),
-            ast::Item::Assoc(tyname, item) => check_assoc_item(cx, module.id, id, *tyname, item),
+        let result = match &item.kind {
+            ast::ItemKind::Let(let_) => check_let_item(cx, module.id, id, let_),
+            ast::ItemKind::ExternLet(let_) => check_extern_let(cx, module.id, id, let_),
+            ast::ItemKind::Fn(fun) => check_fn(cx, module.id, id, fun),
+            ast::ItemKind::Assoc(tyname, item) => {
+                check_assoc_item(cx, module.id, id, *tyname, item)
+            }
             _ => Ok(()),
         };
 
@@ -462,18 +464,18 @@ fn check_assoc_item(
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     tyname: Word,
-    item: &ast::Item,
+    item: &ast::ItemKind,
 ) -> DiagnosticResult<()> {
     let assoc_ty = check_assoc_item_ty(cx, module_id, tyname)?;
 
     match item {
-        ast::Item::Fn(fun) => check_assoc_fn(cx, module_id, item_id, fun, assoc_ty),
-        ast::Item::Let(_)
-        | ast::Item::Type(_)
-        | ast::Item::Import(_)
-        | ast::Item::ExternLet(_)
-        | ast::Item::ExternImport(_)
-        | ast::Item::Assoc(_, _) => unreachable!(),
+        ast::ItemKind::Fn(fun) => check_assoc_fn(cx, module_id, item_id, fun, assoc_ty),
+        ast::ItemKind::Let(_)
+        | ast::ItemKind::Type(_)
+        | ast::ItemKind::Import(_)
+        | ast::ItemKind::ExternLet(_)
+        | ast::ItemKind::ExternImport(_)
+        | ast::ItemKind::Assoc(_, _) => unreachable!(),
     }
 }
 
@@ -539,8 +541,8 @@ fn check_item_body(
     item: &ast::Item,
     id: ast::GlobalItemId,
 ) -> DiagnosticResult<()> {
-    match item {
-        ast::Item::Let(let_) => {
+    match &item.kind {
+        ast::ItemKind::Let(let_) => {
             let (pat, value, ty) = check_let_item_body(cx, module_id, let_, id)?;
             cx.hir.lets.push_with_key(|id| hir::Let {
                 id,
@@ -553,15 +555,15 @@ fn check_item_body(
             });
             Ok(())
         }
-        ast::Item::Fn(fun) => check_fn_item_body(cx, id, fun),
-        ast::Item::Assoc(_, item) => match item.as_ref() {
-            ast::Item::Fn(fun) => check_fn_item_body(cx, id, fun),
-            ast::Item::Let(_)
-            | ast::Item::Type(_)
-            | ast::Item::Import(_)
-            | ast::Item::ExternLet(_)
-            | ast::Item::ExternImport(_)
-            | ast::Item::Assoc(_, _) => unreachable!(),
+        ast::ItemKind::Fn(fun) => check_fn_item_body(cx, id, fun),
+        ast::ItemKind::Assoc(_, item) => match item.as_ref() {
+            ast::ItemKind::Fn(fun) => check_fn_item_body(cx, id, fun),
+            ast::ItemKind::Let(_)
+            | ast::ItemKind::Type(_)
+            | ast::ItemKind::Import(_)
+            | ast::ItemKind::ExternLet(_)
+            | ast::ItemKind::ExternImport(_)
+            | ast::ItemKind::Assoc(_, _) => unreachable!(),
         },
         _ => Ok(()),
     }

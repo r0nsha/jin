@@ -8,7 +8,8 @@ mod tyexpr;
 use std::ops::ControlFlow;
 
 use camino::{Utf8Path, Utf8PathBuf};
-use compiler_ast::{Items, TyParam};
+use compiler_ast::{Items, Location, TyParam};
+use compiler_core::db::ModuleId;
 use compiler_core::{
     db::Db,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -27,15 +28,15 @@ use crate::{
 };
 
 const SEMI: TokenKind = TokenKind::Semi(false);
-
 const WEAK_KW_REC: &str = "rec";
 
 pub fn parse(
     db: &Db,
     source: &Source,
+    module_id: ModuleId,
     tokens: Vec<Token>,
 ) -> DiagnosticResult<(Items, FxHashSet<Utf8PathBuf>)> {
-    let mut parser = Parser::new(db, source, tokens);
+    let mut parser = Parser::new(db, source, module_id, tokens);
     let items = parser.parse()?;
     Ok((items, parser.submodule_paths))
 }
@@ -44,14 +45,15 @@ pub fn parse(
 pub(super) struct Parser<'a> {
     pub(super) db: &'a Db,
     pub(super) source: &'a Source,
+    pub(super) module_id: ModuleId,
     pub(super) tokens: Vec<Token>,
     pub(super) pos: usize,
     pub(super) submodule_paths: FxHashSet<Utf8PathBuf>,
 }
 
 impl<'a> Parser<'a> {
-    fn new(db: &'a Db, source: &'a Source, tokens: Vec<Token>) -> Self {
-        Self { db, source, tokens, pos: 0, submodule_paths: FxHashSet::default() }
+    fn new(db: &'a Db, source: &'a Source, module_id: ModuleId, tokens: Vec<Token>) -> Self {
+        Self { db, source, module_id, tokens, pos: 0, submodule_paths: FxHashSet::default() }
     }
 
     fn parse(&mut self) -> DiagnosticResult<Items> {
@@ -282,6 +284,11 @@ impl<'a> Parser<'a> {
     #[inline]
     pub(super) fn last_token(&self) -> Token {
         self.tokens[self.pos - 1]
+    }
+
+    #[inline]
+    pub(super) fn loc(&self) -> Location {
+        Location { module_id: self.module_id, source_id: self.source.id() }
     }
 
     #[inline]

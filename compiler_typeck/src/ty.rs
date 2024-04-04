@@ -18,7 +18,7 @@ use crate::{
 
 pub(crate) fn check(cx: &mut Typeck, ast: &Ast) {
     for (module, item, id) in ast.items_with_id() {
-        if let ast::Item::Type(tydef) = item {
+        if let ast::ItemKind::Type(tydef) = &item.kind {
             if let Err(diagnostic) = check_tydef(cx, module.id, id, tydef) {
                 cx.db.diagnostics.add(diagnostic);
             }

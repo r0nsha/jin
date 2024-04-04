@@ -28,7 +28,7 @@ fn build_imports_map(cx: &mut Typeck, ast: &Ast) -> ImportsMap {
     let mut map = ImportsMap::default();
 
     for (module, item) in ast.items() {
-        let ast::Item::Import(import) = item else { continue };
+        let ast::ItemKind::Import(import) = &item.kind else { continue };
         attrs::validate(cx, &import.attrs, attrs::Placement::Import);
 
         let entry = map.entry(module.id).or_default();

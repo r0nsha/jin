@@ -5,6 +5,7 @@ use std::{fmt, io};
 
 use camino::Utf8PathBuf;
 use compiler_core::db::Db;
+use compiler_core::span::SourceId;
 use compiler_data_structures::{index_vec::IndexVec, new_key_type};
 use ustr::Ustr;
 
@@ -71,13 +72,31 @@ new_key_type! {
 pub type Items = IndexVec<ItemId, Item>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Location {
+    pub module_id: ModuleId,
+    pub source_id: SourceId,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GlobalItemId {
     pub module_id: ModuleId,
     pub item_id: ItemId,
 }
 
 #[derive(Debug, Clone)]
-pub enum Item {
+pub struct Item {
+    pub loc: Location,
+    pub kind: ItemKind,
+}
+
+impl Spanned for Item {
+    fn span(&self) -> Span {
+        self.kind.span()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ItemKind {
     Fn(Fn),
     Let(Let),
     Type(TyDef),
@@ -87,7 +106,7 @@ pub enum Item {
     Assoc(Word, Box<Self>),
 }
 
-impl Spanned for Item {
+impl Spanned for ItemKind {
     fn span(&self) -> Span {
         match self {
             Self::Fn(Fn { span, .. })

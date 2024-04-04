@@ -93,7 +93,7 @@ fn parse_file(
     let (items, submodule_paths) = {
         let source = db.sources.get(source_id).unwrap();
         let tokens = lexer::tokenize(source)?;
-        parser::parse(db, source, tokens)?
+        parser::parse(db, source, module.id, tokens)?
     };
 
     module.items.extend(items);

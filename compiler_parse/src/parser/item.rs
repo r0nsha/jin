@@ -3,7 +3,8 @@ use std::ops::ControlFlow;
 use compiler_helpers::create_bool_enum;
 
 use compiler_ast::{
-    Attr, AttrArgs, AttrId, Attrs, ExternLet, Fn, FnKind, FnParam, FnSig, Item, Let, LetKind,
+    Attr, AttrArgs, AttrId, Attrs, ExternLet, Fn, FnKind, FnParam, FnSig, Item, ItemKind, Let,
+    LetKind,
 };
 use compiler_core::{
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -20,6 +21,11 @@ use crate::{
 
 impl<'a> Parser<'a> {
     pub(super) fn parse_item(&mut self) -> DiagnosticResult<Item> {
+        let kind = self.parse_item_kind()?;
+        Ok(Item { loc: self.loc(), kind })
+    }
+
+    fn parse_item_kind(&mut self) -> DiagnosticResult<ItemKind> {
         let attrs = self.parse_attrs()?;
 
         if self.is_kw(Kw::Fn) {
@@ -28,34 +34,35 @@ impl<'a> Parser<'a> {
 
         if self.is_kw(Kw::Let) {
             return if self.is_kw(Kw::Extern) {
-                self.parse_extern_let(attrs).map(Item::ExternLet)
+                self.parse_extern_let(attrs).map(ItemKind::ExternLet)
             } else {
-                self.parse_let(attrs, LetKind::Let, AllowVis::Yes, RequireTy::Yes).map(Item::Let)
+                self.parse_let(attrs, LetKind::Let, AllowVis::Yes, RequireTy::Yes)
+                    .map(ItemKind::Let)
             };
         }
 
         if self.is_kw(Kw::Const) {
             return self
                 .parse_let(attrs, LetKind::Const, AllowVis::Yes, RequireTy::Yes)
-                .map(Item::Let);
+                .map(ItemKind::Let);
         }
 
         if self.is_kw(Kw::Type) {
-            return self.parse_tydef(attrs).map(Item::Type);
+            return self.parse_tydef(attrs).map(ItemKind::Type);
         }
 
         if self.is_kw(Kw::Mod) {
             let start = self.last_span();
 
             if self.is_kw(Kw::Extern) {
-                return self.parse_extern_import(&attrs, start).map(Item::ExternImport);
+                return self.parse_extern_import(&attrs, start).map(ItemKind::ExternImport);
             }
 
-            return self.parse_mod(&attrs).map(Item::Import);
+            return self.parse_mod(&attrs).map(ItemKind::Import);
         }
 
         if self.is_kw(Kw::Use) {
-            return self.parse_import(&attrs).map(Item::Import);
+            return self.parse_import(&attrs).map(ItemKind::Import);
         }
 
         if !attrs.is_empty() {
@@ -65,10 +72,10 @@ impl<'a> Parser<'a> {
         Err(self.unexpected_token("an item"))
     }
 
-    fn parse_fn_item(&mut self, attrs: Attrs) -> DiagnosticResult<Item> {
+    fn parse_fn_item(&mut self, attrs: Attrs) -> DiagnosticResult<ItemKind> {
         if self.is_kw(Kw::Extern) {
             let fun = self.parse_extern_fn(attrs)?;
-            return Ok(Item::Fn(fun));
+            return Ok(ItemKind::Fn(fun));
         }
 
         let name = self.eat_ident()?;
@@ -76,12 +83,12 @@ impl<'a> Parser<'a> {
         if self.is(TokenKind::Dot) {
             let fn_name = self.eat_ident()?;
             let fun = self.parse_bare_fn(attrs, fn_name)?;
-            return Ok(Item::Assoc(name.word(), Box::new(Item::Fn(fun))));
+            return Ok(ItemKind::Assoc(name.word(), Box::new(ItemKind::Fn(fun))));
         }
 
         let fun = self.parse_bare_fn(attrs, name)?;
 
-        Ok(Item::Fn(fun))
+        Ok(ItemKind::Fn(fun))
     }
 
     fn parse_extern_fn(&mut self, attrs: Attrs) -> DiagnosticResult<Fn> {

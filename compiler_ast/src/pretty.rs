@@ -9,7 +9,7 @@ use compiler_core::{
 
 use crate::{
     CallArg, CharKind, Expr, ExternImport, ExternLet, Fn, FnKind, FnParam, FnSig, Import,
-    ImportTree, Item, Let, Module, TyDef, TyDefKind, TyExpr,
+    ImportTree, Item, ItemKind, Let, Module, TyDef, TyDefKind, TyExpr,
 };
 
 pub(super) fn print_module(db: &Db, module: &Module, w: &mut impl io::Write) -> io::Result<()> {
@@ -239,6 +239,12 @@ impl PrettyPrint for Expr {
 }
 
 impl PrettyPrint for Item {
+    fn pretty_print(&self, cx: &mut PrettyCx) {
+        self.kind.pretty_print(cx)
+    }
+}
+
+impl PrettyPrint for ItemKind {
     fn pretty_print(&self, cx: &mut PrettyCx) {
         match self {
             Self::Fn(x) => x.pretty_print(cx),
