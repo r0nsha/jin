@@ -626,7 +626,7 @@ impl PartialEq for FnCandidate {
             return false;
         }
 
-        // Both function parameters are the same, in order
+        // Both function parameter types are the same, in order
         if self
             .ty
             .params
