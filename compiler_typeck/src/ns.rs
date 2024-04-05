@@ -1,5 +1,6 @@
 use std::mem;
 
+use compiler_core::span::SourceId;
 use compiler_core::{
     db::{AdtId, Db, DefId, ModuleId, ScopeLevel},
     diagnostics::DiagnosticResult,
@@ -16,6 +17,7 @@ use crate::{errors, lookup::FnCandidateSet, Typeck};
 
 #[derive(Debug)]
 pub(crate) struct GlobalEnv {
+    pub(crate) sources: FxHashMap<SourceId, SourceEnv>,
     pub(crate) modules: FxHashMap<ModuleId, ModuleEnv>,
     pub(crate) assoc_ns: FxHashMap<AssocTy, Ns>,
     pub(crate) builtin_tys: UstrMap<DefId>,
@@ -24,10 +26,25 @@ pub(crate) struct GlobalEnv {
 impl GlobalEnv {
     pub(crate) fn new() -> Self {
         Self {
+            sources: FxHashMap::default(),
             modules: FxHashMap::default(),
             assoc_ns: FxHashMap::default(),
             builtin_tys: UstrMap::default(),
         }
+    }
+
+    #[track_caller]
+    pub(crate) fn source(&self, id: SourceId) -> &SourceEnv {
+        self.sources.get(&id).unwrap()
+    }
+
+    #[track_caller]
+    pub(crate) fn source_mut(&mut self, id: SourceId) -> &mut SourceEnv {
+        self.sources.get_mut(&id).unwrap()
+    }
+
+    pub(crate) fn insert_source(&mut self, id: SourceId) {
+        self.sources.insert(id, SourceEnv::new());
     }
 
     #[track_caller]
@@ -44,6 +61,8 @@ impl GlobalEnv {
         self.modules.insert(id, ModuleEnv::new());
     }
 }
+
+pub(crate) type SourceEnv = ModuleEnv;
 
 #[derive(Debug)]
 pub(crate) struct ModuleEnv {

@@ -162,6 +162,10 @@ impl<'db> Typeck<'db> {
             self.global_env.insert_module(module_id);
         }
 
+        for source_id in self.db.sources.ids() {
+            self.global_env.insert_source(source_id);
+        }
+
         builtins::define_all(self);
     }
 
