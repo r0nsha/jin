@@ -19,11 +19,11 @@ use crate::token::TokenKind;
 pub fn parse(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Ast> {
     let mut ast = Ast::new();
 
-    // Std package
-    let root_std_file = compiler_helpers::current_exe_dir().join("std/main.jin");
-    let (std_package, _) = db.create_package(&root_std_file)?;
-    db.std_package_name.set(std_package);
-    parse_package(db, &mut ast, std_package);
+    // // Std package
+    // let root_std_file = compiler_helpers::current_exe_dir().join("std/main.jin");
+    // let (std_package, _) = db.create_package(&root_std_file)?;
+    // db.std_package_name.set(std_package);
+    // parse_package(db, &mut ast, std_package);
 
     // Main package
     let (main_package, _) = db.create_package(root_file)?;

@@ -508,20 +508,20 @@ impl<'cx, 'db> CollectTransitiveGlobs<'cx, 'db> {
 }
 
 pub(crate) fn insert_prelude(cx: &mut Typeck) {
-    let prelude_module_id =
-        cx.db.find_module_by_parts(["std", "prelude"]).expect("std.prelude to exist").id;
-
-    for (&module_id, env) in &mut cx.global_env.modules {
-        // Don't insert the prelude in the prelude itself
-        if module_id == prelude_module_id {
-            continue;
-        }
-
-        // Don't insert the prelude for modules which already imported it
-        env.globs
-            .entry(prelude_module_id)
-            .or_insert(ns::GlobImport { is_ufcs: IsUfcs::No, vis: Vis::Private });
-    }
+    // let prelude_module_id =
+    //     cx.db.find_module_by_parts(["std", "prelude"]).expect("std.prelude to exist").id;
+    //
+    // for (&module_id, env) in &mut cx.global_env.modules {
+    //     // Don't insert the prelude in the prelude itself
+    //     if module_id == prelude_module_id {
+    //         continue;
+    //     }
+    //
+    //     // Don't insert the prelude for modules which already imported it
+    //     env.globs
+    //         .entry(prelude_module_id)
+    //         .or_insert(ns::GlobImport { is_ufcs: IsUfcs::No, vis: Vis::Private });
+    // }
 }
 
 // pub(crate) fn insert_prelude(cx: &mut Typeck, imported_fns: &mut ImportedFns) {
