@@ -1,7 +1,6 @@
 use std::rc::Rc;
 
 use compiler_ast::{self as ast, Ast};
-use compiler_core::db::Location;
 use compiler_core::{
     db::{
         AdtId, AdtKind, Builtin, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel,
@@ -32,14 +31,16 @@ use crate::{
 pub(crate) fn define(cx: &mut Typeck, ast: &Ast) {
     for (item_id, item) in ast.items.iter_enumerated() {
         match &item.kind {
-            ast::ItemKind::Let(let_) => define_let(cx, item.loc, item_id, let_),
-            ast::ItemKind::ExternLet(let_) => define_extern_let(cx, item.loc, item_id, let_),
+            ast::ItemKind::Let(let_) => define_let(cx, item.loc.module_id, item_id, let_),
+            ast::ItemKind::ExternLet(let_) => {
+                define_extern_let(cx, item.loc.module_id, item_id, let_)
+            }
             ast::ItemKind::Fn(fun) => {
-                if let Err(diagnostic) = define_fn(cx, item.loc, item_id, fun, None) {
+                if let Err(diagnostic) = define_fn(cx, item.loc.module_id, item_id, fun, None) {
                     cx.db.diagnostics.add(diagnostic);
                 }
             }
-            ast::ItemKind::Type(tydef) => define_tydef(cx, item.loc, item_id, tydef),
+            ast::ItemKind::Type(tydef) => define_tydef(cx, item.loc.module_id, item_id, tydef),
             ast::ItemKind::ExternImport(import) => {
                 attrs::validate(cx, &import.attrs, attrs::Placement::ExternImport);
                 cx.db.extern_libs.insert(import.lib.clone());
@@ -49,11 +50,11 @@ pub(crate) fn define(cx: &mut Typeck, ast: &Ast) {
     }
 }
 
-fn define_let(cx: &mut Typeck<'_>, loc: Location, item_id: ast::ItemId, let_: &ast::Let) {
+fn define_let(cx: &mut Typeck<'_>, module_id: ModuleId, item_id: ast::ItemId, let_: &ast::Let) {
     attrs::validate(cx, &let_.attrs, attrs::Placement::Let);
     let unknown = cx.db.types.unknown;
     let pat = cx.define().global_pat(
-        loc,
+        module_id,
         &let_.pat,
         match &let_.kind {
             ast::LetKind::Let => DefKind::Global,
@@ -66,21 +67,26 @@ fn define_let(cx: &mut Typeck<'_>, loc: Location, item_id: ast::ItemId, let_: &a
 
 fn define_extern_let(
     cx: &mut Typeck<'_>,
-    loc: Location,
+    module_id: ModuleId,
     item_id: ast::ItemId,
     let_: &ast::ExternLet,
 ) {
     attrs::validate(cx, &let_.attrs, attrs::Placement::ExternLet);
 
-    let id =
-        cx.define().new_global(loc, let_.vis, DefKind::ExternGlobal, let_.word, let_.mutability);
+    let id = cx.define().new_global(
+        module_id,
+        let_.vis,
+        DefKind::ExternGlobal,
+        let_.word,
+        let_.mutability,
+    );
 
     cx.res_map.item_to_def.insert(item_id, id);
 }
 
 fn define_fn(
     cx: &mut Typeck<'_>,
-    loc: Location,
+    module_id: ModuleId,
     item_id: ast::ItemId,
     fun: &ast::Fn,
     assoc_ty: Option<AssocTy>,
@@ -97,13 +103,13 @@ fn define_fn(
                     AssocTy::BuiltinTy(ty) => QPath::from(ustr(&ty.display(cx.db).to_string())),
                 }
             } else {
-                cx.db[loc.module_id].qpath.clone()
+                cx.db[module_id].qpath.clone()
             };
 
             let qpath = base_qpath.child(name);
-            let scope = ScopeInfo { loc, level: ScopeLevel::Global, vis: fun.vis };
+            let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis: fun.vis };
 
-            if let Some(prev) = cx.global_env.module(loc.module_id).ns.defs.get(&name) {
+            if let Some(prev) = cx.global_env.module(module_id).ns.defs.get(&name) {
                 return Err(errors::multiple_item_def_err(prev.span(), fun.sig.word));
             }
 
@@ -116,18 +122,12 @@ fn define_fn(
                 fun.sig.word.span(),
             );
 
-            cx.global_env
-                .module_mut(loc.module_id)
-                .ns
-                .defined_fns
-                .entry(name)
-                .or_default()
-                .push(id);
+            cx.global_env.module_mut(module_id).ns.defined_fns.entry(name).or_default().push(id);
 
             id
         }
         ast::FnKind::Extern { .. } => cx.define().new_global(
-            loc,
+            module_id,
             fun.vis,
             DefKind::Fn(FnInfo::Extern),
             fun.sig.word,
@@ -140,7 +140,12 @@ fn define_fn(
     Ok(id)
 }
 
-fn define_tydef(cx: &mut Typeck<'_>, loc: Location, item_id: ast::ItemId, tydef: &ast::TyDef) {
+fn define_tydef(
+    cx: &mut Typeck<'_>,
+    module_id: ModuleId,
+    item_id: ast::ItemId,
+    tydef: &ast::TyDef,
+) {
     attrs::validate(
         cx,
         &tydef.attrs,
@@ -151,13 +156,13 @@ fn define_tydef(cx: &mut Typeck<'_>, loc: Location, item_id: ast::ItemId, tydef:
         },
     );
 
-    let mut env = Env::new(loc);
+    let mut env = Env::new(module_id);
 
     env.with_anon_scope(ScopeKind::TyDef, |env| {
         match &tydef.kind {
             ast::TyDefKind::Struct(struct_def) => {
                 let unknown = cx.db.types.unknown;
-                let adt_id = cx.define().adt(loc, tydef, |id| {
+                let adt_id = cx.define().adt(module_id, tydef, |id| {
                     AdtKind::Struct(StructDef::new(
                         id,
                         vec![],
@@ -171,7 +176,7 @@ fn define_tydef(cx: &mut Typeck<'_>, loc: Location, item_id: ast::ItemId, tydef:
             ast::TyDefKind::Union(union_def) => {
                 let adt_id = cx
                     .define()
-                    .adt(loc, tydef, |id| AdtKind::Union(UnionDef::new(id, union_def.kind)));
+                    .adt(module_id, tydef, |id| AdtKind::Union(UnionDef::new(id, union_def.kind)));
                 let variants = define_variants(cx, union_def, adt_id);
                 cx.db[adt_id].as_union_mut().unwrap().variants = variants;
                 check_adt_tparams(cx, env, tydef, adt_id);
@@ -179,7 +184,7 @@ fn define_tydef(cx: &mut Typeck<'_>, loc: Location, item_id: ast::ItemId, tydef:
             }
             ast::TyDefKind::Alias(alias) => {
                 let def_id = cx.define().new_global(
-                    loc,
+                    module_id,
                     tydef.vis,
                     DefKind::TyAlias,
                     tydef.word,
@@ -245,11 +250,13 @@ fn check_adt_tparams(cx: &mut Typeck, env: &mut Env, tydef: &ast::TyDef, adt_id:
 pub(crate) fn check_sigs(cx: &mut Typeck, ast: &Ast) {
     for (item_id, item) in ast.items.iter_enumerated() {
         let result = match &item.kind {
-            ast::ItemKind::Let(let_) => check_let_item(cx, item.loc, item_id, let_),
-            ast::ItemKind::ExternLet(let_) => check_extern_let(cx, item.loc, item_id, let_),
-            ast::ItemKind::Fn(fun) => check_fn(cx, item.loc, item_id, fun),
+            ast::ItemKind::Let(let_) => check_let_item(cx, item.loc.module_id, item_id, let_),
+            ast::ItemKind::ExternLet(let_) => {
+                check_extern_let(cx, item.loc.module_id, item_id, let_)
+            }
+            ast::ItemKind::Fn(fun) => check_fn(cx, item.loc.module_id, item_id, fun),
             ast::ItemKind::Assoc(tyname, assoc_item) => {
-                check_assoc_item(cx, item.loc, item_id, *tyname, assoc_item)
+                check_assoc_item(cx, item.loc.module_id, item_id, *tyname, assoc_item)
             }
             _ => Ok(()),
         };
@@ -262,11 +269,11 @@ pub(crate) fn check_sigs(cx: &mut Typeck, ast: &Ast) {
 
 pub(crate) fn check_let_item(
     cx: &mut Typeck<'_>,
-    loc: Location,
+    module_id: ModuleId,
     item_id: ast::ItemId,
     let_: &ast::Let,
 ) -> DiagnosticResult<()> {
-    let env = Env::new(loc);
+    let env = Env::new(module_id);
 
     debug_assert!(let_.ty_expr.is_some());
     let ty = tyexpr::check_optional(cx, &env, let_.ty_expr.as_ref(), AllowTyHole::No)?;
@@ -292,38 +299,38 @@ fn map_typed_pat(cx: &mut Typeck<'_>, pat: Pat, ty: Ty) -> Pat {
 
 fn check_extern_let(
     cx: &mut Typeck<'_>,
-    loc: Location,
+    module_id: ModuleId,
     item_id: ast::ItemId,
     let_: &ast::ExternLet,
 ) -> DiagnosticResult<()> {
-    let env = Env::new(loc);
+    let env = Env::new(module_id);
     let id = cx.res_map.item_to_def.remove(&item_id).expect("to be defined");
     let ty = tyexpr::check(cx, &env, &let_.ty_expr, AllowTyHole::No)?;
     cx.def_to_ty.insert(id, ty);
-    cx.hir.extern_lets.push(hir::ExternLet { id, word: let_.word, ty, span: let_.span });
+    cx.hir.extern_lets.push(hir::ExternLet { module_id, id, word: let_.word, ty, span: let_.span });
     Ok(())
 }
 
 fn check_fn(
     cx: &mut Typeck<'_>,
-    loc: Location,
+    module_id: ModuleId,
     item_id: ast::ItemId,
     fun: &ast::Fn,
 ) -> DiagnosticResult<()> {
     let &id = cx.res_map.item_to_def.get(&item_id).expect("to be defined");
-    check_fn_helper(cx, loc, item_id, id, fun, None)
+    check_fn_helper(cx, module_id, item_id, id, fun, None)
 }
 
 fn check_assoc_fn(
     cx: &mut Typeck<'_>,
-    loc: Location,
+    module_id: ModuleId,
     item_id: ast::ItemId,
     fun: &ast::Fn,
     assoc_ty: AssocTy,
 ) -> DiagnosticResult<()> {
     check_assoc_name_overlap(cx, assoc_ty, fun.sig.word)?;
-    let id = define_fn(cx, loc, item_id, fun, Some(assoc_ty))?;
-    check_fn_helper(cx, loc, item_id, id, fun, Some(assoc_ty))
+    let id = define_fn(cx, module_id, item_id, fun, Some(assoc_ty))?;
+    check_fn_helper(cx, module_id, item_id, id, fun, Some(assoc_ty))
 }
 
 // Checks that a to-be-defined associated name doesn't overlap
@@ -360,7 +367,7 @@ fn check_assoc_name_overlap(
 
 fn check_fn_helper(
     cx: &mut Typeck,
-    loc: Location,
+    module_id: ModuleId,
     item_id: ast::ItemId,
     id: DefId,
     fun: &ast::Fn,
@@ -381,7 +388,7 @@ fn check_fn_helper(
         }
     };
 
-    let mut env = Env::new(loc);
+    let mut env = Env::new(module_id);
     let sig = env.with_named_scope(fun.sig.word.name(), ScopeKind::Fn(DefId::null()), |env| {
         fns::check_sig(cx, env, &fun.sig, callconv, flags)
     })?;
@@ -398,7 +405,7 @@ fn check_fn_helper(
             }
         }
         ast::FnKind::Extern { .. } => {
-            check_builtin_fn(cx, loc.module_id, fun, &sig, id)?;
+            check_builtin_fn(cx, module_id, fun, &sig, id)?;
         }
     }
 
@@ -453,15 +460,15 @@ fn check_builtin_fn(
 
 fn check_assoc_item(
     cx: &mut Typeck<'_>,
-    loc: Location,
+    module_id: ModuleId,
     item_id: ast::ItemId,
     tyname: Word,
     item: &ast::ItemKind,
 ) -> DiagnosticResult<()> {
-    let assoc_ty = check_assoc_item_ty(cx, loc, tyname)?;
+    let assoc_ty = check_assoc_item_ty(cx, module_id, tyname)?;
 
     match item {
-        ast::ItemKind::Fn(fun) => check_assoc_fn(cx, loc, item_id, fun, assoc_ty),
+        ast::ItemKind::Fn(fun) => check_assoc_fn(cx, module_id, item_id, fun, assoc_ty),
         ast::ItemKind::Let(_)
         | ast::ItemKind::Type(_)
         | ast::ItemKind::Import(_)
@@ -473,10 +480,10 @@ fn check_assoc_item(
 
 fn check_assoc_item_ty(
     cx: &mut Typeck<'_>,
-    loc: Location,
+    module_id: ModuleId,
     tyname: Word,
 ) -> DiagnosticResult<AssocTy> {
-    let id = cx.lookup(loc.module_id).query(loc.module_id, &Query::Name(tyname))?;
+    let id = cx.lookup(module_id).query(module_id, &Query::Name(tyname))?;
 
     let Some(assoc_ty) = ty::try_extract_assoc_ty(cx, id) else {
         return Err(Diagnostic::error(format!(
@@ -486,12 +493,12 @@ fn check_assoc_item_ty(
         .with_label(Label::primary(tyname.span(), "expected a type")));
     };
 
-    let env_package = cx.db[loc.module_id].package;
+    let env_package = cx.db[module_id].package;
 
     match assoc_ty {
         AssocTy::Adt(adt_id) => {
             let ty_def = &cx.db[cx.db[adt_id].def_id];
-            let ty_package = cx.db[ty_def.scope.loc.module_id].package;
+            let ty_package = cx.db[ty_def.scope.module_id].package;
 
             if env_package != ty_package {
                 return Err(Diagnostic::error(format!(
@@ -506,7 +513,7 @@ fn check_assoc_item_ty(
             }
         }
         AssocTy::BuiltinTy(ty) => {
-            if !ns::in_std(cx.db, loc.module_id) {
+            if !ns::in_std(cx.db, module_id) {
                 return Err(Diagnostic::error(format!(
                     "cannot define associated name for builtin type `{}`",
                     ty.display(cx.db)
@@ -528,11 +535,14 @@ pub(crate) fn check_bodies(cx: &mut Typeck<'_>, ast: &Ast) {
 }
 
 fn check_item_body(cx: &mut Typeck<'_>, item: &ast::Item, id: ast::ItemId) -> DiagnosticResult<()> {
+    let module_id = item.loc.module_id;
+
     match &item.kind {
         ast::ItemKind::Let(let_) => {
-            let (pat, value, ty) = check_let_item_body(cx, item.loc, let_, id)?;
+            let (pat, value, ty) = check_let_item_body(cx, module_id, let_, id)?;
             cx.hir.lets.push_with_key(|id| hir::Let {
                 id,
+                module_id,
                 kind: trans_let_kind(&let_.kind),
                 pat,
                 value: Box::new(value),
@@ -557,11 +567,11 @@ fn check_item_body(cx: &mut Typeck<'_>, item: &ast::Item, id: ast::ItemId) -> Di
 
 fn check_let_item_body(
     cx: &mut Typeck<'_>,
-    loc: Location,
+    module_id: ModuleId,
     let_: &ast::Let,
     id: ast::ItemId,
 ) -> DiagnosticResult<(Pat, hir::Expr, Ty)> {
-    let mut env = Env::new(loc);
+    let mut env = Env::new(module_id);
     let pat = cx.res_map.item_to_pat.remove(&id).expect("to be defined");
     let ty = cx.res_map.item_to_ty.remove(&id).expect("to be defined");
     let value = check_let_body(cx, &mut env, ty, let_)?;
@@ -605,7 +615,7 @@ pub(crate) fn check_fn_item_body(
         ast::FnKind::Bare { body } => fns::check_fn_body(cx, sig, def_id, body, fun.span)?,
         ast::FnKind::Extern { is_c_variadic, .. } => hir::Fn {
             id: hir::FnId::null(),
-            module_id: cx.db[def_id].scope.loc.module_id,
+            module_id: cx.db[def_id].scope.module_id,
             def_id,
             sig,
             kind: hir::FnKind::Extern { is_c_variadic: *is_c_variadic },

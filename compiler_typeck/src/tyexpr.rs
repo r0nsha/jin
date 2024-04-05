@@ -222,7 +222,7 @@ pub(crate) fn check_ty_alias(
         return Ok(ty);
     }
 
-    let mut env = Env::new(cx.db[id].scope.loc);
+    let mut env = Env::new(cx.db[id].scope.module_id);
 
     env.with_anon_scope(ScopeKind::TyDef, |env| {
         for tp in &cx.ty_aliases[&id].tparams {

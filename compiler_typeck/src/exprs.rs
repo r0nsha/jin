@@ -41,6 +41,7 @@ pub(crate) fn check_expr(
             Ok(cx.expr(
                 hir::ExprKind::Let(hir::Let {
                     id: hir::LetId::null(),
+                    module_id: env.module_id(),
                     kind: trans_let_kind(&let_.kind),
                     pat,
                     value: Box::new(value),
@@ -597,7 +598,7 @@ fn check_name_struct(
 
     // NOTE: if the named definition is a struct, we want to return its
     // constructor function's type
-    if !cx.can_access(env.module_id(), cx.db[adt.def_id].scope.loc.module_id, struct_def.ctor_vis) {
+    if !cx.can_access(env.module_id(), cx.db[adt.def_id].scope.module_id, struct_def.ctor_vis) {
         let private_field =
             struct_def.fields.iter().min_by_key(|f| f.vis).expect("to have at least one field");
 
@@ -685,7 +686,7 @@ pub(crate) fn check_field_access(
     field: &AdtField,
     span: Span,
 ) -> DiagnosticResult<()> {
-    if !cx.can_access(env.module_id(), cx.db[adt.def_id].scope.loc.module_id, field.vis) {
+    if !cx.can_access(env.module_id(), cx.db[adt.def_id].scope.module_id, field.vis) {
         return Err(Diagnostic::error(format!(
             "field `{}` of type `{}` is private",
             field.name, adt.name
@@ -1150,12 +1151,13 @@ fn interp_let_buf(
         cx.expr(
             hir::ExprKind::Let(hir::Let {
                 id: hir::LetId::null(),
+                module_id: from_module,
                 kind: hir::LetKind::Let,
                 pat: Pat::Name(NamePat {
                     id,
                     word: interp_buf_word,
                     mutability: Mutability::Mut,
-                    vis: Vis::Package,
+                    vis: Vis::Private,
                     ty: strbuf_ty,
                     named: false,
                 }),

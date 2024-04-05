@@ -1,7 +1,6 @@
 use compiler_ast::{self as ast, Ast};
-use compiler_core::db::Location;
 use compiler_core::{
-    db::{AdtField, AdtId, DefId, DefKind, VariantId},
+    db::{AdtField, AdtId, DefId, DefKind, ModuleId, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{Mutability, TyParam, Vis},
     span::{Span, Spanned as _},
@@ -20,7 +19,7 @@ use crate::{
 pub(crate) fn check(cx: &mut Typeck, ast: &Ast) {
     for (item_id, item) in ast.items.iter_enumerated() {
         if let ast::ItemKind::Type(tydef) = &item.kind {
-            if let Err(diagnostic) = check_tydef(cx, item.loc, item_id, tydef) {
+            if let Err(diagnostic) = check_tydef(cx, item.loc.module_id, item_id, tydef) {
                 cx.db.diagnostics.add(diagnostic);
             }
         }
@@ -29,11 +28,11 @@ pub(crate) fn check(cx: &mut Typeck, ast: &Ast) {
 
 fn check_tydef(
     cx: &mut Typeck<'_>,
-    loc: Location,
+    module_id: ModuleId,
     item_id: ast::ItemId,
     tydef: &ast::TyDef,
 ) -> DiagnosticResult<()> {
-    let mut env = Env::new(loc);
+    let mut env = Env::new(module_id);
 
     env.with_anon_scope(ScopeKind::TyDef, |env| -> DiagnosticResult<()> {
         match &tydef.kind {

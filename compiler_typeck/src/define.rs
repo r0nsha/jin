@@ -1,7 +1,6 @@
 use compiler_ast::{self as ast};
-use compiler_core::db::Location;
 use compiler_core::{
-    db::{Adt, AdtId, AdtKind, Db, Def, DefId, DefKind, ScopeInfo, ScopeLevel},
+    db::{Adt, AdtId, AdtKind, Db, Def, DefId, DefKind, ModuleId, ScopeInfo, ScopeLevel},
     diagnostics::DiagnosticResult,
     middle::{Mutability, NamePat, Pat, Vis},
     span::Spanned as _,
@@ -34,7 +33,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
 
     pub(crate) fn adt(
         &mut self,
-        loc: Location,
+        module_id: ModuleId,
         tydef: &ast::TyDef,
         kind: impl FnOnce(AdtId) -> AdtKind,
     ) -> AdtId {
@@ -47,7 +46,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         });
 
         let def_id = self.new_global(
-            loc,
+            module_id,
             tydef.vis,
             DefKind::Adt(adt_id),
             tydef.word,
@@ -60,28 +59,28 @@ impl<'db, 'cx> Define<'db, 'cx> {
 
     pub(crate) fn create_global(
         &mut self,
-        loc: Location,
+        module_id: ModuleId,
         vis: Vis,
         kind: DefKind,
         name: Word,
         mutability: Mutability,
     ) -> DefId {
-        let qpath = self.cx.db[loc.module_id].qpath.clone().child(name.name());
-        let scope = ScopeInfo { loc, level: ScopeLevel::Global, vis };
+        let qpath = self.cx.db[module_id].qpath.clone().child(name.name());
+        let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         Def::alloc(self.cx.db, qpath, scope, kind, mutability, name.span())
     }
 
     pub(crate) fn new_global(
         &mut self,
-        loc: Location,
+        module_id: ModuleId,
         vis: Vis,
         kind: DefKind,
         name: Word,
         mutability: Mutability,
     ) -> DefId {
-        let id = self.create_global(loc, vis, kind, name, mutability);
+        let id = self.create_global(module_id, vis, kind, name, mutability);
 
-        if let Err(diagnostic) = self.global(loc, name, id, vis) {
+        if let Err(diagnostic) = self.global(module_id, name, id, vis) {
             self.cx.db.diagnostics.add(diagnostic);
         }
 
@@ -90,19 +89,19 @@ impl<'db, 'cx> Define<'db, 'cx> {
 
     pub(crate) fn global(
         &mut self,
-        loc: Location,
+        module_id: ModuleId,
         name: Word,
         id: DefId,
         vis: Vis,
     ) -> DiagnosticResult<()> {
-        let module = self.cx.global_env.module_mut(loc.module_id);
+        let module = self.cx.global_env.module_mut(module_id);
 
         if let Some(fns) = module.ns.defined_fns.get(&name.name()) {
             let span = self.cx.db[fns[0]].span;
             return Err(errors::multiple_item_def_err(span, name));
         }
 
-        let def = NsDef { id, name, module_id: loc.module_id, vis };
+        let def = NsDef { id, name, module_id, vis };
         if let Some(prev) = module.ns.defs.insert(name.name(), def) {
             return Err(errors::multiple_item_def_err(prev.span(), name));
         }
@@ -132,16 +131,23 @@ impl<'db, 'cx> Define<'db, 'cx> {
         ty: Ty,
     ) -> DefId {
         let qpath = env.scope_path(self.cx.db).child(name.name());
-        let scope = ScopeInfo { loc: env.loc(), level: env.scope_level(), vis: Vis::Package };
+        let scope =
+            ScopeInfo { module_id: env.module_id(), level: env.scope_level(), vis: Vis::Private };
         let id = Def::alloc(self.cx.db, qpath, scope, kind, mutability, name.span());
         self.cx.def_to_ty.insert(id, ty);
         id
     }
 
-    pub(crate) fn global_pat(&mut self, loc: Location, pat: &Pat, kind: DefKind, ty: Ty) -> Pat {
+    pub(crate) fn global_pat(
+        &mut self,
+        module_id: ModuleId,
+        pat: &Pat,
+        kind: DefKind,
+        ty: Ty,
+    ) -> Pat {
         match pat {
             Pat::Name(name) => {
-                let id = self.new_global(loc, name.vis, kind, name.word, name.mutability);
+                let id = self.new_global(module_id, name.vis, kind, name.word, name.mutability);
                 Pat::Name(NamePat { id, ty, ..name.clone() })
             }
             Pat::Discard(span) => Pat::Discard(*span),

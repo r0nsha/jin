@@ -1,6 +1,5 @@
 use std::mem;
 
-use compiler_core::db::Location;
 use compiler_core::span::SourceId;
 use compiler_core::{
     db::{AdtId, Db, DefId, ModuleId, ScopeLevel},
@@ -113,7 +112,7 @@ pub(crate) struct NsDef {
 impl NsDef {
     pub(crate) fn from_def_id(db: &Db, id: DefId) -> Self {
         let def = &db[id];
-        Self { id, name: def.word(), module_id: def.scope.loc.module_id, vis: def.scope.vis }
+        Self { id, name: def.word(), module_id: def.scope.module_id, vis: def.scope.vis }
     }
 
     pub(crate) fn check_access(
@@ -122,14 +121,18 @@ impl NsDef {
         from_module: ModuleId,
         span: Span,
     ) -> DiagnosticResult<()> {
-        if self.can_access(cx, from_module) {
-            Ok(())
-        } else {
-            Err(errors::private_access_violation(cx.db, self.module_id, self.name.name(), span))
-        }
+        self.can_access(cx, from_module).then_some(()).ok_or_else(|| {
+            errors::private_access_violation(cx.db, self.module_id, self.name.name(), span)
+        })
     }
 
     pub(crate) fn can_access(&self, cx: &Typeck, from_module: ModuleId) -> bool {
+        // if self.vis == Vis::Private {
+        //     println!(
+        //         "from: {}, in: {}, vis: {:?}",
+        //         cx.db[from_module].qpath, cx.db[self.module_id].qpath, self.vis
+        //     );
+        // }
         cx.can_access(from_module, self.module_id, self.vis)
     }
 
@@ -179,13 +182,13 @@ impl GlobImport {
 
 #[derive(Debug)]
 pub(crate) struct Env {
-    loc: Location,
+    module_id: ModuleId,
     scopes: Vec<Scope>,
 }
 
 impl Env {
-    pub(crate) fn new(loc: Location) -> Self {
-        Self { loc, scopes: vec![] }
+    pub(crate) fn new(module_id: ModuleId) -> Self {
+        Self { module_id, scopes: vec![] }
     }
 
     pub(crate) fn with_anon_scope<R>(
@@ -259,7 +262,7 @@ impl Env {
     }
 
     pub(crate) fn scope_path(&self, db: &Db) -> QPath {
-        let mut qpath = db[self.module_id()].qpath.clone();
+        let mut qpath = db[self.module_id].qpath.clone();
         qpath.extend(self.scopes.iter().flat_map(|s| s.name));
         qpath
     }
@@ -287,13 +290,8 @@ impl Env {
     }
 
     #[inline]
-    pub(crate) fn loc(&self) -> Location {
-        self.loc
-    }
-
-    #[inline]
     pub(crate) fn module_id(&self) -> ModuleId {
-        self.loc.module_id
+        self.module_id
     }
 }
 

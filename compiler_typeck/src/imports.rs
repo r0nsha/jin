@@ -1,5 +1,4 @@
 use compiler_ast::{self as ast, Ast};
-use compiler_core::db::Location;
 use compiler_core::{
     db::{DefId, DefKind, FnInfo, ModuleId},
     diagnostics::{Diagnostic, DiagnosticResult},
@@ -32,9 +31,9 @@ fn build_imports_map(cx: &mut Typeck, ast: &Ast) -> ImportsMap {
         let ast::ItemKind::Import(import) = &item.kind else { continue };
         attrs::validate(cx, &import.attrs, attrs::Placement::Import);
 
-        let entry = map.entry(item.loc).or_default();
+        let entry = map.entry(item.loc.module_id).or_default();
         let root_module_id = cx.db.find_module_by_path(&import.module_path).unwrap().id;
-        BuildImportsMap::new(cx, entry, root_module_id, item.loc).build(&import.tree);
+        BuildImportsMap::new(cx, entry, root_module_id, item.loc.module_id).build(&import.tree);
     }
 
     map
@@ -44,7 +43,7 @@ struct BuildImportsMap<'a, 'db> {
     cx: &'a mut Typeck<'db>,
     entry: &'a mut Imports,
     root_module_id: ModuleId,
-    loc: Location,
+    module_id: ModuleId,
 }
 
 impl<'a, 'db> BuildImportsMap<'a, 'db> {
@@ -52,9 +51,9 @@ impl<'a, 'db> BuildImportsMap<'a, 'db> {
         cx: &'a mut Typeck<'db>,
         entry: &'a mut Imports,
         root_module_id: ModuleId,
-        loc: Location,
+        module_id: ModuleId,
     ) -> Self {
-        Self { cx, entry, root_module_id, loc }
+        Self { cx, entry, root_module_id, module_id }
     }
 
     fn build(&mut self, tree: &ast::ImportTree) {
@@ -89,7 +88,7 @@ impl<'a, 'db> BuildImportsMap<'a, 'db> {
             root_module_id: self.root_module_id,
             path: new_path,
             alias,
-            loc: self.loc,
+            module_id: self.module_id,
             vis,
         };
 
@@ -103,7 +102,7 @@ impl<'a, 'db> BuildImportsMap<'a, 'db> {
             root_module_id: self.root_module_id,
             path,
             is_ufcs,
-            loc: self.loc,
+            module_id: self.module_id,
             vis,
             span,
         });
@@ -143,8 +142,9 @@ impl<'db, 'cx> Define<'db, 'cx> {
         }
 
         // Resolve the entire import path, recursing if needed
-        let in_loc = imp.loc;
-        let resolved = self.resolve_import_path(map, in_loc, imp.root_module_id, &imp.path)?;
+        let in_module = imp.module_id;
+        let resolved =
+            self.resolve_import_path(map, imp.module_id, imp.root_module_id, &imp.path)?;
 
         // Insert imported modules as UFCS targets implicitly.
         // This is done because always adding `?` whenever we import any type is
@@ -158,13 +158,13 @@ impl<'db, 'cx> Define<'db, 'cx> {
             }
             Resolved::Def(def) => {
                 import_def(self.cx, imp, def.id)?;
-                (resolved, self.cx.db[def.id].scope.loc.module_id)
+                (resolved, self.cx.db[def.id].scope.module_id)
             }
             Resolved::Fn(target_module_id, name) => {
                 import_fns(
                     self.cx,
                     &mut self.imported_fns,
-                    in_loc,
+                    in_module,
                     target_module_id,
                     name,
                     imp.alias,
@@ -174,19 +174,20 @@ impl<'db, 'cx> Define<'db, 'cx> {
         };
 
         self.insert_glob_import(
-            in_loc,
+            in_module,
             res_module_id,
-            ns::GlobImport { is_ufcs: IsUfcs::Yes, vis: Vis::Package },
+            ns::GlobImport { is_ufcs: IsUfcs::Yes, vis: Vis::Private },
         );
 
-        self.resolved.entry(in_loc).or_default().insert(imp.alias.name(), resolved);
+        self.resolved.entry(in_module).or_default().insert(imp.alias.name(), resolved);
 
         Ok(resolved)
     }
 
     fn define_glob(&mut self, map: &ImportsMap, imp: &GlobImport) -> DiagnosticResult<()> {
-        let in_loc = imp.loc;
-        let resolved = self.resolve_import_path(map, in_loc, imp.root_module_id, &imp.path)?;
+        let in_module = imp.module_id;
+        let resolved =
+            self.resolve_import_path(map, imp.module_id, imp.root_module_id, &imp.path)?;
 
         let res_module_id = match resolved {
             Resolved::Def(def) => self.cx.expect_module_def(def.id, imp.span)?,
@@ -195,7 +196,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         };
 
         self.insert_glob_import(
-            in_loc,
+            in_module,
             res_module_id,
             ns::GlobImport { is_ufcs: imp.is_ufcs, vis: imp.vis },
         );
@@ -206,7 +207,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
     fn resolve_import_path(
         &mut self,
         map: &ImportsMap,
-        imp_loc: Location,
+        imp_module_id: ModuleId,
         root_module_id: ModuleId,
         path: &[Word],
     ) -> DiagnosticResult<Resolved> {
@@ -222,22 +223,20 @@ impl<'db, 'cx> Define<'db, 'cx> {
                 Resolved::Def(*def)
             } else if env.ns.defined_fns.get(&name).is_some() {
                 Resolved::Fn(curr_module_id, name)
-            }
-            // else if let Some(target_imp) =
-            //     map.get(&curr_module_id).and_then(|m| m.imports.get(&name))
-            // {
-            //     self.define(map, target_imp)?
-            // }
-            else {
+            } else if let Some(target_imp) =
+                map.get(&curr_module_id).and_then(|m| m.imports.get(&name))
+            {
+                self.define(map, target_imp)?
+            } else {
                 return Err(errors::name_not_found(
                     self.cx.db,
-                    imp_loc.module_id,
+                    imp_module_id,
                     curr_module_id,
                     part,
                 ));
             };
 
-            self.check_resolved_access(imp_loc.module_id, &resolved, span)?;
+            self.check_resolved_access(imp_module_id, &resolved, span)?;
 
             match pos {
                 Position::First | Position::Middle => match resolved {
@@ -290,16 +289,16 @@ impl<'db, 'cx> Define<'db, 'cx> {
     }
 
     fn get_resolved_import_path(&self, imp: &Import) -> Option<&Resolved> {
-        self.resolved.get(&imp.loc).and_then(|m| m.get(&imp.alias.name()))
+        self.resolved.get(&imp.module_id).and_then(|m| m.get(&imp.alias.name()))
     }
 
     fn insert_glob_import(
         &mut self,
-        loc: Location,
+        in_module: ModuleId,
         target_module_id: ModuleId,
         imp: ns::GlobImport,
     ) {
-        let entry = self.cx.global_env.source_mut(loc.source_id).globs.entry(target_module_id);
+        let entry = self.cx.global_env.module_mut(in_module).globs.entry(target_module_id);
         let entry = entry.or_insert(imp);
 
         // Regular glob imports are considered `stronger` than UFCS imports.
@@ -320,20 +319,21 @@ impl<'db, 'cx> Define<'db, 'cx> {
 }
 
 fn import_module(cx: &mut Typeck, imp: &Import, module_id: ModuleId) -> DefId {
-    let id = cx.define().new_global(imp.loc, imp.vis, DefKind::Global, imp.alias, Mutability::Imm);
+    let id =
+        cx.define().new_global(imp.module_id, imp.vis, DefKind::Global, imp.alias, Mutability::Imm);
     cx.def_to_ty.insert(id, Ty::new(TyKind::Module(module_id)));
     id
 }
 
 fn import_def(cx: &mut Typeck, imp: &Import, id: DefId) -> DiagnosticResult<()> {
-    cx.define().global(imp.loc, imp.alias, id, imp.vis)?;
+    cx.define().global(imp.module_id, imp.alias, id, imp.vis)?;
     Ok(())
 }
 
 fn import_fns(
     cx: &mut Typeck,
     imported_fns: &mut ImportedFns,
-    loc: Location,
+    in_module: ModuleId,
     target_module_id: ModuleId,
     name: Ustr,
     alias: Word,
@@ -342,11 +342,11 @@ fn import_fns(
         cx.global_env.module(target_module_id).ns.defined_fns.get(&name).expect("to be defined");
 
     for &id in defined_fns {
-        imported_fns.entry(loc).or_default().push(ImportedFn { id, name, alias });
+        imported_fns.entry(in_module).or_default().push(ImportedFn { id, name, alias });
     }
 }
 
-type ImportsMap = FxHashMap<Location, Imports>;
+type ImportsMap = FxHashMap<ModuleId, Imports>;
 
 #[derive(Debug, Clone)]
 struct Imports {
@@ -371,7 +371,7 @@ struct Import {
     root_module_id: ModuleId,
     path: Vec<Word>,
     alias: Word,
-    loc: Location,
+    module_id: ModuleId,
     vis: Vis,
 }
 
@@ -386,12 +386,12 @@ struct GlobImport {
     root_module_id: ModuleId,
     path: Vec<Word>,
     is_ufcs: IsUfcs,
-    loc: Location,
+    module_id: ModuleId,
     vis: Vis,
     span: Span,
 }
 
-type ResolvedMap = FxHashMap<Location, UstrMap<Resolved>>;
+type ResolvedMap = FxHashMap<ModuleId, UstrMap<Resolved>>;
 
 #[derive(Debug, Clone, Copy)]
 enum Resolved {
@@ -401,9 +401,9 @@ enum Resolved {
 }
 
 pub(crate) fn fill_imported_fn_candidates(cx: &mut Typeck, imported_fns: ImportedFns) {
-    for (loc, fns) in imported_fns {
+    for (module_id, fns) in imported_fns {
         for f in fns {
-            let from_module = cx.db[f.id].scope.loc.module_id;
+            let from_module = cx.db[f.id].scope.module_id;
             let from_set = cx
                 .global_env
                 .module(from_module)
@@ -416,8 +416,7 @@ pub(crate) fn fill_imported_fn_candidates(cx: &mut Typeck, imported_fns: Importe
                 from_set.iter().find(|c| c.id == f.id).expect("candidate to be defined").clone();
             candidate.word = f.alias;
 
-            let set =
-                cx.global_env.source_mut(loc.source_id).ns.fns.entry(f.alias.name()).or_default();
+            let set = cx.global_env.module_mut(module_id).ns.fns.entry(f.alias.name()).or_default();
 
             if let Err(err) = set.try_insert(candidate) {
                 cx.db.diagnostics.add(err.into_diagnostic(cx.db));
@@ -426,7 +425,7 @@ pub(crate) fn fill_imported_fn_candidates(cx: &mut Typeck, imported_fns: Importe
     }
 }
 
-pub(crate) type ImportedFns = FxHashMap<Location, Vec<ImportedFn>>;
+pub(crate) type ImportedFns = FxHashMap<ModuleId, Vec<ImportedFn>>;
 
 pub(crate) struct ImportedFn {
     pub(crate) id: DefId,

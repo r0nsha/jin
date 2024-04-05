@@ -1,4 +1,3 @@
-use compiler_core::db::Location;
 use compiler_core::{
     db::DefKind,
     middle::{Mutability, TyParam, Vis},
@@ -31,12 +30,11 @@ pub(crate) fn define_all(cx: &mut Typeck) {
         (sym::ty::NEVER, cx.db.types.never),
     ];
 
-    let main_loc = cx.db.main_location();
-
+    let main_module = cx.db.main_module.unwrap();
     for &(name, ty) in pairs {
         let name = ustr(name);
         let id = cx.define().create_global(
-            main_loc,
+            main_module,
             Vis::Public,
             DefKind::BuiltinTy(ty),
             Word::new_unknown(name),
@@ -50,19 +48,24 @@ pub(crate) fn define_all(cx: &mut Typeck) {
 }
 
 fn define_ptr(cx: &mut Typeck) {
-    let main_loc = cx.db.main_location();
+    let main_module = cx.db.main_module.unwrap();
 
     let name = ustr(sym::ty::PTR);
     let word = Word::new_unknown(name);
 
-    let id =
-        cx.define().create_global(main_loc, Vis::Public, DefKind::TyAlias, word, Mutability::Imm);
+    let id = cx.define().create_global(
+        main_module,
+        Vis::Public,
+        DefKind::TyAlias,
+        word,
+        Mutability::Imm,
+    );
 
     let tp = {
         let tp_word = Word::new_unknown(ustr("T"));
         let tp_ty = Ty::new(TyKind::Param(ParamTy { name: tp_word.name(), var: cx.fresh_var() }));
         let tp_id = cx.define().create_global(
-            main_loc,
+            main_module,
             Vis::Public,
             DefKind::BuiltinTy(tp_ty),
             tp_word,
