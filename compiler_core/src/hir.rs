@@ -148,7 +148,6 @@ pub struct FnParam {
 #[derive(Debug, Clone)]
 pub struct Let {
     pub id: LetId,
-    pub module_id: ModuleId,
     pub kind: LetKind,
     pub pat: Pat,
     pub value: Box<Expr>,
@@ -164,7 +163,6 @@ pub enum LetKind {
 
 #[derive(Debug, Clone)]
 pub struct ExternLet {
-    pub module_id: ModuleId,
     pub id: DefId,
     pub word: Word,
     pub ty: Ty,

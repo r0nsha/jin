@@ -248,6 +248,10 @@ impl Db {
     pub fn print_diagnostics(self) {
         self.diagnostics.print(&self.sources)
     }
+
+    pub fn main_location(&self) -> Location {
+        Location { module_id: self.main_module.unwrap(), source_id: self.main_source_id() }
+    }
 }
 
 macro_rules! new_db_key {
@@ -278,6 +282,12 @@ new_db_key!(ModuleId -> modules : ModuleInfo);
 new_db_key!(DefId -> defs : Def);
 new_db_key!(AdtId -> adts : Adt);
 new_db_key!(VariantId -> variants : Variant);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Location {
+    pub module_id: ModuleId,
+    pub source_id: SourceId,
+}
 
 #[derive(Debug, Clone)]
 pub struct Package {
@@ -324,7 +334,7 @@ pub struct Def {
 
 #[derive(Debug, Clone)]
 pub struct ScopeInfo {
-    pub module_id: ModuleId,
+    pub loc: Location,
     pub level: ScopeLevel,
     pub vis: Vis,
 }
@@ -608,7 +618,7 @@ impl StructKind {
 
 impl StructDef {
     pub fn new(id: AdtId, fields: Vec<AdtField>, kind: StructKind, ctor_ty: Ty) -> Self {
-        Self { id, fields, kind, ctor_ty, ctor_vis: Vis::Private }
+        Self { id, fields, kind, ctor_ty, ctor_vis: Vis::Package }
     }
 
     pub fn field_by_name(&self, name: &str) -> Option<&AdtField> {

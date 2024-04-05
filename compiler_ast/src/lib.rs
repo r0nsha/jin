@@ -4,14 +4,13 @@ use std::rc::Rc;
 use std::{fmt, io};
 
 use camino::Utf8PathBuf;
-use compiler_core::db::Db;
-use compiler_core::span::SourceId;
+use compiler_core::db::{Db, Location};
 use compiler_data_structures::{index_vec::IndexVec, new_key_type};
 use itertools::Itertools as _;
 use ustr::Ustr;
 
 use compiler_core::{
-    db::{ExternLib, ModuleId, StructKind, UnionKind},
+    db::{ExternLib, StructKind, UnionKind},
     middle::{BinOp, CallConv, IsUfcs, Mutability, Pat, TyExpr, UnOp, Vis},
     span::{Span, Spanned},
     word::Word,
@@ -44,12 +43,6 @@ impl Ast {
 
 new_key_type! {
     pub struct ItemId;
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Location {
-    pub module_id: ModuleId,
-    pub source_id: SourceId,
 }
 
 #[derive(Debug, Clone)]

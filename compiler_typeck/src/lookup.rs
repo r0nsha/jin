@@ -508,7 +508,7 @@ pub(crate) struct FnCandidate {
 
 impl FnCandidate {
     pub(crate) fn module_id(&self, db: &Db) -> ModuleId {
-        db[self.id].scope.module_id
+        db[self.id].scope.loc.module_id
     }
 
     // Tests the given query against the function candidate, returning

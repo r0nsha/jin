@@ -14,9 +14,8 @@ use ustr::ustr;
 use crate::{
     errors, exprs,
     ns::{Env, ScopeKind},
-    tyexpr,
+    ty, tyexpr,
     tyexpr::AllowTyHole,
-    ty,
     unify::{CoerceExt as _, Obligation},
     Typeck,
 };
@@ -114,7 +113,7 @@ pub(crate) fn check_fn_body(
     body: &ast::Expr,
     span: Span,
 ) -> DiagnosticResult<hir::Fn> {
-    let mut env = Env::new(cx.db[def_id].scope.module_id);
+    let mut env = Env::new(cx.db[def_id].scope.loc);
 
     let kind = env.with_named_scope(
         sig.word.name(),

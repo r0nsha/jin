@@ -374,8 +374,7 @@ impl<'a> Parser<'a> {
 
         match tok.kind {
             TokenKind::Ident(_) => {
-                let vis =
-                    if allow_vis == AllowVis::Yes { self.parse_vis() } else { Vis::default() };
+                let vis = if allow_vis == AllowVis::Yes { self.parse_vis() } else { Vis::Package };
 
                 Ok(Pat::Name(NamePat {
                     id: DefId::null(),

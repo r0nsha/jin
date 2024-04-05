@@ -4,6 +4,7 @@ use compiler_data_structures::index_vec::Key as _;
 use compiler_helpers::create_bool_enum;
 use ustr::Ustr;
 
+use crate::span::SourceId;
 use crate::{
     db::DefId,
     span::{Span, Spanned},
@@ -11,11 +12,12 @@ use crate::{
     word::Word,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(u8)]
 pub enum Vis {
-    #[default]
-    Private = 0,
-    Public = 1,
+    Source(SourceId) = 0,
+    Package = 1,
+    Public = 2,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

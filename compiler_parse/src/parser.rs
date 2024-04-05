@@ -8,8 +8,8 @@ mod tyexpr;
 use std::ops::ControlFlow;
 
 use camino::{Utf8Path, Utf8PathBuf};
-use compiler_ast::{Item, Location, TyParam};
-use compiler_core::db::ModuleId;
+use compiler_ast::{Item, TyParam};
+use compiler_core::db::{Location, ModuleId};
 use compiler_core::{
     db::Db,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -85,7 +85,7 @@ impl<'a> Parser<'a> {
         if self.is(TokenKind::Star) {
             Vis::Public
         } else {
-            Vis::Private
+            Vis::Package
         }
     }
 

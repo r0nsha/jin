@@ -2,6 +2,7 @@ use std::ops::ControlFlow;
 
 use camino::Utf8PathBuf;
 use compiler_ast::{Attrs, ExternImport, Import, ImportTree};
+use compiler_core::middle::Vis;
 use compiler_core::{
     db::ExternLib,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -52,11 +53,9 @@ impl<'a> Parser<'a> {
             Ok(ImportTree::Path(name, Box::new(next)))
         } else if self.is_kw(Kw::As) {
             let alias = self.eat_ident()?.word();
-            let vis = self.parse_vis();
-            Ok(ImportTree::Name(name, Some(alias), vis))
+            Ok(ImportTree::Name(name, Some(alias), Vis::Source(self.source.id())))
         } else {
-            let vis = self.parse_vis();
-            Ok(ImportTree::Name(name, None, vis))
+            Ok(ImportTree::Name(name, None, Vis::Source(self.source.id())))
         }
     }
 
@@ -69,11 +68,9 @@ impl<'a> Parser<'a> {
 
     fn parse_import_group_tree(&mut self) -> DiagnosticResult<ImportTree> {
         if self.is(TokenKind::Star) {
-            let vis = self.parse_vis();
-            Ok(ImportTree::Glob(IsUfcs::No, vis, self.last_span()))
+            Ok(ImportTree::Glob(IsUfcs::No, Vis::Source(self.source.id()), self.last_span()))
         } else if self.is(TokenKind::QuestionMark) {
-            let vis = self.parse_vis();
-            Ok(ImportTree::Glob(IsUfcs::Yes, vis, self.last_span()))
+            Ok(ImportTree::Glob(IsUfcs::Yes, Vis::Source(self.source.id()), self.last_span()))
         } else if self.is_ident() {
             self.parse_import_tree_name(self.last_token().word())
         } else {

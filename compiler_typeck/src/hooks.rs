@@ -72,8 +72,8 @@ fn check_drop_hook(cx: &mut Typeck, sig: &hir::FnSig, id: DefId) -> DiagnosticRe
             .with_label(Label::primary(sig.ret_span, "invalid return type")));
     }
 
-    let hook_pkg = cx.db[cx.db[id].scope.module_id].package;
-    let adt_pkg = cx.db[cx.db[cx.db[adt_id].def_id].scope.module_id].package;
+    let hook_pkg = cx.db[cx.db[id].scope.loc.module_id].package;
+    let adt_pkg = cx.db[cx.db[cx.db[adt_id].def_id].scope.loc.module_id].package;
 
     if hook_pkg != adt_pkg {
         return Err(Diagnostic::error(format!(

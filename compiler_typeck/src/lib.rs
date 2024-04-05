@@ -229,23 +229,24 @@ impl<'db> Typeck<'db> {
     ) -> DiagnosticResult<()> {
         self.can_access_def(from_module, accessed).then_some(()).ok_or_else(|| {
             let def = &self.db[accessed];
-            errors::private_access_violation(self.db, def.scope.module_id, def.name, span)
+            errors::private_access_violation(self.db, def.scope.loc.module_id, def.name, span)
         })
     }
 
     #[inline]
     pub(crate) fn can_access_def(&self, from_module: ModuleId, accessed: DefId) -> bool {
         let def = &self.db[accessed];
-        self.can_access(from_module, def.scope.module_id, def.scope.vis)
+        self.can_access(from_module, def.scope.loc.module_id, def.scope.vis)
     }
 
     #[inline]
     pub(crate) fn can_access(&self, from_module: ModuleId, in_module: ModuleId, vis: Vis) -> bool {
         match vis {
-            Vis::Public => true,
-            Vis::Private => {
+            Vis::Source(source_id) => todo!(),
+            Vis::Package => {
                 from_module == in_module || self.db[from_module].is_submodule(self.db, in_module)
             }
+            Vis::Public => true,
         }
     }
 }
