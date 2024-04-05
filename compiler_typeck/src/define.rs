@@ -98,12 +98,19 @@ impl<'db, 'cx> Define<'db, 'cx> {
 
         if let Some(fns) = module.ns.defined_fns.get(&name.name()) {
             let span = self.cx.db[fns[0]].span;
-            return Err(errors::multiple_item_def_err(span, name));
+            return Err(errors::multiple_item_def(span, name));
         }
 
         let def = NsDef { id, name, module_id, vis };
-        if let Some(prev) = module.ns.defs.insert(name.name(), def) {
-            return Err(errors::multiple_item_def_err(prev.span(), name));
+        if let Some(prev) = module.ns.defs.get(&name.name()) {
+            match self.cx.def_to_ty.get(&prev.id) {
+                Some(ty) if ty.is_module() => return Err(errors::item_same_as_submodule(name)),
+                _ => (),
+            }
+
+            return Err(errors::multiple_item_def(prev.span(), name));
+        } else {
+            module.ns.defs.insert(name.name(), def);
         }
 
         Ok(())

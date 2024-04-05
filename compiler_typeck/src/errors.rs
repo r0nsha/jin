@@ -104,11 +104,16 @@ pub fn generic_expected_found(expected: &str, found: &str, span: Span) -> Diagno
         .with_label(Label::primary(span, format!("expected {expected} here")))
 }
 
-pub fn multiple_item_def_err(prev_span: Span, dup_name: Word) -> Diagnostic {
+pub fn multiple_item_def(prev_span: Span, dup_name: Word) -> Diagnostic {
     Diagnostic::error(format!("item `{dup_name}` is defined multiple times"))
         .with_label(Label::primary(dup_name.span(), format!("`{dup_name}` defined here")))
         .with_label(Label::secondary(prev_span, format!("`{dup_name}` also defined here")))
         .with_note("you can only define items once in a module (except functions)")
+}
+
+pub fn item_same_as_submodule(name: Word) -> Diagnostic {
+    Diagnostic::error(format!("item `{name}` shadows a submodule with the same name"))
+        .with_label(Label::primary(name.span(), format!("`{name}` defined here")))
 }
 
 pub fn multiple_fn_def_err(

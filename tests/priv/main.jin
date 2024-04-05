@@ -1,6 +1,3 @@
-mod b
-mod c
-
 use priv.b.val as vb
 use priv.c.val as vc
 

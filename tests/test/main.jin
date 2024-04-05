@@ -1,4 +1,4 @@
-mod extern "./foo"
+use extern "./foo"
 
 fn extern "c" hello() unit
 let extern answer: int

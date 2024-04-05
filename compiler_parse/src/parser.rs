@@ -7,7 +7,7 @@ mod tyexpr;
 
 use std::ops::ControlFlow;
 
-use camino::{Utf8Path, Utf8PathBuf};
+use camino::Utf8Path;
 use compiler_ast::{Item, Location, TyParam};
 use compiler_core::db::ModuleId;
 use compiler_core::{
@@ -18,7 +18,6 @@ use compiler_core::{
     word::Word,
 };
 use compiler_helpers::create_bool_enum;
-use rustc_hash::FxHashSet;
 use ustr::ustr;
 
 use crate::{
@@ -34,10 +33,10 @@ pub fn parse(
     source: &Source,
     module_id: ModuleId,
     tokens: Vec<Token>,
-) -> DiagnosticResult<(Vec<Item>, FxHashSet<Utf8PathBuf>)> {
+) -> DiagnosticResult<Vec<Item>> {
     let mut parser = Parser::new(db, source, module_id, tokens);
     let items = parser.parse()?;
-    Ok((items, parser.submodule_paths))
+    Ok(items)
 }
 
 #[derive(Debug)]
@@ -47,12 +46,11 @@ pub(super) struct Parser<'a> {
     pub(super) module_id: ModuleId,
     pub(super) tokens: Vec<Token>,
     pub(super) pos: usize,
-    pub(super) submodule_paths: FxHashSet<Utf8PathBuf>,
 }
 
 impl<'a> Parser<'a> {
     fn new(db: &'a Db, source: &'a Source, module_id: ModuleId, tokens: Vec<Token>) -> Self {
-        Self { db, source, module_id, tokens, pos: 0, submodule_paths: FxHashSet::default() }
+        Self { db, source, module_id, tokens, pos: 0 }
     }
 
     fn parse(&mut self) -> DiagnosticResult<Vec<Item>> {

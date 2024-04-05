@@ -1,5 +1,3 @@
-mod inner
-
 fn extern "c" printf(fmt: ptr[u8], ..) i32
 
 fn main() unit = {

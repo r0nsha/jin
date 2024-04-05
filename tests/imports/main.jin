@@ -1,6 +1,3 @@
-mod bar
-mod ufcs
-
 use imports.bar.baz.yup
 use imports.bar.(*)
 use imports.ufcs.(?)

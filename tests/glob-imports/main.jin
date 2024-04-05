@@ -1,5 +1,3 @@
-mod a
-
 use glob-imports.a.(*)
 
 fn main() unit = hello()

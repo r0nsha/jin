@@ -3,6 +3,8 @@ mod lexer;
 mod parser;
 mod token;
 
+use std::fs;
+
 use camino::{Utf8Path, Utf8PathBuf};
 use compiler_ast::{Ast, Item};
 use compiler_core::{
@@ -11,7 +13,6 @@ use compiler_core::{
     middle::{BinOp, CmpOp},
     span::SourceId,
 };
-use rustc_hash::FxHashSet;
 use ustr::Ustr;
 
 use crate::token::TokenKind;
@@ -19,11 +20,11 @@ use crate::token::TokenKind;
 pub fn parse(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Ast> {
     let mut ast = Ast::new();
 
-    // // Std package
-    // let root_std_file = compiler_helpers::current_exe_dir().join("std/main.jin");
-    // let (std_package, _) = db.create_package(&root_std_file)?;
-    // db.std_package_name.set(std_package);
-    // parse_package(db, &mut ast, std_package);
+    // Std package
+    let root_std_file = compiler_helpers::current_exe_dir().join("std/_.jin");
+    let (std_package, _) = db.create_package(&root_std_file)?;
+    db.std_package_name.set(std_package);
+    parse_package(db, &mut ast, std_package);
 
     // Main package
     let (main_package, _) = db.create_package(root_file)?;
@@ -34,20 +35,17 @@ pub fn parse(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Ast> {
 }
 
 fn parse_package(db: &mut Db, ast: &mut Ast, package: Ustr) {
-    parse_module(db, package, ast, db.package(package).root_path.clone(), None);
+    parse_dir(db, package, ast, db.package(package).root_path.clone(), None);
 }
 
-fn parse_module(
+fn parse_dir(
     db: &mut Db,
     package: Ustr,
     ast: &mut Ast,
     dir: Utf8PathBuf,
     parent: Option<ModuleId>,
 ) {
-    let module_id = db.add_module(package, dir.clone(), parent);
-    let mut items = Vec::<Item>::new();
-
-    let files: Vec<_> = std::fs::read_dir(&dir)
+    let files: Vec<_> = fs::read_dir(&dir)
         .unwrap()
         .filter_map(Result::ok)
         .filter_map(|entry| {
@@ -60,22 +58,36 @@ fn parse_module(
         })
         .collect();
 
+    // Skip directories that have no source files
+    if files.is_empty() {
+        return;
+    }
+
+    let module_id = db.add_module(package, dir.clone(), parent);
+    let mut items = Vec::<Item>::new();
+
+    // Parse this directory's source files
     for file in files {
         let source_id = db.sources.load_file(file).unwrap();
         db.source_to_module.insert(source_id, module_id);
 
-        match parse_file(db, package, module_id, source_id, &mut items) {
-            Ok(submodule_paths) => {
-                for path in submodule_paths {
-                    if db.sources.find_by_path(&path).is_some() {
-                        continue;
-                    }
-
-                    parse_module(db, package, ast, path, Some(module_id));
-                }
-            }
-            Err(diag) => db.diagnostics.add(diag),
+        if let Err(diag) = parse_file(db, package, module_id, source_id, &mut items) {
+            db.diagnostics.add(diag)
         }
+    }
+
+    // Parse subdirectories
+    let dirs = fs::read_dir(&dir).unwrap().filter_map(Result::ok).filter_map(|entry| {
+        let path = entry.path();
+        if path.is_dir() {
+            Some(Utf8PathBuf::from_path_buf(path).unwrap())
+        } else {
+            None
+        }
+    });
+
+    for dir in dirs {
+        parse_dir(db, package, ast, dir, Some(module_id));
     }
 
     ast.items.extend(items);
@@ -87,11 +99,11 @@ fn parse_file(
     module_id: ModuleId,
     source_id: SourceId,
     items: &mut Vec<Item>,
-) -> DiagnosticResult<FxHashSet<Utf8PathBuf>> {
+) -> DiagnosticResult<()> {
     let is_package_main = source_id == db.package(package).main_source_id;
     let is_main = db.is_main_package(package) && is_package_main;
 
-    let (file_items, submodule_paths) = {
+    let file_items = {
         let source = db.sources.get(source_id).unwrap();
         let tokens = lexer::tokenize(source)?;
         parser::parse(db, source, module_id, tokens)?
@@ -103,7 +115,7 @@ fn parse_file(
         db.main_module.set(module_id);
     }
 
-    Ok(submodule_paths)
+    Ok(())
 }
 
 pub(crate) fn bin_op_from_assign_op(tk: TokenKind) -> Option<BinOp> {

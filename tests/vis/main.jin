@@ -1,5 +1,3 @@
-mod child
-
 fn main() unit = {}
 
 fn a() unit = child.Priv(1)

@@ -17,20 +17,6 @@ use crate::{
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn parse_mod(&mut self, attrs: &Attrs) -> DiagnosticResult<Import> {
-        let start = self.last_span();
-        let root = self.eat_ident()?.word();
-
-        let module_path = self.search_submodule(root)?;
-        self.submodule_paths.insert(module_path.clone());
-
-        let alias = if self.is_kw(Kw::As) { Some(self.eat_ident()?.word()) } else { None };
-        let vis = self.parse_vis();
-        let tree = ImportTree::Name(root, alias, vis);
-
-        Ok(Import { attrs: attrs.clone(), module_path, tree, span: start.merge(self.last_span()) })
-    }
-
     pub(super) fn parse_import(&mut self, attrs: &Attrs) -> DiagnosticResult<Import> {
         let start = self.last_span();
         let root = self.eat_ident()?.word();
@@ -87,23 +73,6 @@ impl<'a> Parser<'a> {
         } else {
             Err(Diagnostic::error(format!("could not find package `{name}`"))
                 .with_label(Label::primary(name.span(), "not found")))
-        }
-    }
-
-    fn search_submodule(&self, name: Word) -> DiagnosticResult<Utf8PathBuf> {
-        let path = self.parent_path().unwrap().join(name.name().as_str());
-
-        if path.exists() {
-            if path.is_dir() {
-                Ok(path)
-            } else {
-                Err(Diagnostic::error(format!("found path `{path}`, but it is not a directory"))
-                    .with_label(Label::primary(name.span(), "invalid module declaration")))
-            }
-        } else {
-            Err(Diagnostic::error(format!("could not find module `{name}`"))
-                .with_label(Label::primary(name.span(), "not found"))
-                .with_note(format!("searched path: {path}")))
         }
     }
 

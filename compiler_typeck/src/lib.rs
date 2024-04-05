@@ -21,6 +21,9 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use compiler_ast::{self as ast, Ast};
+use compiler_core::db::DefKind;
+use compiler_core::middle::Mutability;
+use compiler_core::word::Word;
 use compiler_core::{
     counter::Counter,
     db::{AdtId, Db, DefId, ModuleId},
@@ -158,8 +161,33 @@ impl<'db> Typeck<'db> {
     }
 
     fn init_global_env(&mut self) {
-        for module_id in self.db.modules.keys() {
+        let module_ids: Vec<_> = self.db.modules.keys().collect();
+
+        for module_id in module_ids {
             self.global_env.insert_module(module_id);
+
+            if let Some(parent) = self.db[module_id].parent(self.db) {
+                let word = {
+                    let name = self.db[module_id].qpath.name();
+                    let span = Span::initial(
+                        self.db
+                            .source_to_module
+                            .iter()
+                            .find_map(|(sid, mid)| (*mid == parent).then_some(*sid))
+                            .expect("to have at least one source"),
+                    );
+                    Word::new(name, span)
+                };
+
+                let id = self.define().new_global(
+                    parent,
+                    Vis::Public,
+                    DefKind::Global,
+                    word,
+                    Mutability::Imm,
+                );
+                self.def_to_ty.insert(id, Ty::new(TyKind::Module(module_id)));
+            }
         }
 
         for source_id in self.db.sources.ids() {

@@ -305,6 +305,10 @@ pub struct ModuleInfo {
 }
 
 impl ModuleInfo {
+    pub fn parent(&self, db: &Db) -> Option<ModuleId> {
+        db.module_graph.neighbors_directed(self.id, petgraph::Direction::Incoming).next()
+    }
+
     pub fn is_submodule(&self, db: &Db, of: ModuleId) -> bool {
         self.package == db[of].package
             && petgraph::algo::has_path_connecting(&db.module_graph, of, self.id, None)

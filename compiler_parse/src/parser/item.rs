@@ -51,17 +51,11 @@ impl<'a> Parser<'a> {
             return self.parse_tydef(attrs).map(ItemKind::Type);
         }
 
-        if self.is_kw(Kw::Mod) {
+        if self.is_kw(Kw::Use) {
             let start = self.last_span();
-
             if self.is_kw(Kw::Extern) {
                 return self.parse_extern_import(&attrs, start).map(ItemKind::ExternImport);
             }
-
-            return self.parse_mod(&attrs).map(ItemKind::Import);
-        }
-
-        if self.is_kw(Kw::Use) {
             return self.parse_import(&attrs).map(ItemKind::Import);
         }
 
